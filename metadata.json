@@ -1,0 +1,5 @@
+{
+  "name": "AutoScape",
+  "description": "AI-powered landscaping redesign tool that generates realistic renders, 2D plans, material lists, and cost estimates from a single photo.",
+  "requestFramePermissions": []
+}
