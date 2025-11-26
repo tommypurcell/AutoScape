@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { AnalysisSchema, GeneratedDesign } from "../types";
 
 // PRO model for reasoning, scene understanding, and complex JSON analysis
-const MODEL_REASONING = "gemini-3-pro-preview"; 
+const MODEL_REASONING = "gemini-3-pro-preview";
 
 // FLASH-IMAGE model for fast, high-quality visual generation
 const MODEL_GENERATION = "gemini-2.5-flash-image";
@@ -32,7 +32,7 @@ const extractImage = (res: any): string | null => {
 
 export const generateLandscapeDesign = async (
   yardFile: File,
-  styleFile: File | null,
+  styleFiles: File[],
   prompt: string,
   stylePreference: string
 ): Promise<GeneratedDesign> => {
@@ -45,9 +45,12 @@ export const generateLandscapeDesign = async (
 
   // Convert files to base64
   const yardBase64 = await fileToGenericBase64(yardFile);
-  let styleBase64: string | null = null;
-  if (styleFile) {
-    styleBase64 = await fileToGenericBase64(styleFile);
+  const styleBase64Array: string[] = [];
+  
+  // Convert all style images to base64
+  for (const styleFile of styleFiles) {
+    const base64 = await fileToGenericBase64(styleFile);
+    styleBase64Array.push(base64);
   }
 
   try {
@@ -62,9 +65,16 @@ export const generateLandscapeDesign = async (
       { text: `[The User's Yard]` }
     ];
     
-    if (styleBase64 && styleFile) {
-        analysisParts.push({ inlineData: { mimeType: styleFile.type, data: styleBase64 } });
-        analysisParts.push({ text: "[Style Reference Image]"});
+    // Add all style reference images
+    if (styleFiles.length > 0) {
+      styleFiles.forEach((styleFile, index) => {
+        analysisParts.push({ 
+          inlineData: { mimeType: styleFile.type, data: styleBase64Array[index] } 
+        });
+        analysisParts.push({ 
+          text: `[Style Reference Image ${index + 1}${styleFiles.length > 1 ? ` of ${styleFiles.length}` : ''}]`
+        });
+      });
     }
 
     // Strict prompt to force JSON output for geometry consistency
@@ -218,7 +228,12 @@ export const generateLandscapeDesign = async (
 
     const [planRes, analysisRes] = await Promise.all([planPromise, analysisPromise]);
 
-    const planImageUri = extractImage(planRes);
+    const planImage = extractImage(planRes);
+    if (!planImage) {
+      throw new Error("Failed to generate plan image");
+    }
+    const planBase64Raw = planImage.split(',')[1];
+    const planImageUri = `data:image/png;base64,${planBase64Raw}`;
     const jsonText = analysisRes.text || "{}";
     const data = JSON.parse(jsonText);
     

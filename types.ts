@@ -42,8 +42,8 @@ export interface AppState {
   step: 'upload' | 'processing' | 'results';
   yardImage: File | null;
   yardImagePreview: string | null;
-  styleImage: File | null;
-  styleImagePreview: string | null;
+  styleImages: File[];
+  styleImagePreviews: string[];
   userPrompt: string;
   selectedStyle: DesignStyle | string;
   result: GeneratedDesign | null;

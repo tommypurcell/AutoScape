@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GeneratedDesign, MaterialItem } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BeforeAfterSlider } from './BeforeAfterSlider';
 
 interface ResultsViewProps {
   result: GeneratedDesign;
@@ -9,7 +10,7 @@ interface ResultsViewProps {
 }
 
 export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, originalImage }) => {
-  const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan'>('render');
+  const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare'>('compare');
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
 
   const getActiveImage = () => {
@@ -91,7 +92,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
       {/* Visuals Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
         <div className="flex border-b border-slate-100">
-          {(['original', 'render', 'plan'] as const).map((tab) => (
+          {(['compare', 'original', 'render', 'plan'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -99,14 +100,23 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
                 activeTab === tab ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}
             >
-              {tab === 'original' ? 'Original Yard' : tab === 'render' ? '3D Redesign' : '2D Plan'}
+              {tab === 'compare' ? '⚡ Before/After' : tab === 'original' ? 'Original Yard' : tab === 'render' ? '3D Redesign' : '2D Plan'}
               {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
             </button>
           ))}
         </div>
         
         <div className="relative aspect-video bg-slate-100 flex items-center justify-center group overflow-hidden">
-          {activeImage ? (
+          {activeTab === 'compare' && originalImage && result.renderImages[currentRenderIndex] ? (
+            <div className="w-full h-full p-6">
+              <BeforeAfterSlider
+                beforeImage={originalImage}
+                afterImage={result.renderImages[currentRenderIndex]}
+                beforeLabel="Original"
+                afterLabel="Redesigned"
+              />
+            </div>
+          ) : activeImage ? (
              <img src={activeImage} alt={activeTab} className="w-full h-full object-cover transition-opacity duration-300" />
           ) : (
              <div className="text-slate-400 italic">Image generation failed or is unavailable.</div>
