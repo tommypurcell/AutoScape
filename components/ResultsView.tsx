@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GeneratedDesign, MaterialItem } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BeforeAfterSlider } from './BeforeAfterSlider';
 
 interface ResultsViewProps {
   result: GeneratedDesign;
@@ -9,11 +10,8 @@ interface ResultsViewProps {
 }
 
 export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, originalImage }) => {
-  const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan'>('render');
+  const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare'>('compare');
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [videoError, setVideoError] = useState<string | null>(null);
 
   const getActiveImage = () => {
     if (activeTab === 'original') return originalImage;
@@ -22,7 +20,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
   };
 
   const activeImage = getActiveImage();
-
+  
   const downloadImage = (dataUrl: string | null, filename: string) => {
     if (!dataUrl) return;
     const link = document.createElement('a');
@@ -35,7 +33,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
 
   const downloadCSV = () => {
     const headers = ["Material / Item", "Quantity", "Unit Cost", "Estimated Cost", "Notes"];
-
+    
     const rows = result.estimates.breakdown.map(item => [
       `"${item.name.replace(/"/g, '""')}"`,
       `"${item.quantity.replace(/"/g, '""')}"`,
@@ -79,145 +77,61 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
     setCurrentRenderIndex((prev) => (prev - 1 + result.renderImages.length) % result.renderImages.length);
   };
 
-  const handleGenerateVideo = async () => {
-    if (!originalImage || !result.renderImages[currentRenderIndex]) {
-      setVideoError("Missing required images for video generation");
-      return;
-    }
-
-    setIsGeneratingVideo(true);
-    setVideoError(null);
-    setVideoUrl(null);
-
-    try {
-      const response = await fetch('/api/generate-video', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          original_image: originalImage,
-          redesign_image: result.renderImages[currentRenderIndex],
-          duration: 5
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Video generation failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      if (data.success && data.video_url) {
-        setVideoUrl(data.video_url);
-      } else {
-        throw new Error('Video URL not received');
-      }
-    } catch (error) {
-      console.error('Video generation error:', error);
-      setVideoError(error instanceof Error ? error.message : 'Failed to generate video');
-    } finally {
-      setIsGeneratingVideo(false);
-    }
-  };
-
   return (
     <div className="space-y-12 animate-fade-in pb-20">
-
+      
       {/* Header Actions */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Your Redesign</h2>
-        <div className="flex items-center gap-3">
-          {activeTab === 'render' && (
-            <button
-              onClick={handleGenerateVideo}
-              disabled={isGeneratingVideo || !originalImage}
-              className={`text-sm px-4 py-2 rounded-lg flex items-center gap-2 transition-all transform hover:scale-105 ${isGeneratingVideo || !originalImage
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg'
-                }`}
-            >
-              {isGeneratingVideo ? (
-                <>
-                  <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 00 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                  Make it into Video
-                </>
-              )}
-            </button>
-          )}
-          <button onClick={onReset} className="text-sm text-slate-500 hover:text-emerald-600 flex items-center gap-2 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            Start New Project
-          </button>
-        </div>
+        <button onClick={onReset} className="text-sm text-slate-500 hover:text-emerald-600 flex items-center gap-2 transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          Start New Project
+        </button>
       </div>
-
-      {/* Video Success/Error Messages */}
-      {videoUrl && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-green-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <div className="flex-1">
-            <h4 className="font-semibold text-green-900 mb-1">Video Generated!</h4>
-            <p className="text-sm text-green-700 mb-2">Your transformation video is ready</p>
-            <a
-              href={videoUrl}
-              download="landscape-transformation.mp4"
-              className="inline-flex items-center gap-2 text-sm bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              Download Video
-            </a>
-          </div>
-        </div>
-      )}
-
-      {videoError && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-          <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <div>
-            <h4 className="font-semibold text-red-900">Video Generation Failed</h4>
-            <p className="text-sm text-red-700">{videoError}</p>
-          </div>
-        </div>
-      )}
 
       {/* Visuals Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
         <div className="flex border-b border-slate-100">
-          {(['original', 'render', 'plan'] as const).map((tab) => (
+          {(['compare', 'original', 'render', 'plan'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-4 text-sm font-medium capitalize transition-colors relative ${activeTab === tab ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                }`}
+              className={`flex-1 py-4 text-sm font-medium capitalize transition-colors relative ${
+                activeTab === tab ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
             >
-              {tab === 'original' ? 'Original Yard' : tab === 'render' ? '3D Redesign' : '2D Plan'}
+              {tab === 'compare' ? '⚡ Before/After' : tab === 'original' ? 'Original Yard' : tab === 'render' ? '3D Redesign' : '2D Plan'}
               {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
             </button>
           ))}
         </div>
-
+        
         <div className="relative aspect-video bg-slate-100 flex items-center justify-center group overflow-hidden">
-          {activeImage ? (
-            <img src={activeImage} alt={activeTab} className="w-full h-full object-cover transition-opacity duration-300" />
+          {activeTab === 'compare' && originalImage && result.renderImages[currentRenderIndex] ? (
+            <div className="w-full h-full p-6">
+              <BeforeAfterSlider
+                beforeImage={originalImage}
+                afterImage={result.renderImages[currentRenderIndex]}
+                beforeLabel="Original"
+                afterLabel="Redesigned"
+              />
+            </div>
+          ) : activeImage ? (
+             <img src={activeImage} alt={activeTab} className="w-full h-full object-cover transition-opacity duration-300" />
           ) : (
-            <div className="text-slate-400 italic">Image generation failed or is unavailable.</div>
+             <div className="text-slate-400 italic">Image generation failed or is unavailable.</div>
           )}
-
+          
           {/* Carousel Controls (only for renders with > 1 image) */}
           {activeTab === 'render' && result.renderImages.length > 1 && (
             <>
-              <button
+              <button 
                 onClick={prevRender}
                 className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg transition-all hover:scale-105"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
               </button>
-              <button
+              <button 
                 onClick={nextRender}
                 className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg transition-all hover:scale-105"
               >
@@ -225,8 +139,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
               </button>
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                 {result.renderImages.map((_, idx) => (
-                  <div
-                    key={idx}
+                  <div 
+                    key={idx} 
                     onClick={() => setCurrentRenderIndex(idx)}
                     className={`w-2 h-2 rounded-full shadow-sm transition-all cursor-pointer ${idx === currentRenderIndex ? 'bg-emerald-500 scale-125' : 'bg-white/80 hover:bg-white'}`}
                   />
@@ -236,7 +150,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
           )}
 
           {activeImage && (
-            <button
+            <button 
               onClick={() => downloadImage(activeImage, `autoscape-${activeTab}${activeTab === 'render' ? '-' + (currentRenderIndex + 1) : ''}.png`)}
               className="absolute top-4 right-4 bg-white/90 hover:bg-white text-slate-800 px-4 py-2 rounded-lg shadow-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-all transform -translate-y-2 group-hover:translate-y-0 flex items-center gap-2"
             >
@@ -245,7 +159,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
             </button>
           )}
         </div>
-
+        
         <div className="p-6 bg-slate-50/50">
           <h3 className="text-lg font-semibold text-slate-800 mb-2">{result.analysis.designConcept}</h3>
           <div className="flex gap-4 text-sm text-slate-500">
@@ -254,13 +168,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
               Layout: {result.analysis.currentLayout}
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              Maintenance: {result.analysis.maintenanceLevel}
+               <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+               Maintenance: {result.analysis.maintenanceLevel}
             </span>
             {activeTab === 'render' && result.renderImages.length > 1 && (
-              <span className="ml-auto text-slate-400 font-medium">
-                View {currentRenderIndex + 1} of {result.renderImages.length}
-              </span>
+               <span className="ml-auto text-slate-400 font-medium">
+                 View {currentRenderIndex + 1} of {result.renderImages.length}
+               </span>
             )}
           </div>
         </div>
@@ -268,7 +182,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
 
       {/* Analysis & Costs Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
+        
         {/* Material List */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 relative">
           <div className="flex items-center justify-between mb-6">
@@ -276,7 +190,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
               <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
               Material List & Estimates
             </h3>
-            <button
+            <button 
               onClick={downloadCSV}
               className="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-slate-200"
               title="Download as CSV (Excel)"
@@ -285,7 +199,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
               Export to Excel
             </button>
           </div>
-
+          
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
@@ -329,8 +243,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11, fill: '#64748b' }} />
-                <Tooltip
+                <YAxis type="category" dataKey="name" width={100} tick={{fontSize: 11, fill: '#64748b'}} />
+                <Tooltip 
                   formatter={(value: number) => [`$${value}`, 'Cost']}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />

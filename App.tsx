@@ -2,21 +2,28 @@ import React, { useState } from 'react';
 import { UploadArea } from './components/UploadArea';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ResultsView } from './components/ResultsView';
+import { StyleGallery } from './components/StyleGallery';
 import { generateLandscapeDesign } from './services/geminiService';
 import { AppState, DesignStyle } from './types';
+import { styleReferences } from './data/styleReferences';
+import { urlsToFiles } from './utils/imageUtils';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
     step: 'upload',
     yardImage: null,
     yardImagePreview: null,
-    styleImage: null,
-    styleImagePreview: null,
+    styleImages: [],
+    styleImagePreviews: [],
     userPrompt: '',
     selectedStyle: DesignStyle.MODERN,
     result: null,
     error: null,
   });
+
+  // Gallery selection state
+  const [selectedGalleryStyleIds, setSelectedGalleryStyleIds] = useState<string[]>([]);
+  const [styleSelectionMode, setStyleSelectionMode] = useState<'gallery' | 'upload'>('gallery');
 
   const handleYardSelect = (files: File[]) => {
     if (files.length > 0) {
@@ -39,21 +46,54 @@ const App: React.FC = () => {
 
   const handleStyleSelect = (files: File[]) => {
     if (files.length > 0) {
-      const file = files[0];
+      const newFiles = Array.from(files);
+      const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+      
       setState(prev => ({
         ...prev,
-        styleImage: file,
-        styleImagePreview: URL.createObjectURL(file)
+        styleImages: [...prev.styleImages, ...newFiles],
+        styleImagePreviews: [...prev.styleImagePreviews, ...newPreviews]
       }));
     }
   };
 
-  const handleClearStyle = () => {
+  const handleClearStyleImage = (index: number) => {
+    setState(prev => {
+      // Revoke the URL to free memory
+      URL.revokeObjectURL(prev.styleImagePreviews[index]);
+      
+      return {
+        ...prev,
+        styleImages: prev.styleImages.filter((_, i) => i !== index),
+        styleImagePreviews: prev.styleImagePreviews.filter((_, i) => i !== index)
+      };
+    });
+  };
+
+  const handleClearAllStyles = () => {
+    // Revoke all URLs
+    state.styleImagePreviews.forEach(url => URL.revokeObjectURL(url));
+    
     setState(prev => ({
       ...prev,
-      styleImage: null,
-      styleImagePreview: null
+      styleImages: [],
+      styleImagePreviews: []
     }));
+  };
+
+  // Gallery handlers
+  const handleGalleryStyleToggle = (styleId: string) => {
+    setSelectedGalleryStyleIds(prev => {
+      if (prev.includes(styleId)) {
+        return prev.filter(id => id !== styleId);
+      } else {
+        return [...prev, styleId];
+      }
+    });
+  };
+
+  const handleClearGalleryStyles = () => {
+    setSelectedGalleryStyleIds([]);
   };
 
   const handleGenerate = async () => {
@@ -62,9 +102,22 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, step: 'processing', error: null }));
 
     try {
+      // Merge gallery selections with custom uploads
+      let allStyleImages = [...state.styleImages];
+      
+      // Convert gallery selections to File objects
+      if (selectedGalleryStyleIds.length > 0) {
+        const selectedStyles = styleReferences.filter(style => 
+          selectedGalleryStyleIds.includes(style.id)
+        );
+        const galleryImageUrls = selectedStyles.map(style => style.imageUrl);
+        const galleryFiles = await urlsToFiles(galleryImageUrls);
+        allStyleImages = [...allStyleImages, ...galleryFiles];
+      }
+
       const result = await generateLandscapeDesign(
         state.yardImage,
-        state.styleImage,
+        allStyleImages,
         state.userPrompt,
         state.selectedStyle
       );
@@ -85,12 +138,18 @@ const App: React.FC = () => {
   };
 
   const handleReset = () => {
+    // Revoke all URLs for style image previews before resetting
+    state.styleImagePreviews.forEach(url => URL.revokeObjectURL(url));
+    if (state.yardImagePreview) {
+      URL.revokeObjectURL(state.yardImagePreview);
+    }
+
     setState({
       step: 'upload',
       yardImage: null,
       yardImagePreview: null,
-      styleImage: null,
-      styleImagePreview: null,
+      styleImages: [],
+      styleImagePreviews: [],
       userPrompt: '',
       selectedStyle: DesignStyle.MODERN,
       result: null,
@@ -168,15 +227,113 @@ const App: React.FC = () => {
                         onClear={handleClearYard}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-slate-700">Inspiration (Optional)</label>
-                      <UploadArea 
-                        label="Upload Style Reference" 
-                        subLabel="Optional sketch or photo"
-                        onFileSelect={handleStyleSelect}
-                        previewUrls={state.styleImagePreview ? [state.styleImagePreview] : []}
-                        onClear={handleClearStyle}
-                      />
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-sm font-medium text-slate-700">Style References (Optional)</label>
+                        {(selectedGalleryStyleIds.length > 0 || state.styleImages.length > 0) && (
+                          <span className="text-xs text-emerald-600 font-medium">
+                            {selectedGalleryStyleIds.length + state.styleImages.length} selected
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Mode Toggle */}
+                      <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                        <button
+                          onClick={() => setStyleSelectionMode('gallery')}
+                          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                            styleSelectionMode === 'gallery'
+                              ? 'bg-white text-emerald-600 shadow-sm'
+                              : 'text-slate-600 hover:text-slate-800'
+                          }`}
+                        >
+                          🖼️ Gallery
+                        </button>
+                        <button
+                          onClick={() => setStyleSelectionMode('upload')}
+                          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                            styleSelectionMode === 'upload'
+                              ? 'bg-white text-emerald-600 shadow-sm'
+                              : 'text-slate-600 hover:text-slate-800'
+                          }`}
+                        >
+                          📤 Upload
+                        </button>
+                      </div>
+
+                      {/* Gallery Mode */}
+                      {styleSelectionMode === 'gallery' && (
+                        <StyleGallery
+                          availableStyles={styleReferences}
+                          selectedStyleIds={selectedGalleryStyleIds}
+                          onStyleToggle={handleGalleryStyleToggle}
+                          onClearAll={handleClearGalleryStyles}
+                        />
+                      )}
+
+                      {/* Upload Mode */}
+                      {styleSelectionMode === 'upload' && (
+                        <>
+                          {/* Upload button */}
+                          <label className="block cursor-pointer">
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-emerald-500 hover:bg-emerald-50/50 transition-all">
+                              <svg className="w-8 h-8 mx-auto text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <p className="text-sm text-slate-600 font-medium">Add Custom Style Images</p>
+                              <p className="text-xs text-slate-400 mt-1">Click to select multiple images</p>
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => {
+                                const files = e.target.files ? Array.from(e.target.files) as File[] : [];
+                                if (files.length > 0) {
+                                  handleStyleSelect(files);
+                                  e.target.value = ''; // Reset input
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                          
+                          {/* Preview grid for uploaded images */}
+                          {state.styleImagePreviews.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-slate-600 font-medium">Uploaded Images</span>
+                                <button
+                                  onClick={handleClearAllStyles}
+                                  className="text-xs text-slate-500 hover:text-red-600 transition-colors"
+                                >
+                                  Clear all ({state.styleImages.length})
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                {state.styleImagePreviews.map((preview, index) => (
+                                  <div key={index} className="relative group">
+                                    <img
+                                      src={preview}
+                                      alt={`Style ${index + 1}`}
+                                      className="w-full h-24 object-cover rounded-lg border border-slate-200"
+                                    />
+                                    <button
+                                      onClick={() => handleClearStyleImage(index)}
+                                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                      title="Remove this image"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
 
