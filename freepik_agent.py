@@ -4,9 +4,10 @@ from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
-from fastembed import TextEmbedding
+from fastembed import TextEmbedding, ImageEmbedding
 import google.generativeai as genai
 from pricing_data import get_pricing_context
+from PIL import Image
 
 # ==========================================
 # CONFIGURATION
@@ -42,6 +43,11 @@ class FreepikLandscapingAgent:
         logger.info("🧠 Loading text embedding model...")
         self.text_embedding_model = TextEmbedding(model_name="Qdrant/clip-ViT-B-32-text")
         
+        # Initialize vision embedding model for image search (lazy load or init here)
+        # We'll init here for simplicity, but could be lazy
+        logger.info("👁️ Loading vision embedding model...")
+        self.vision_embedding_model = ImageEmbedding(model_name="Qdrant/clip-ViT-B-32-vision")
+        
         # Initialize Gemini
         gemini_key = os.getenv("GEMINI_API_KEY")
         if gemini_key:
@@ -58,6 +64,83 @@ class FreepikLandscapingAgent:
         """Generate embedding for a text query."""
         embeddings = list(self.text_embedding_model.embed([query]))
         return embeddings[0].tolist()
+
+    def _embed_image(self, image_path: str) -> List[float]:
+        """Generate embedding for an image file."""
+        image = Image.open(image_path)
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        embeddings = list(self.vision_embedding_model.embed([image]))
+        return embeddings[0].tolist()
+
+    def search_by_image(
+        self,
+        image_path: str,
+        top_k: int = TOP_K_RESULTS,
+        filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Perform semantic search using an input image.
+        
+        Args:
+            image_path: Path to the input image file
+            top_k: Number of results to return
+            filters: Optional filters
+        
+        Returns:
+            List of search results with metadata and scores
+        """
+        try:
+            # Generate image embedding
+            query_vector = self._embed_image(image_path)
+            
+            # Build filter conditions (same as text search)
+            search_filter = None
+            if filters:
+                conditions = []
+                for key, value in filters.items():
+                    if isinstance(value, list):
+                        conditions.append(
+                            models.FieldCondition(
+                                key=key,
+                                match=models.MatchAny(any=value)
+                            )
+                        )
+                    else:
+                        conditions.append(
+                            models.FieldCondition(
+                                key=key,
+                                match=models.MatchValue(value=value)
+                            )
+                        )
+                
+                if conditions:
+                    search_filter = models.Filter(must=conditions)
+            
+            # Perform search using query_points
+            search_results = self.qdrant_client.query_points(
+                collection_name=COLLECTION_NAME,
+                query=query_vector,
+                limit=top_k,
+                query_filter=search_filter
+            ).points
+            
+            # Format results
+            results = []
+            for hit in search_results:
+                result = {
+                    "score": hit.score,
+                    "id": hit.id,
+                    **hit.payload
+                }
+                results.append(result)
+            
+            logger.info(f"🔍 Found {len(results)} results for image: '{image_path}'")
+            return results
+            
+        except Exception as e:
+            logger.error(f"❌ Image search failed: {e}")
+            return []
     
     def search_images(
         self,
