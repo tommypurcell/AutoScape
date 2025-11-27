@@ -41,22 +41,19 @@ def generate_transformation_video(
         "Content-Type": "application/json"
     }
     
-    # Create video generation request with angle rotation
+    # Create video generation request with angle rotation (Single Image)
     payload = {
-        "prompt": "Transform yard landscape design, smooth camera rotation 5 degrees upward, cinematic transition",
-        "image_url": redesign_image_base64,  # Start from redesign
+        "prompt": "Cinematic 3D camera movement, smooth orbiting view of the landscape design, high quality, photorealistic, 4k",
+        "image_url": redesign_image_base64,
         "duration": duration,
         "aspect_ratio": "16:9",
         "style": "cinematic",
         "motion": {
             "type": "camera_rotation",
-            "angle": 5,
-            "direction": "upward"
-        },
-        "transition": {
-            "from_image": original_image_base64,
-            "duration": 2  # 2 seconds for transition
+            "angle": 15,
+            "direction": "horizontal"
         }
+        # Removed transition to focus purely on the 3D view of the new design
     }
     
     try:

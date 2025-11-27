@@ -52,16 +52,14 @@ export const StyleGallery: React.FC<StyleGalleryProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
         {availableStyles.map((style, index) => {
           const selected = isSelected(style.id);
-          
+
           return (
-            <button
+            <div
               key={style.id}
-              onClick={() => handleImageClick(index)}
-              className={`relative group rounded-xl overflow-hidden transition-all duration-200 ${
-                selected
-                  ? 'ring-4 ring-emerald-500 shadow-lg scale-[0.98]'
-                  : 'ring-2 ring-slate-200 hover:ring-emerald-300 hover:shadow-md hover:scale-[1.02]'
-              }`}
+              className={`relative group rounded-xl overflow-hidden transition-all duration-200 ${selected
+                ? 'ring-4 ring-emerald-500 shadow-lg scale-[0.98]'
+                : 'ring-2 ring-slate-200 hover:ring-emerald-300 hover:shadow-md hover:scale-[1.02]'
+                }`}
             >
               {/* Image - Larger aspect ratio for better visibility */}
               <div className="aspect-[4/3] bg-slate-100 overflow-hidden">
@@ -75,35 +73,69 @@ export const StyleGallery: React.FC<StyleGalleryProps> = ({
 
               {/* Overlay with checkmark when selected */}
               {selected && (
-                <div className="absolute inset-0 bg-emerald-600/20 flex items-center justify-center pointer-events-none">
-                  <div className="bg-emerald-600 rounded-full p-2 shadow-lg">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
+                <div className="absolute inset-0 bg-emerald-600/10 pointer-events-none" />
               )}
 
               {/* Label */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 pointer-events-none">
-                <p className="text-white text-xs font-semibold truncate">{style.name}</p>
-                <p className="text-white/80 text-[10px] truncate">{style.description}</p>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12 pointer-events-none">
+                <p className="text-white text-sm font-bold truncate shadow-sm">{style.name}</p>
+                <p className="text-white/90 text-xs truncate shadow-sm">{style.description}</p>
               </div>
 
               {/* Selection indicator badge */}
               {selected && (
-                <div className="absolute top-2 right-2 bg-emerald-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg pointer-events-none">
-                  ✓
+                <div className="absolute top-2 right-2 bg-emerald-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg pointer-events-none z-10 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Selected
                 </div>
               )}
 
-              {/* Hover hint */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 px-3 py-1.5 rounded-full text-xs font-medium text-slate-800">
-                  Click to preview
-                </div>
+              {/* Hover Actions Overlay */}
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-3 backdrop-blur-[2px]">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStyleToggle(style.id);
+                  }}
+                  className={`w-32 py-2.5 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 flex items-center justify-center gap-2 backdrop-blur-md border ${selected
+                      ? 'bg-red-500/80 hover:bg-red-600/90 text-white border-red-400/50'
+                      : 'bg-emerald-600/80 hover:bg-emerald-500/90 text-white border-emerald-400/50'
+                    } shadow-lg`}
+                >
+                  {selected ? (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Remove
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Select
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleImageClick(index);
+                  }}
+                  className="w-32 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm font-semibold backdrop-blur-md transition-all transform hover:scale-105 flex items-center justify-center gap-2 border border-white/40 shadow-lg"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Preview
+                </button>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

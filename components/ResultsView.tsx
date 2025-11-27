@@ -11,7 +11,7 @@ interface ResultsViewProps {
 }
 
 export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, originalImage }) => {
-  const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare'>('compare');
+  const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare' | 'video'>('compare');
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
     setVideoError(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/generate-video', {
+      const response = await fetch('http://localhost:8001/api/generate-video', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,16 +83,14 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
     rows.push([]);
     rows.push(["ESTIMATED TOTAL", "", "", `"${formatCurrency(result.estimates.totalCost)}"`, ""]);
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(e => e.join(","))
-    ].join("\n");
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "AutoScape_Estimate.csv");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "landscaping_estimate.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -122,28 +120,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Your Redesign</h2>
         <div className="flex items-center gap-3">
-          {activeTab === 'render' && (
-            <button
-              onClick={handleGenerateVideo}
-              disabled={isGeneratingVideo || !originalImage}
-              className={`text-sm px-4 py-2 rounded-lg flex items-center gap-2 transition-all transform hover:scale-105 ${isGeneratingVideo || !originalImage
-                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg'
-                }`}
-            >
-              {isGeneratingVideo ? (
-                <>
-                  <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 00 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                  Make it into Video
-                </>
-              )}
-            </button>
-          )}
           <button onClick={onReset} className="text-sm text-slate-500 hover:text-emerald-600 flex items-center gap-2 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             Start New Project
@@ -154,27 +130,114 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
       {/* Visuals Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
         <div className="flex border-b border-slate-100">
-          {(['compare', 'original', 'render', 'plan'] as const).map((tab) => (
+          {(['compare', 'original', 'render', 'plan', 'video'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-4 text-sm font-medium capitalize transition-colors relative ${activeTab === tab ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                 }`}
             >
-              {tab === 'compare' ? '⚡ Before/After' : tab === 'original' ? 'Original Yard' : tab === 'render' ? '3D Redesign' : '2D Plan'}
+              {tab}
               {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
             </button>
           ))}
         </div>
 
         <div className="relative aspect-video bg-slate-100 flex items-center justify-center group overflow-hidden">
+          {activeTab === 'video' && (
+            <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-50 to-slate-100">
+              {!videoUrl ? (
+                <div className="text-center max-w-md animate-fade-in">
+                  <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm ring-1 ring-purple-50">
+                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-800 mb-3 tracking-tight">Cinematic 3D Tour</h3>
+                  <p className="text-slate-600 mb-8 leading-relaxed">
+                    Transform your design into a stunning 5-second cinematic video. Perfect for visualizing the space in motion.
+                  </p>
+
+                  {videoError && (
+                    <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 flex items-center gap-2">
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      {videoError}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleGenerateVideo}
+                    disabled={isGeneratingVideo}
+                    className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-[0.98] shadow-xl ${isGeneratingVideo
+                      ? 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
+                      : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-200 hover:shadow-purple-300 hover:-translate-y-1'
+                      }`}
+                  >
+                    {isGeneratingVideo ? (
+                      <>
+                        <svg className="animate-spin w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 00 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Creating Magic...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Generate Video Tour
+                      </>
+                    )}
+                  </button>
+
+                  {!isGeneratingVideo && (
+                    <p className="mt-4 text-xs text-slate-400">
+                      Powered by AI Video Generation • ~30s processing time
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full max-w-4xl animate-fade-in">
+                  <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl mb-8 relative group ring-4 ring-white ring-opacity-50">
+                    <video
+                      src={videoUrl}
+                      controls
+                      autoPlay
+                      loop
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex justify-center gap-4">
+                    <button
+                      onClick={() => setVideoUrl(null)}
+                      className="px-6 py-3 bg-white text-slate-600 hover:text-slate-900 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 transition-colors"
+                    >
+                      Generate New Video
+                    </button>
+                    <a
+                      href={videoUrl}
+                      download="redesign-tour.mp4"
+                      className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-200 hover:-translate-y-0.5"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download Video
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'compare' && originalImage && result.renderImages[currentRenderIndex] ? (
             <div className="w-full h-full p-6">
               <BeforeAfterSlider
-                beforeImage={originalImage}
-                afterImage={result.renderImages[currentRenderIndex]}
-                beforeLabel="Original"
-                afterLabel="Redesigned"
+                beforeImage={result.renderImages[currentRenderIndex]}
+                afterImage={originalImage}
+                beforeLabel="Redesigned"
+                afterLabel="Original"
               />
             </div>
           ) : activeImage ? (

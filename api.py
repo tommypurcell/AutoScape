@@ -90,13 +90,23 @@ async def generate_ad_stream(request: AdRequest):
             
             # Stream each search query and its results
             for idx, search_query in enumerate(search_queries, 1):
-                yield f"data: {json.dumps({'step': 'searching', 'message': f'Searching {idx}/{len(search_queries)}: "{search_query}"...', 'details': {'search_index': idx, 'total_searches': len(search_queries), 'query': search_query}})}\n\n"
+                data = {
+                    'step': 'searching',
+                    'message': f'Searching {idx}/{len(search_queries)}: "{search_query}"...',
+                    'details': {'search_index': idx, 'total_searches': len(search_queries), 'query': search_query}
+                }
+                yield f"data: {json.dumps(data)}\n\n"
                 await asyncio.sleep(0.1)
                 
                 # Stream results for this search (collected via callback)
                 if search_query in search_results_by_query:
                     results = search_results_by_query[search_query]
-                    yield f"data: {json.dumps({'step': 'search_results', 'message': f'Found {len(results)} products for "{search_query}"', 'details': {'search_query': search_query, 'search_index': idx, 'results': results, 'count': len(results)}})}\n\n"
+                    data = {
+                        'step': 'search_results',
+                        'message': f'Found {len(results)} products for "{search_query}"',
+                        'details': {'search_query': search_query, 'search_index': idx, 'results': results, 'count': len(results)}
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
                     await asyncio.sleep(0.1)
         
         # Step 2: Generate Copy
@@ -104,7 +114,17 @@ async def generate_ad_stream(request: AdRequest):
         await asyncio.sleep(0.1)
         
         ad_copy = agent.generate_ad_copy(request.query, products, [])
-        yield f"data: {json.dumps({'step': 'copy_generated', 'message': 'Ad copy created', 'details': {'headline': ad_copy.headline, 'body': ad_copy.body, 'call_to_action': ad_copy.call_to_action, 'full_copy': f"{ad_copy.headline}\n\n{ad_copy.body}\n\n{ad_copy.call_to_action}"}})}\n\n"
+        data = {
+            'step': 'copy_generated',
+            'message': 'Ad copy created',
+            'details': {
+                'headline': ad_copy.headline,
+                'body': ad_copy.body,
+                'call_to_action': ad_copy.call_to_action,
+                'full_copy': f"{ad_copy.headline}\n\n{ad_copy.body}\n\n{ad_copy.call_to_action}"
+            }
+        }
+        yield f"data: {json.dumps(data)}\n\n"
         await asyncio.sleep(0.1)
         
         # Step 3: Generate Single Prompt with ALL Products (one from each search)

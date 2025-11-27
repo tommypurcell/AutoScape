@@ -38,7 +38,7 @@ class PlantCatalog:
                 "common_name": self._extract_common_name(result.get('specific_name', result.get('title'))),
                 "botanical_name": self._extract_botanical_name(result.get('specific_name', '')),
                 "specific_name": result.get('specific_name', result.get('title')),
-                "image_url": result.get('url', ''),
+                "image_url": result.get('image_url', result.get('url', '')),
                 "score": result.get('score', 0),
                 "tags": result.get('tags', []),
                 "original_title": result.get('title', '')
