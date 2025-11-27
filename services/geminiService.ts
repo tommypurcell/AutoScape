@@ -46,7 +46,7 @@ export const generateLandscapeDesign = async (
   // Convert files to base64
   const yardBase64 = await fileToGenericBase64(yardFile);
   const styleBase64Array: string[] = [];
-  
+
   // Convert all style images to base64
   for (const styleFile of styleFiles) {
     const base64 = await fileToGenericBase64(styleFile);
@@ -58,27 +58,28 @@ export const generateLandscapeDesign = async (
     // PHASE 1: SCENE UNDERSTANDING & DESIGN INTENT (Pro Model)
     // -------------------------------------------------------------------------
     // Goal: Identify fixed geometry and define the redesign plan before rendering.
-    
+
     console.log("Phase 1: Scene Understanding");
     const analysisParts: any[] = [
       { inlineData: { mimeType: yardFile.type, data: yardBase64 } },
       { text: `[The User's Yard]` }
     ];
-    
+
     // Add all style reference images
     if (styleFiles.length > 0) {
       styleFiles.forEach((styleFile, index) => {
-        analysisParts.push({ 
-          inlineData: { mimeType: styleFile.type, data: styleBase64Array[index] } 
+        analysisParts.push({
+          inlineData: { mimeType: styleFile.type, data: styleBase64Array[index] }
         });
-        analysisParts.push({ 
+        analysisParts.push({
           text: `[Style Reference Image ${index + 1}${styleFiles.length > 1 ? ` of ${styleFiles.length}` : ''}]`
         });
       });
     }
 
     // Strict prompt to force JSON output for geometry consistency
-    analysisParts.push({ text: `
+    analysisParts.push({
+      text: `
       You are a Senior Landscape Architect.
       
       PHASE 1 TASK: Analyze the yard image to create a strict Scene JSON and Design JSON.
@@ -119,7 +120,7 @@ export const generateLandscapeDesign = async (
     // Goal: Redesign the single view using the scene context.
 
     console.log("Phase 2: Generating Render");
-    
+
     const renderPrompt = `
       Act as a Photorealist Landscape Renderer.
       INPUT: [The User's Yard] (The base geometry).
@@ -156,9 +157,9 @@ export const generateLandscapeDesign = async (
     // PHASE 3: GENERATE 2D PLAN (Image Model)
     // -------------------------------------------------------------------------
     // Goal: Derive strictly from the 3D render. No hallucination. No Labels.
-    
+
     console.log("Phase 3: Generating Plan");
-    
+
     const planPrompt = `
       Act as a Landscape Architect Drafter.
       INPUT: The provided 3D RENDER of a designed yard.
@@ -236,10 +237,41 @@ export const generateLandscapeDesign = async (
     const planImageUri = `data:image/png;base64,${planBase64Raw}`;
     const jsonText = analysisRes.text || "{}";
     const data = JSON.parse(jsonText);
-    
+
+    // -------------------------------------------------------------------------
+    // PHASE 5: RAG ENHANCEMENT (Optional)
+    // -------------------------------------------------------------------------
+    // Enhance materials list with RAG plant data
+    let plantPalette: any[] = [];
+    let ragEnhanced = false;
+
+    try {
+      console.log("Phase 5: RAG Enhancement");
+      const ragResponse = await fetch('http://localhost:8002/api/enhance-with-rag', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          materials: data.materials || []
+        })
+      });
+
+      if (ragResponse.ok) {
+        const ragData = await ragResponse.json();
+        plantPalette = ragData.plantPalette || [];
+        ragEnhanced = ragData.rag_enhanced || false;
+        console.log(`✅ RAG Enhancement: Found ${plantPalette.length} plants in catalog`);
+      } else {
+        console.warn("RAG Enhancement failed, continuing without it");
+      }
+    } catch (error) {
+      console.warn("RAG Enhancement unavailable:", error);
+    }
+
     return {
       analysis: {
-        currentLayout: "Scene Analyzed", 
+        currentLayout: "Scene Analyzed",
         designConcept: data.designConcept || `A ${stylePreference} transformation`,
         visualDescription: data.visualDescription || "See 3D Render",
         maintenanceLevel: data.maintenanceLevel || "Medium",
@@ -248,6 +280,8 @@ export const generateLandscapeDesign = async (
         totalCost: data.totalCost || 0,
         currency: "USD",
         breakdown: data.materials || [],
+        plantPalette,
+        ragEnhanced,
       },
       renderImages: [renderImage], // Return single image in array for compatibility
       planImage: planImageUri,

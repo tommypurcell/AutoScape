@@ -4,3 +4,7 @@ datasets
 fastembed
 pillow
 torch
+fastapi
+uvicorn
+requests
+google-genai

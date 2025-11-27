@@ -18,10 +18,23 @@ export interface MaterialItem {
   notes: string;
 }
 
+export interface PlantReference {
+  common_name: string;
+  botanical_name: string;
+  image_url: string;
+  quantity: number;
+  size: string;
+  unit_price: string;
+  total_estimate: string;
+  rag_verified: boolean;
+}
+
 export interface CostEstimate {
   totalCost: number;
   currency: string;
   breakdown: MaterialItem[];
+  plantPalette?: PlantReference[];  // RAG-verified plants with images
+  ragEnhanced?: boolean;
 }
 
 export interface DesignAnalysis {

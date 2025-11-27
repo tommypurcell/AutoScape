@@ -165,3 +165,40 @@ def get_pricing_context(search_term: str, tags: list) -> str:
         return "Standard Landscaping Estimates:\n- Plants (1-5 gal): $10-$50\n- Hardscape: $5-$30 per sq ft"
         
     return "Market Pricing Reference:\n" + "\n".join(relevant_prices)
+
+def get_specific_plant_pricing(botanical_name: str, size: str = "5-gallon") -> str:
+    """
+    Get specific pricing for a botanical name from RAG data.
+    
+    Args:
+        botanical_name: Scientific name (e.g., "Acer palmatum")
+        size: Container size
+    
+    Returns:
+        Price range string or fallback
+    """
+    # Try exact match first
+    if botanical_name in SPECIFIC_PLANT_PRICING:
+        prices = SPECIFIC_PLANT_PRICING[botanical_name]
+        if size in prices:
+            return prices[size]
+        # Return first available size if exact match not found
+        return list(prices.values())[0]
+    
+    # Try partial genus match
+    genus = botanical_name.split()[0] if botanical_name else ""
+    for key in SPECIFIC_PLANT_PRICING:
+        if genus and genus in key:
+            prices = SPECIFIC_PLANT_PRICING[key]
+            if size in prices:
+                return prices[size]
+            return list(prices.values())[0]
+    
+    # Fallback to generic pricing
+    if "tree" in botanical_name.lower():
+        return PRICING_DATABASE["tree"].get(size, "$50 - $100")
+    elif "shrub" in botanical_name.lower() or "bush" in botanical_name.lower():
+        return PRICING_DATABASE["shrub"].get(size, "$20 - $40")
+    
+    return "$15 - $30"  # Generic fallback
+
