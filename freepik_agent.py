@@ -102,13 +102,13 @@ class FreepikLandscapingAgent:
                 if conditions:
                     search_filter = models.Filter(must=conditions)
             
-            # Perform search
-            search_results = self.qdrant_client.search(
+            # Perform search using query_points
+            search_results = self.qdrant_client.query_points(
                 collection_name=COLLECTION_NAME,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=top_k,
                 query_filter=search_filter
-            )
+            ).points
             
             # Format results
             results = []

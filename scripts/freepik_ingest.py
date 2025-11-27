@@ -17,7 +17,7 @@ from io import BytesIO
 COLLECTION_NAME = "freepik_landscaping"
 BATCH_SIZE = 20
 RATE_LIMIT_DELAY = 1.0  # Seconds between API requests
-LIMIT = 200  # Total images to ingest (set to None for unlimited)
+LIMIT = 1000  # Total images to ingest (set to None for unlimited)
 
 # Landscaping-focused search terms
 SEARCH_TERMS = [

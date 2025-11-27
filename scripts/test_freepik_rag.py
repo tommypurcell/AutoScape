@@ -4,6 +4,9 @@ import logging
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
