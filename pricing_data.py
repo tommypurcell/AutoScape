@@ -1,0 +1,97 @@
+"""
+Real-world pricing estimates for landscaping plants and materials.
+Used to ground the AI recommendations with realistic budget data.
+"""
+
+PRICING_DATABASE = {
+    # PLANTS (per unit/pot)
+    "tree": {
+        "15-gallon": "$80 - $150",
+        "24-inch box": "$250 - $500",
+        "mature": "$800+"
+    },
+    "shrub": {
+        "1-gallon": "$10 - $20",
+        "5-gallon": "$30 - $55"
+    },
+    "bush": {
+        "1-gallon": "$10 - $20",
+        "5-gallon": "$30 - $55"
+    },
+    "grass": {
+        "1-gallon": "$8 - $15",
+        "plug": "$2 - $5"
+    },
+    "palm": {
+        "15-gallon": "$100 - $200",
+        "mature (per foot of trunk)": "$100 - $300"
+    },
+    "bamboo": {
+        "5-gallon": "$40 - $80",
+        "15-gallon": "$120 - $200"
+    },
+    "hedge": {
+        "5-gallon": "$35 - $60",
+        "per linear foot (installed)": "$40 - $100"
+    },
+    "flower": {
+        "4-inch pot": "$3 - $6",
+        "1-gallon": "$10 - $15"
+    },
+    "perennial": {
+        "1-gallon": "$12 - $18"
+    },
+    "topiary": {
+        "shaped 5-gallon": "$60 - $120",
+        "mature shaped": "$300+"
+    },
+
+    # HARDSCAPE (per unit or area)
+    "paver": {
+        "concrete (per sq ft)": "$5 - $10",
+        "brick (per sq ft)": "$8 - $15",
+        "stone (per sq ft)": "$15 - $30"
+    },
+    "gravel": {
+        "pea gravel (per cubic yard)": "$40 - $60",
+        "decorative rock (per ton)": "$100 - $300",
+        "bag (0.5 cu ft)": "$5 - $10"
+    },
+    "stone": {
+        "flagstone (per ton)": "$300 - $600",
+        "boulder (each)": "$100 - $500"
+    },
+    "mulch": {
+        "bulk (per cubic yard)": "$30 - $50",
+        "bag (2 cu ft)": "$4 - $8"
+    },
+    "edging": {
+        "plastic (per ft)": "$1 - $3",
+        "metal (per ft)": "$3 - $8",
+        "stone (per ft)": "$5 - $15"
+    },
+    "retaining wall": {
+        "block (per sq ft face)": "$15 - $25",
+        "natural stone (per sq ft face)": "$30 - $60"
+    }
+}
+
+def get_pricing_context(search_term: str, tags: list) -> str:
+    """
+    Get relevant pricing information based on search term and tags.
+    """
+    relevant_prices = []
+    search_term = search_term.lower()
+    
+    # Check for matches in our database
+    for category, prices in PRICING_DATABASE.items():
+        # Check if category is in search term or any tag
+        if category in search_term or any(category in tag.lower() for tag in tags):
+            price_list = ", ".join([f"{k}: {v}" for k, v in prices.items()])
+            relevant_prices.append(f"- **{category.title()}**: {price_list}")
+            
+    if not relevant_prices:
+        # Default fallback if nothing specific matches
+        return "Standard Landscaping Estimates:\n- Plants (1-5 gal): $10-$50\n- Hardscape: $5-$30 per sq ft"
+        
+    return "Market Pricing Reference:\n" + "\n".join(relevant_prices)

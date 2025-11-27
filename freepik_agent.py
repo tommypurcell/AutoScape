@@ -6,6 +6,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from fastembed import TextEmbedding
 import google.generativeai as genai
+from pricing_data import get_pricing_context
 
 # ==========================================
 # CONFIGURATION
@@ -162,6 +163,12 @@ class FreepikLandscapingAgent:
                 for r in results[:5]
             ])
             
+            # Get pricing context based on query and result tags
+            all_tags = []
+            for r in results[:5]:
+                all_tags.extend(r.get('tags', []))
+            pricing_info = get_pricing_context(query, all_tags)
+            
             prompt = f"""You are a landscaping expert assistant. A user is looking for: "{query}"
 
 {f'Additional context: {context}' if context else ''}
@@ -169,10 +176,14 @@ class FreepikLandscapingAgent:
 Based on these relevant Freepik images found:
 {result_context}
 
-Provide a helpful, concise explanation (2-3 sentences) about:
+Use this market pricing reference for your budget estimates:
+{pricing_info}
+
+Provide a helpful, concise explanation about:
 1. Why these images are relevant for their landscaping needs
 2. Key considerations when using these plants/materials
 3. Any design tips or best practices
+4. **Estimated Budget**: Provide an approximate price range based on the market pricing reference provided above.
 
 Keep it practical and actionable."""
 
@@ -206,7 +217,7 @@ Keep it practical and actionable."""
 Top results:
 {result_summary}
 
-Provide a brief 1-2 sentence explanation of why these results match the query and how they could be used in landscaping."""
+Provide a brief explanation of why these results match the query, how they could be used in landscaping, and an estimated price range for the items shown."""
 
             response = self.gemini_model.generate_content(prompt)
             return response.text

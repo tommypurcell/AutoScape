@@ -17,7 +17,7 @@ from io import BytesIO
 COLLECTION_NAME = "freepik_landscaping"
 BATCH_SIZE = 20
 RATE_LIMIT_DELAY = 1.0  # Seconds between API requests
-LIMIT = 1000  # Total images to ingest (set to None for unlimited)
+LIMIT = 10000  # Total images to ingest (set to None for unlimited)
 
 # Landscaping-focused search terms
 SEARCH_TERMS = [
@@ -32,6 +32,16 @@ SEARCH_TERMS = [
     "bamboo plant full",
     "topiary plant full shape",
     "perennial plant full",
+    "succulent garden plant",
+    "cactus landscaping full",
+    "fern plant outdoor",
+    "vine climbing plant",
+    "ground cover plant",
+    "rose bush full plant",
+    "lavender plant full",
+    "hydrangea bush full",
+    "boxwood shrub full",
+    "japanese maple tree full",
     
     # Hardscape materials
     "paving stone landscaping",
@@ -44,6 +54,16 @@ SEARCH_TERMS = [
     "decorative stone garden",
     "retaining wall stone",
     "garden edging material",
+    "wooden deck texture",
+    "garden trellis design",
+    "outdoor fire pit stone",
+    "garden fountain stone",
+    "stepping stones garden",
+    "artificial turf texture",
+    "outdoor lighting landscape",
+    "garden fence wood",
+    "pergola wood structure",
+    "raised garden bed wood",
 ]
 
 # Setup logging
