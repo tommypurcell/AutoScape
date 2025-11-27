@@ -339,6 +339,33 @@ async def create_ad(request: AdRequest):
         }
     )
 
+class VideoRequest(BaseModel):
+    original_image: str  # Base64 encoded
+    redesign_image: str  # Base64 encoded
+    duration: int = 5
+
+@app.post("/api/generate-video")
+async def generate_video(request: VideoRequest):
+    """Generate transformation video with angle rotation"""
+    try:
+        from video_generator import generate_transformation_video
+        
+        result = generate_transformation_video(
+            request.original_image,
+            request.redesign_image,
+            request.duration
+        )
+        
+        if result.get("status") == "completed":
+            return {"success": True, "video_url": result["video_url"]}
+        else:
+            raise HTTPException(
+                status_code=500, 
+                detail=result.get("error", "Video generation failed")
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/history")
 async def get_history():
     """Get list of generated ads"""

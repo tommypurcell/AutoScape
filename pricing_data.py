@@ -76,6 +76,76 @@ PRICING_DATABASE = {
     }
 }
 
+# SPECIFIC BOTANICAL NAME PRICING
+# Based on actual nursery prices for identified species
+SPECIFIC_PLANT_PRICING = {
+    # Japanese Maples
+    "Acer palmatum": {
+        "1-gallon": "$25 - $35",
+        "5-gallon": "$65 - $95",
+        "15-gallon": "$180 - $280"
+    },
+    "Acer palmatum 'Bloodgood'": {
+        "5-gallon": "$75 - $110",
+        "15-gallon": "$200 - $350"
+    },
+    
+    # Ornamental Grasses
+    "Festuca glauca": {  # Blue Fescue
+        "4-inch pot": "$5 - $8",
+        "1-gallon": "$12 - $15"
+    },
+    "Calamagrostis": {  # Reed Grass
+        "1-gallon": "$15 - $22",
+        "3-gallon": "$30 - $40"
+    },
+    "Imperata cylindrica": {  # Japanese Blood Grass
+        "1-gallon": "$14 - $20"
+    },
+    
+    # Evergreens
+    "Picea abies": {  # Norway Spruce
+        "5-gallon": "$45 - $70",
+        "15-gallon": "$120 - $180"
+    },
+    "Juniperus": {  # Juniper
+        "5-gallon": "$35 - $60",
+        "15-gallon": "$90 - $140"
+    },
+    
+    # Flowering Shrubs
+    "Adenium obesum": {  # Desert Rose
+        "4-inch pot": "$12 - $18",
+        "1-gallon": "$25 - $40"
+    },
+    "Rosa": {  # Rose
+        "2-gallon": "$18 - $30",
+        "5-gallon": "$40 - $65"
+    },
+    "Lavandula": {  # Lavender
+        "1-gallon": "$10 - $16",
+        "3-gallon": "$22 - $35"
+    },
+    
+    # Bamboo
+    "Bambusa": {  # Bamboo species
+        "5-gallon": "$40 - $75",
+        "15-gallon": "$130 - $220"
+    },
+    
+    # Palms
+    "Washingtonia": {  # Fan Palm
+        "15-gallon": "$110 - $200",
+        "per foot of trunk": "$150 - $350"
+    },
+    
+    # Ground Cover
+    "Vinca minor": {  # Periwinkle
+        "4-inch pot": "$4 - $7",
+        "flat (18 plants)": "$25 - $40"
+    }
+}
+
 def get_pricing_context(search_term: str, tags: list) -> str:
     """
     Get relevant pricing information based on search term and tags.
