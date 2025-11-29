@@ -10,14 +10,18 @@ from fastembed import ImageEmbedding
 import requests
 from PIL import Image
 from io import BytesIO
+import google.generativeai as genai
+import json
+import re
+import argparse
 
 # ==========================================
 # CONFIGURATION
 # ==========================================
 COLLECTION_NAME = "freepik_landscaping"
 BATCH_SIZE = 20
-RATE_LIMIT_DELAY = 1.0  # Seconds between API requests
-LIMIT = 10000  # Total images to ingest (set to None for unlimited)
+RATE_LIMIT_DELAY = 4.0  # Increased delay to respect Gemini rate limits
+LIMIT = 20000  # Increased limit for better coverage
 
 # Landscaping-focused search terms
 SEARCH_TERMS = [
@@ -95,7 +99,14 @@ def load_environment():
         logger.error("Please ensure FREEPIK_API_KEY is set in your .env file.")
         exit(1)
         
-    return endpoint, api_key, freepik_key
+    # Gemini API key
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        logger.warning("⚠️  GEMINI_API_KEY not found. AI features (naming/pricing) will be disabled.")
+    else:
+        genai.configure(api_key=gemini_key)
+        
+    return endpoint, api_key, freepik_key, gemini_key
 
 def init_qdrant(endpoint: str, api_key: str, vector_size: int) -> QdrantClient:
     """Initialize Qdrant client and create collection if needed."""
@@ -171,6 +182,56 @@ def download_image(url: str) -> Optional[Image.Image]:
         logger.warning(f"⚠️  Failed to download image: {e}")
         return None
 
+def analyze_image_with_gemini(image: Image.Image, search_term: str) -> Dict[str, Any]:
+    """
+    Analyze image using Gemini Vision to identify exact name and estimate price.
+    """
+    max_retries = 3
+    base_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            # Use gemini-2.0-flash for better rate limits and speed
+            model = genai.GenerativeModel('gemini-2.0-flash')
+            
+            prompt = f"""
+            Analyze this landscaping image found with search term "{search_term}".
+            
+            1. Identify the EXACT specific plant species or hardscape material shown (e.g., "Acer palmatum" instead of just "maple").
+            2. Estimate the MINIMUM typical market price for this item in USD (e.g., "$50 per 5-gallon pot" or "$5 per sq ft"). Take the lower bound of any range.
+            
+            Return ONLY a JSON object with these keys:
+            - "specific_name": string (the specific name)
+            - "price_estimate": string (the minimum price with unit)
+            - "description": string (brief 1-sentence description of the visual)
+            """
+            
+            response = model.generate_content([prompt, image])
+            text = response.text.strip()
+            
+            # Extract JSON from response (handle markdown code blocks)
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+                
+            return json.loads(text)
+            
+        except Exception as e:
+            if "429" in str(e):
+                wait_time = base_delay * (2 ** attempt)
+                logger.warning(f"⚠️  Rate limit hit (attempt {attempt+1}/{max_retries}). Waiting {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                logger.warning(f"⚠️  Gemini analysis failed: {e}")
+                break
+    
+    return {
+        "specific_name": "",
+        "price_estimate": "",
+        "description": ""
+    }
+
 def upsert_batch(client: QdrantClient, model: ImageEmbedding, images: List[Image.Image], payloads: List[Dict]):
     """Generate embeddings and upsert a batch of points."""
     try:
@@ -195,11 +256,17 @@ def upsert_batch(client: QdrantClient, model: ImageEmbedding, images: List[Image
         logger.error(f"❌ Error upserting batch: {e}")
 
 def main():
-    endpoint, api_key, freepik_key = load_environment()
+    parser = argparse.ArgumentParser(description="Ingest Freepik landscaping images with Gemini analysis")
+    parser.add_argument("--limit", type=int, default=LIMIT, help="Number of images to ingest")
+    parser.add_argument("--collection", default=COLLECTION_NAME, help="Qdrant collection name")
+    args = parser.parse_args()
+
+    endpoint, api_key, freepik_key, gemini_key = load_environment()
     
     logger.info("🚀 Starting Freepik Landscaping ingestion pipeline...")
-    logger.info(f"🗄️  Target Collection: {COLLECTION_NAME}")
+    logger.info(f"🗄️  Target Collection: {args.collection}")
     logger.info(f"🔍 Search Terms: {len(SEARCH_TERMS)} categories")
+    logger.info(f"📊 Limit: {args.limit}")
     
     # Initialize Embedding Model
     logger.info("🧠 Loading FastEmbed CLIP vision model...")
@@ -223,21 +290,21 @@ def main():
     
     try:
         for search_term in SEARCH_TERMS:
-            if LIMIT and total_processed >= LIMIT:
-                logger.info(f"🛑 Reached limit of {LIMIT} images.")
+            if args.limit and total_processed >= args.limit:
+                logger.info(f"🛑 Reached limit of {args.limit} images.")
                 break
             
             logger.info(f"🔍 Searching: '{search_term}'")
             
             # Fetch multiple pages for each search term
-            for page in range(1, 4):  # Get 3 pages per search term
-                if LIMIT and total_processed >= LIMIT:
+            for page in range(1, 11):  # Get 10 pages per search term
+                if args.limit and total_processed >= args.limit:
                     break
                 
                 # Rate limiting
                 time.sleep(RATE_LIMIT_DELAY)
                 
-                result = fetch_freepik_images(freepik_key, search_term, page=page, limit=10)
+                result = fetch_freepik_images(freepik_key, search_term, page=page, limit=50)
                 
                 if not result or "data" not in result:
                     logger.warning(f"⚠️  No results for '{search_term}' page {page}")
@@ -250,10 +317,10 @@ def main():
                 logger.info(f"  📄 Page {page}: {len(items)} items")
                 
                 for item in items:
-                    if LIMIT and total_processed >= LIMIT:
+                    if args.limit and (total_processed + len(batch_images)) >= args.limit:
                         break
                     
-                    # Get image URL from the correct location in API response
+                    # Add optional fields if available
                     image_url = None
                     if "image" in item and "source" in item["image"]:
                         image_url = item["image"]["source"].get("url")
@@ -280,6 +347,15 @@ def main():
                         "premium": any(lic.get("type") == "premium" for lic in item.get("licenses", [])),
                         "source": "freepik",
                     }
+                    
+                    # Gemini Analysis
+                    if gemini_key:
+                        logger.info(f"  🤖 Analyzing image with Gemini...")
+                        analysis = analyze_image_with_gemini(image, search_term)
+                        payload.update(analysis)
+                        logger.info(f"     Identified: {analysis.get('specific_name', 'N/A')} | Price: {analysis.get('price_estimate', 'N/A')}")
+                        # Rate limit for Gemini
+                        time.sleep(1.0)
                     
                     # Add optional fields if available
                     if "author" in item:

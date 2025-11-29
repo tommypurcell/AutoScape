@@ -7,6 +7,7 @@ import { generateLandscapeDesign } from './services/geminiService';
 import { AppState, DesignStyle } from './types';
 import { styleReferences } from './data/styleReferences';
 import { urlsToFiles } from './utils/imageUtils';
+import GenerativeDesign from './components/GenerativeDesign';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -24,6 +25,7 @@ const App: React.FC = () => {
   // Gallery selection state
   const [selectedGalleryStyleIds, setSelectedGalleryStyleIds] = useState<string[]>([]);
   const [styleSelectionMode, setStyleSelectionMode] = useState<'gallery' | 'upload'>('gallery');
+  const [activeTab, setActiveTab] = useState<'classic' | 'rag'>('classic');
 
   const handleYardSelect = (files: File[]) => {
     if (files.length > 0) {
@@ -48,7 +50,7 @@ const App: React.FC = () => {
     if (files.length > 0) {
       const newFiles = Array.from(files);
       const newPreviews = newFiles.map(file => URL.createObjectURL(file));
-      
+
       setState(prev => ({
         ...prev,
         styleImages: [...prev.styleImages, ...newFiles],
@@ -61,7 +63,7 @@ const App: React.FC = () => {
     setState(prev => {
       // Revoke the URL to free memory
       URL.revokeObjectURL(prev.styleImagePreviews[index]);
-      
+
       return {
         ...prev,
         styleImages: prev.styleImages.filter((_, i) => i !== index),
@@ -73,7 +75,7 @@ const App: React.FC = () => {
   const handleClearAllStyles = () => {
     // Revoke all URLs
     state.styleImagePreviews.forEach(url => URL.revokeObjectURL(url));
-    
+
     setState(prev => ({
       ...prev,
       styleImages: [],
@@ -104,10 +106,10 @@ const App: React.FC = () => {
     try {
       // Merge gallery selections with custom uploads
       let allStyleImages = [...state.styleImages];
-      
+
       // Convert gallery selections to File objects
       if (selectedGalleryStyleIds.length > 0) {
-        const selectedStyles = styleReferences.filter(style => 
+        const selectedStyles = styleReferences.filter(style =>
           selectedGalleryStyleIds.includes(style.id)
         );
         const galleryImageUrls = selectedStyles.map(style => style.imageUrl);
@@ -178,243 +180,272 @@ const App: React.FC = () => {
         </div>
       </nav>
 
+      {/* Tab Navigation */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex gap-8">
+            <button
+              onClick={() => setActiveTab('classic')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'classic'
+                  ? 'border-emerald-600 text-emerald-600'
+                  : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
+                }`}
+            >
+              🎨 Classic Design
+            </button>
+            <button
+              onClick={() => setActiveTab('rag')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'rag'
+                  ? 'border-emerald-600 text-emerald-600'
+                  : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
+                }`}
+            >
+              🤖 RAG Design & Budget
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="flex-1 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          
-          {state.step === 'processing' && <LoadingScreen />}
-          
-          {state.step === 'results' && state.result && (
-            <ResultsView 
-              result={state.result} 
-              onReset={handleReset} 
-              originalImage={state.yardImagePreview}
-            />
-          )}
 
-          {state.step === 'upload' && (
-            <div className="max-w-3xl mx-auto animate-fade-in">
-              <div className="text-center mb-12">
-                <h1 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">
-                  Reimagine Your Outdoors
-                </h1>
-                <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                  Upload a photo of your yard and let our AI generate a professional landscape design, labeled 2D plan, and cost estimate instantly.
-                </p>
-              </div>
+          {activeTab === 'rag' ? (
+            <GenerativeDesign />
+          ) : (
+            <>
+              {state.step === 'processing' && <LoadingScreen />}
 
-              {state.error && (
-                <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  {state.error}
-                </div>
+              {state.step === 'results' && state.result && (
+                <ResultsView
+                  result={state.result}
+                  onReset={handleReset}
+                  originalImage={state.yardImagePreview}
+                />
               )}
 
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-8 space-y-8">
-                  
-                  {/* Uploads */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-slate-700">Current Yard Photo</label>
-                      <UploadArea 
-                        label="Upload Yard Photo" 
-                        subLabel="Required"
-                        required
-                        multiple={false}
-                        onFileSelect={handleYardSelect}
-                        previewUrls={state.yardImagePreview ? [state.yardImagePreview] : []}
-                        onClear={handleClearYard}
-                      />
+              {state.step === 'upload' && (
+                <div className="max-w-3xl mx-auto animate-fade-in">
+                  <div className="text-center mb-12">
+                    <h1 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">
+                      Reimagine Your Outdoors
+                    </h1>
+                    <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                      Upload a photo of your yard and let our AI generate a professional landscape design, labeled 2D plan, and cost estimate instantly.
+                    </p>
+                  </div>
+
+                  {state.error && (
+                    <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      {state.error}
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-sm font-medium text-slate-700">Style References (Optional)</label>
-                        {(selectedGalleryStyleIds.length > 0 || state.styleImages.length > 0) && (
-                          <span className="text-xs text-emerald-600 font-medium">
-                            {selectedGalleryStyleIds.length + state.styleImages.length} selected
-                          </span>
-                        )}
-                      </div>
+                  )}
 
-                      {/* Mode Toggle */}
-                      <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
-                        <button
-                          onClick={() => setStyleSelectionMode('gallery')}
-                          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                            styleSelectionMode === 'gallery'
-                              ? 'bg-white text-emerald-600 shadow-sm'
-                              : 'text-slate-600 hover:text-slate-800'
-                          }`}
-                        >
-                          🖼️ Gallery
-                        </button>
-                        <button
-                          onClick={() => setStyleSelectionMode('upload')}
-                          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                            styleSelectionMode === 'upload'
-                              ? 'bg-white text-emerald-600 shadow-sm'
-                              : 'text-slate-600 hover:text-slate-800'
-                          }`}
-                        >
-                          📤 Upload
-                        </button>
-                      </div>
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-8 space-y-8">
 
-                      {/* Gallery Mode */}
-                      {styleSelectionMode === 'gallery' && (
-                        <StyleGallery
-                          availableStyles={styleReferences}
-                          selectedStyleIds={selectedGalleryStyleIds}
-                          onStyleToggle={handleGalleryStyleToggle}
-                          onClearAll={handleClearGalleryStyles}
-                        />
-                      )}
+                      {/* Uploads */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-slate-700">Current Yard Photo</label>
+                          <UploadArea
+                            label="Upload Yard Photo"
+                            subLabel="Required"
+                            required
+                            multiple={false}
+                            onFileSelect={handleYardSelect}
+                            previewUrls={state.yardImagePreview ? [state.yardImagePreview] : []}
+                            onClear={handleClearYard}
+                          />
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-sm font-medium text-slate-700">Style References (Optional)</label>
+                            {(selectedGalleryStyleIds.length > 0 || state.styleImages.length > 0) && (
+                              <span className="text-xs text-emerald-600 font-medium">
+                                {selectedGalleryStyleIds.length + state.styleImages.length} selected
+                              </span>
+                            )}
+                          </div>
 
-                      {/* Upload Mode */}
-                      {styleSelectionMode === 'upload' && (
-                        <>
-                          {/* Upload button */}
-                          <label className="block cursor-pointer">
-                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-emerald-500 hover:bg-emerald-50/50 transition-all">
-                              <svg className="w-8 h-8 mx-auto text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              <p className="text-sm text-slate-600 font-medium">Add Custom Style Images</p>
-                              <p className="text-xs text-slate-400 mt-1">Click to select multiple images</p>
-                            </div>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              onChange={(e) => {
-                                const files = e.target.files ? Array.from(e.target.files) as File[] : [];
-                                if (files.length > 0) {
-                                  handleStyleSelect(files);
-                                  e.target.value = ''; // Reset input
-                                }
-                              }}
-                              className="hidden"
+                          {/* Mode Toggle */}
+                          <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                            <button
+                              onClick={() => setStyleSelectionMode('gallery')}
+                              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${styleSelectionMode === 'gallery'
+                                  ? 'bg-white text-emerald-600 shadow-sm'
+                                  : 'text-slate-600 hover:text-slate-800'
+                                }`}
+                            >
+                              🖼️ Gallery
+                            </button>
+                            <button
+                              onClick={() => setStyleSelectionMode('upload')}
+                              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${styleSelectionMode === 'upload'
+                                  ? 'bg-white text-emerald-600 shadow-sm'
+                                  : 'text-slate-600 hover:text-slate-800'
+                                }`}
+                            >
+                              📤 Upload
+                            </button>
+                          </div>
+
+                          {/* Gallery Mode */}
+                          {styleSelectionMode === 'gallery' && (
+                            <StyleGallery
+                              availableStyles={styleReferences}
+                              selectedStyleIds={selectedGalleryStyleIds}
+                              onStyleToggle={handleGalleryStyleToggle}
+                              onClearAll={handleClearGalleryStyles}
                             />
-                          </label>
-                          
-                          {/* Preview grid for uploaded images */}
-                          {state.styleImagePreviews.length > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-slate-600 font-medium">Uploaded Images</span>
-                                <button
-                                  onClick={handleClearAllStyles}
-                                  className="text-xs text-slate-500 hover:text-red-600 transition-colors"
-                                >
-                                  Clear all ({state.styleImages.length})
-                                </button>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {state.styleImagePreviews.map((preview, index) => (
-                                  <div key={index} className="relative group">
-                                    <img
-                                      src={preview}
-                                      alt={`Style ${index + 1}`}
-                                      className="w-full h-24 object-cover rounded-lg border border-slate-200"
-                                    />
+                          )}
+
+                          {/* Upload Mode */}
+                          {styleSelectionMode === 'upload' && (
+                            <>
+                              {/* Upload button */}
+                              <label className="block cursor-pointer">
+                                <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-emerald-500 hover:bg-emerald-50/50 transition-all">
+                                  <svg className="w-8 h-8 mx-auto text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  <p className="text-sm text-slate-600 font-medium">Add Custom Style Images</p>
+                                  <p className="text-xs text-slate-400 mt-1">Click to select multiple images</p>
+                                </div>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  onChange={(e) => {
+                                    const files = e.target.files ? Array.from(e.target.files) as File[] : [];
+                                    if (files.length > 0) {
+                                      handleStyleSelect(files);
+                                      e.target.value = ''; // Reset input
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                              </label>
+
+                              {/* Preview grid for uploaded images */}
+                              {state.styleImagePreviews.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs text-slate-600 font-medium">Uploaded Images</span>
                                     <button
-                                      onClick={() => handleClearStyleImage(index)}
-                                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                                      title="Remove this image"
+                                      onClick={handleClearAllStyles}
+                                      className="text-xs text-slate-500 hover:text-red-600 transition-colors"
                                     >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                      </svg>
+                                      Clear all ({state.styleImages.length})
                                     </button>
                                   </div>
-                                ))}
-                              </div>
-                            </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {state.styleImagePreviews.map((preview, index) => (
+                                      <div key={index} className="relative group">
+                                        <img
+                                          src={preview}
+                                          alt={`Style ${index + 1}`}
+                                          className="w-full h-24 object-cover rounded-lg border border-slate-200"
+                                        />
+                                        <button
+                                          onClick={() => handleClearStyleImage(index)}
+                                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                          title="Remove this image"
+                                        >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                          </svg>
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <hr className="border-slate-100" />
-
-                  {/* Controls */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <label className="block text-sm font-medium text-slate-700">Select Aesthetic</label>
-                      <div className="grid grid-cols-2 gap-3">
-                        {Object.entries(DesignStyle).map(([key, value]) => (
-                          <button
-                            key={key}
-                            onClick={() => setState(s => ({ ...s, selectedStyle: value }))}
-                            className={`px-4 py-3 text-xs font-medium rounded-lg border text-left transition-all ${
-                              state.selectedStyle === value 
-                                ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500' 
-                                : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                            }`}
-                          >
-                            {value}
-                          </button>
-                        ))}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="space-y-4">
-                      <label className="block text-sm font-medium bg-white text-slate-700">Additional Preferences</label>
-                      <textarea
-                        className="w-full p-4 h-32 bg-white rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 resize-none text-sm"
-                        placeholder="e.g. I want a fire pit area, low maintenance plants, and a stone walkway..."
-                        value={state.userPrompt}
-                        onChange={(e) => setState(s => ({ ...s, userPrompt: e.target.value }))}
-                      />
-                    </div>
-                  </div>
+                      <hr className="border-slate-100" />
 
-                  <div className="pt-4">
-                    <button
-                      onClick={handleGenerate}
-                      disabled={!state.yardImage}
-                      className={`w-full py-4 rounded-xl text-white font-semibold text-lg shadow-lg transition-all transform active:scale-[0.99] flex items-center justify-center gap-2
-                        ${state.yardImage 
-                          ? 'bg-emerald-600 hover:bg-emerald-500 hover:shadow-emerald-200 shadow-emerald-100' 
-                          : 'bg-slate-300 cursor-not-allowed'
-                        }
+                      {/* Controls */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                          <label className="block text-sm font-medium text-slate-700">Select Aesthetic</label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {Object.entries(DesignStyle).map(([key, value]) => (
+                              <button
+                                key={key}
+                                onClick={() => setState(s => ({ ...s, selectedStyle: value }))}
+                                className={`px-4 py-3 text-xs font-medium rounded-lg border text-left transition-all ${state.selectedStyle === value
+                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500'
+                                    : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                                  }`}
+                              >
+                                {value}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <label className="block text-sm font-medium bg-white text-slate-700">Additional Preferences</label>
+                          <textarea
+                            className="w-full p-4 h-32 bg-white rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 resize-none text-sm"
+                            placeholder="e.g. I want a fire pit area, low maintenance plants, and a stone walkway..."
+                            value={state.userPrompt}
+                            onChange={(e) => setState(s => ({ ...s, userPrompt: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-4">
+                        <button
+                          onClick={handleGenerate}
+                          disabled={!state.yardImage}
+                          className={`w-full py-4 rounded-xl text-white font-semibold text-lg shadow-lg transition-all transform active:scale-[0.99] flex items-center justify-center gap-2
+                        ${state.yardImage
+                              ? 'bg-emerald-600 hover:bg-emerald-500 hover:shadow-emerald-200 shadow-emerald-100'
+                              : 'bg-slate-300 cursor-not-allowed'
+                            }
                       `}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                      Generate Design
-                    </button>
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                          Generate Design
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <div className="mt-8 grid grid-cols-3 gap-8 text-center">
+                    <div className="space-y-2">
+                      <div className="w-10 h-10 bg-white rounded-full shadow-sm mx-auto flex items-center justify-center text-emerald-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      </div>
+                      <h4 className="font-semibold text-slate-800">Visual Redesign</h4>
+                      <p className="text-xs text-slate-500">Photorealistic AI renders preserving your home's geometry.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="w-10 h-10 bg-white rounded-full shadow-sm mx-auto flex items-center justify-center text-emerald-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      </div>
+                      <h4 className="font-semibold text-slate-800">Precise 2D Plans</h4>
+                      <p className="text-xs text-slate-500">Top-down architectural plans derived directly from the render.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="w-10 h-10 bg-white rounded-full shadow-sm mx-auto flex items-center justify-center text-emerald-600">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </div>
+                      <h4 className="font-semibold text-slate-800">Accurate Costs</h4>
+                      <p className="text-xs text-slate-500">Full estimates including materials and labor costs.</p>
+                    </div>
                   </div>
 
                 </div>
-              </div>
-              
-              <div className="mt-8 grid grid-cols-3 gap-8 text-center">
-                <div className="space-y-2">
-                  <div className="w-10 h-10 bg-white rounded-full shadow-sm mx-auto flex items-center justify-center text-emerald-600">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  </div>
-                  <h4 className="font-semibold text-slate-800">Visual Redesign</h4>
-                  <p className="text-xs text-slate-500">Photorealistic AI renders preserving your home's geometry.</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="w-10 h-10 bg-white rounded-full shadow-sm mx-auto flex items-center justify-center text-emerald-600">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  </div>
-                  <h4 className="font-semibold text-slate-800">Precise 2D Plans</h4>
-                  <p className="text-xs text-slate-500">Top-down architectural plans derived directly from the render.</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="w-10 h-10 bg-white rounded-full shadow-sm mx-auto flex items-center justify-center text-emerald-600">
-                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-                  <h4 className="font-semibold text-slate-800">Accurate Costs</h4>
-                  <p className="text-xs text-slate-500">Full estimates including materials and labor costs.</p>
-                </div>
-              </div>
-
-            </div>
+              )}
+            </>
           )}
         </div>
       </main>

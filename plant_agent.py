@@ -121,12 +121,12 @@ class PlantRAGAgent:
             query_embedding = list(self.text_embedding.embed([query]))[0]
             
             # Search Qdrant
-            search_results = self.qdrant_client.search(
+            search_results = self.qdrant_client.query_points(
                 collection_name=self.collection_name,
-                query_vector=query_embedding.tolist(),
+                query=query_embedding.tolist(),
                 limit=limit,
                 score_threshold=score_threshold
-            )
+            ).points
             
             # Convert to KnowledgeSource objects
             sources = []

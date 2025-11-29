@@ -130,6 +130,7 @@ def extract_qa_pair(item: Dict) -> tuple[str, str, str]:
     # Try different field names for answer
     answer = (
         item.get('answer') or 
+        item.get('answers') or 
         item.get('response') or 
         item.get('output') or
         item.get('completion') or

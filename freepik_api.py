@@ -2,10 +2,13 @@ import os
 import logging
 from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+from PIL import Image
+from io import BytesIO
+import base64
 
 from freepik_agent import FreepikLandscapingAgent
 
@@ -198,7 +201,45 @@ async def get_stats():
     except Exception as e:
         logger.error(f"❌ Stats retrieval failed: {e}")
         raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
 
+@app.post("/api/freepik/generate-design", tags=["Generative Design"])
+async def generate_design(
+    place_image: UploadFile = File(...),
+    concept_image: UploadFile = File(...)
+):
+    """
+    Generate a landscape design and budget from place and concept images.
+    """
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+        
+    try:
+        # Read images
+        place_bytes = await place_image.read()
+        concept_bytes = await concept_image.read()
+        
+        place_img = Image.open(BytesIO(place_bytes)).convert("RGB")
+        concept_img = Image.open(BytesIO(concept_bytes)).convert("RGB")
+        
+        # Run workflow
+        result = agent.generate_design_and_budget(place_img, concept_img)
+        
+        # Convert generated image to base64
+        buffered = BytesIO()
+        result["generated_design"].save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        
+        return {
+            "analysis": result["analysis"],
+            "generated_image_base64": img_str,
+            "items": result["items"],
+            "budget": result["budget"]
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Design generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Design generation failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
