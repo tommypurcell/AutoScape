@@ -3,6 +3,20 @@ import { GeneratedDesign, MaterialItem } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { PlantPalette } from './PlantPalette';
+import { calculateRAGBudget } from '../services/ragBudgetService';
+import { useEffect } from 'react';
+
+interface RAGBudget {
+  total_min_budget: number;
+  currency: string;
+  line_items: Array<{
+    item: string;
+    match: string;
+    price_estimate: string;
+    cost: number;
+    image_url?: string;
+  }>;
+}
 
 interface ResultsViewProps {
   result: GeneratedDesign;
@@ -16,6 +30,24 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [ragBudget, setRagBudget] = useState<RAGBudget | null>(null);
+  const [isLoadingBudget, setIsLoadingBudget] = useState(false);
+
+  // Automatically fetch RAG budget when component mounts
+  useEffect(() => {
+    const fetchBudget = async () => {
+      if (!result.renderImages[0]) return;
+
+      setIsLoadingBudget(true);
+      // Extract base64 from data URL
+      const base64 = result.renderImages[0].split(',')[1];
+      const budget = await calculateRAGBudget(base64);
+      setRagBudget(budget);
+      setIsLoadingBudget(false);
+    };
+
+    fetchBudget();
+  }, [result.renderImages]);
 
   const handleGenerateVideo = async () => {
     if (!originalImage || !result.renderImages[currentRenderIndex]) return;
@@ -399,6 +431,54 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
           />
         )
       }
+
+      {/* RAG Budget Section */}
+      {ragBudget && (
+        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl shadow-sm border border-purple-100 p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                RAG-Powered Product Budget
+              </h3>
+              <p className="text-sm text-slate-600 mt-1">Real products from our Freepik database matched to your design</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-slate-600">Minimum Estimate</p>
+              <p className="text-3xl font-bold text-purple-700">${ragBudget.total_min_budget}</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {ragBudget.line_items.map((item, i) => (
+              <div key={i} className="bg-white rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+                {item.image_url && (
+                  <img
+                    src={item.image_url}
+                    alt={item.item}
+                    className="w-20 h-20 object-cover rounded-lg"
+                  />
+                )}
+                <div className="flex-1">
+                  <p className="font-semibold text-slate-800">{item.item}</p>
+                  <p className="text-sm text-slate-600">Matched: {item.match}</p>
+                  <p className="text-xs text-slate-500">{item.price_estimate}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-purple-700">${item.cost}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isLoadingBudget && (
+        <div className="bg-purple-50 rounded-2xl p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-600">Analyzing your design and matching products...</p>
+        </div>
+      )}
     </div >
   );
 };

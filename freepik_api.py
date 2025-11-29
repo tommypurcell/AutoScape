@@ -241,6 +241,36 @@ async def generate_design(
         logger.error(f"❌ Design generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Design generation failed: {str(e)}")
 
+@app.post("/api/freepik/analyze-and-budget", tags=["Generative Design"])
+async def analyze_and_budget(
+    design_image: UploadFile = File(...)
+):
+    """
+    Analyze a design image and calculate budget from RAG database.
+    """
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+        
+    try:
+        # Read image
+        design_bytes = await design_image.read()
+        design_img = Image.open(BytesIO(design_bytes)).convert("RGB")
+        
+        # Extract items
+        items = agent.extract_items_from_design(design_img)
+        
+        # Calculate budget
+        budget = agent.calculate_budget(items)
+        
+        return {
+            "items": items,
+            "budget": budget
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Budget calculation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Budget calculation failed: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     
