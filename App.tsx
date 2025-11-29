@@ -11,7 +11,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal } from './components/AuthModal';
 import { saveDesign } from './services/firestoreService';
 import { uploadBase64Image } from './services/storageService';
-import { DesignHistory } from './components/DesignHistory';
+import { Sidebar } from './components/Sidebar';
+import { AccountSettings } from './components/AccountSettings';
 import { SavedDesign } from './services/firestoreService';
 import { LandingPage } from './components/LandingPage';
 
@@ -34,6 +35,8 @@ const AppContent: React.FC = () => {
   const { user, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLanding, setShowLanding] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleYardSelect = (files: File[]) => {
     if (files.length > 0) {
@@ -120,6 +123,21 @@ const AppContent: React.FC = () => {
     setShowLanding(false);
   };
 
+  const handleNewDesign = () => {
+    setState({
+      step: 'upload',
+      yardImage: null,
+      yardImagePreview: null,
+      maskImage: null,
+      selectedStyleId: null,
+      result: null,
+      isProcessing: false,
+      error: null
+    });
+    setSelectedGalleryStyleIds([]);
+    setShowLanding(true);
+  };
+
   const handleGenerate = async () => {
     if (!state.yardImage) return;
 
@@ -192,45 +210,33 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Navbar */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowSidebar(true)}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                A
+              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
               </div>
               <span className="font-bold text-xl text-slate-800 tracking-tight">AutoScape</span>
             </div>
-            <div className="flex items-center gap-3">
-              {user ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    {user.photoURL && (
-                      <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
-                    )}
-                    <span className="text-sm text-slate-700">{user.displayName || user.email}</span>
-                  </div>
-                  <button
-                    onClick={logout}
-                    className="text-sm text-slate-500 hover:text-red-600 transition-colors"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="text-sm bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Sign In
-                </button>
-              )}
-              <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                AI Powered
-              </span>
-            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+              AI Powered
+            </span>
           </div>
         </div>
       </nav>
@@ -485,8 +491,26 @@ const AppContent: React.FC = () => {
         <AuthModal onClose={() => setShowAuthModal(false)} />
       )}
 
-      {/* Design History */}
-      <DesignHistory onLoadDesign={handleLoadDesign} />
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={showSidebar}
+        onClose={() => setShowSidebar(false)}
+        onNewDesign={handleNewDesign}
+        onLoadDesign={handleLoadDesign}
+        onOpenSettings={() => {
+          setShowSidebar(false);
+          setShowSettings(true);
+        }}
+        onLogin={() => {
+          setShowSidebar(false);
+          setShowAuthModal(true);
+        }}
+      />
+
+      {/* Account Settings */}
+      {showSettings && (
+        <AccountSettings onClose={() => setShowSettings(false)} />
+      )}
     </div>
   );
 };

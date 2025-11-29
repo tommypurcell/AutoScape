@@ -5,6 +5,84 @@ interface LandingPageProps {
     onGetStarted: () => void;
 }
 
+const DemoSection: React.FC = () => {
+    const slides = [
+        {
+            image: '/demo_clips/scene_1_problem.jpg',
+            title: 'The Problem',
+            description: 'Hard to visualize potential in an empty yard.'
+        },
+        {
+            image: '/demo_clips/scene_3_analysis.jpg',
+            title: 'AI Analysis',
+            description: 'Gemini 2.0 scans your environment for structure and lighting.'
+        },
+        {
+            image: '/demo_clips/scene_2_solution.jpg',
+            title: 'The Solution',
+            description: 'Instant, photorealistic redesigns matching your style.'
+        },
+        {
+            image: '/demo_clips/scene_5_budget.jpg',
+            title: 'Real Budgeting',
+            description: 'RAG-powered cost estimates with real-world items.'
+        }
+    ];
+
+    const [currentSlide, setCurrentSlide] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentSlide((prev) => (prev + 1) % slides.length);
+        }, 4000);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div className="text-center mb-12">
+                <h2 className="text-4xl font-bold text-slate-900 mb-4">See AutoScape in Action</h2>
+                <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                    Watch how we transform a simple photo into a complete landscape plan
+                </p>
+            </div>
+
+            <div className="relative w-full max-w-5xl mx-auto aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
+                {slides.map((slide, index) => (
+                    <div
+                        key={index}
+                        className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0'
+                            }`}
+                    >
+                        <img
+                            src={slide.image}
+                            alt={slide.title}
+                            className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
+                            <div className="absolute bottom-0 left-0 p-8 md:p-12">
+                                <h3 className="text-3xl md:text-4xl font-bold text-white mb-2">{slide.title}</h3>
+                                <p className="text-xl text-slate-300">{slide.description}</p>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+
+                {/* Progress Indicators */}
+                <div className="absolute bottom-8 right-8 flex gap-2">
+                    {slides.map((_, index) => (
+                        <div
+                            key={index}
+                            className={`h-1 rounded-full transition-all duration-300 ${index === currentSlide ? 'w-8 bg-emerald-500' : 'w-2 bg-white/30'
+                                }`}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -19,6 +97,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50">
+
             {/* Hero Section with Animated Background */}
             <div className="relative overflow-hidden">
                 {/* Animated Background Images */}
@@ -70,18 +149,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
                             </button>
-
-                            <button className="px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl font-semibold text-lg shadow-lg border-2 border-slate-200 transition-all flex items-center gap-2">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Watch Demo
-                            </button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Demo Section */}
+            <DemoSection />
 
             {/* Features Grid */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
