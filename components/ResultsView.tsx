@@ -56,16 +56,47 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
     setVideoError(null);
 
     try {
+      // Helper to get base64 from URL (blob or data)
+      const getBase64 = async (url: string): Promise<string> => {
+        if (url.startsWith('data:')) {
+          return url.split(',')[1];
+        }
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      };
+
+      const [originalBase64, redesignBase64] = await Promise.all([
+        getBase64(originalImage),
+        getBase64(result.renderImages[currentRenderIndex])
+      ]);
+
+      console.log('🔍 Video generation request:', {
+        originalImage: originalImage?.substring(0, 50),
+        originalBase64Length: originalBase64?.length,
+        redesignBase64Length: redesignBase64?.length
+      });
+
+      const requestBody = {
+        original_image: originalBase64,
+        redesign_image: redesignBase64,
+        duration: 5
+      };
+
+      console.log('📤 Sending request body keys:', Object.keys(requestBody));
+      console.log('📤 original_image present:', !!requestBody.original_image);
+
       const response = await fetch('http://localhost:8001/api/generate-video', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          original_image: originalImage.split(',')[1], // Remove data URL prefix
-          redesign_image: result.renderImages[currentRenderIndex].split(',')[1],
-          duration: 5
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -84,6 +115,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
   };
 
   const getActiveImage = () => {
+    if (activeTab === 'video') return null; // Video tab has its own UI
     if (activeTab === 'original') return originalImage;
     if (activeTab === 'render') return result.renderImages[currentRenderIndex];
     return result.planImage;
@@ -308,11 +340,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
                 afterLabel="Original"
               />
             </div>
-          ) : activeImage ? (
+          ) : activeTab !== 'video' && activeImage ? (
             <img src={activeImage} alt={activeTab} className="w-full h-full object-cover transition-opacity duration-300" />
-          ) : (
+          ) : activeTab !== 'video' && !activeImage ? (
             <div className="text-slate-400 italic">Image generation failed or is unavailable.</div>
-          )}
+          ) : null}
 
           {/* Carousel Controls (only for renders with > 1 image) */}
           {activeTab === 'render' && result.renderImages.length > 1 && (

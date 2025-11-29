@@ -9,6 +9,7 @@ Fixes: 'Floating Product' bugs and 'Cartoonish' text placements.
 import asyncio
 import json
 import os
+import logging
 from typing import Any
 from pathlib import Path
 from datetime import datetime
@@ -16,7 +17,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from dotenv import load_dotenv
 import json
 import asyncio
@@ -25,6 +26,10 @@ import asyncio
 from agent import AdGenerationAgent
 
 load_dotenv()
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Ad Generation Agent API (Luxury Edition)",
@@ -39,6 +44,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request, call_next):
+    if request.url.path == "/api/generate-video":
+        body = await request.body()
+        logger.info(f"📨 Raw request body length: {len(body)} bytes")
+        # Try to parse as JSON to see structure
+        try:
+            import json
+            body_json = json.loads(body)
+            logger.info(f"📨 Request keys: {list(body_json.keys())}")
+            for key in body_json.keys():
+                value = body_json[key]
+                if isinstance(value, str):
+                    logger.info(f"   {key}: {len(value)} chars")
+                else:
+                    logger.info(f"   {key}: {value}")
+        except:
+            logger.info(f"📨 Could not parse body as JSON")
+    
+    response = await call_next(request)
+    return response
 
 # Global agent instance
 agent = None
@@ -368,6 +396,7 @@ class VideoRequest(BaseModel):
 async def generate_video(request: VideoRequest):
     """Generate transformation video with angle rotation"""
     try:
+        logger.info(f"📥 Received video request - original: {len(request.original_image)} chars, redesign: {len(request.redesign_image)} chars")
         from video_generator import generate_transformation_video
         
         result = generate_transformation_video(
@@ -383,7 +412,11 @@ async def generate_video(request: VideoRequest):
                 status_code=500, 
                 detail=result.get("error", "Video generation failed")
             )
+    except ValidationError as e:
+        logger.error(f"❌ Validation error: {e}")
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
+        logger.error(f"❌ Video generation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/history")
