@@ -24,3 +24,10 @@ dist-ssr
 *.sw?
 .env
 .env.local
+__pycache__
+.pyx
+
+
+
+
+
