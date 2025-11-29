@@ -14,7 +14,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-FREEPIK_API_URL = "https://api.freepik.com/v1/ai/video"
+FREEPIK_API_URL = "https://api.freepik.com/v1/ai/image-to-video/kling-v2"
 API_KEY = os.getenv("FREEPIK_API_KEY")
 
 def generate_transformation_video(
@@ -42,18 +42,19 @@ def generate_transformation_video(
     }
     
     # Create video generation request with angle rotation (Single Image)
+    # Note: Currently using single image generation as primary method.
+    # Future enhancement: If API supports start/end images, use original_image_base64 as start.
+    
+    logger.info(f"🎥 Generating video with original image ({len(original_image_base64)} chars) and redesign ({len(redesign_image_base64)} chars)")
+
+    # Kling v2 payload structure based on documentation
+    # image: Base64 string or URL
+    # duration: "5" or "10" (string)
     payload = {
-        "prompt": "Cinematic 3D camera movement, smooth orbiting view of the landscape design, high quality, photorealistic, 4k",
-        "image_url": redesign_image_base64,
-        "duration": duration,
-        "aspect_ratio": "16:9",
-        "style": "cinematic",
-        "motion": {
-            "type": "camera_rotation",
-            "angle": 15,
-            "direction": "horizontal"
-        }
-        # Removed transition to focus purely on the 3D view of the new design
+        "prompt": "Cinematic 3D camera movement, smooth orbiting view of the landscape design, high quality, photorealistic, 4k. Transformation from original yard to new design.",
+        "image": redesign_image_base64, 
+        "duration": str(duration),
+        "cfg_scale": 0.5
     }
     
     try:
@@ -65,9 +66,10 @@ def generate_transformation_video(
             timeout=30
         )
         
-        if response.status_code == 202:  # Accepted, processing
+        if response.status_code == 200:  # OK
             result = response.json()
-            job_id = result.get("id")
+            # Response format: {"data": {"task_id": "...", "status": "CREATED"}}
+            job_id = result.get("data", {}).get("task_id")
             logger.info(f"✅ Video generation started. Job ID: {job_id}")
             
             # Poll for completion
@@ -111,10 +113,21 @@ def poll_video_status(job_id: str, max_wait: int = 300) -> dict:
             
             if response.status_code == 200:
                 result = response.json()
-                status = result.get("status")
+                # Response format: {"data": {"task_id": "...", "status": "...", "video_url": "..."}}
+                data = result.get("data", {})
+                status = data.get("status")
                 
-                if status == "completed":
-                    video_url = result.get("video_url")
+                if status == "COMPLETED": # Docs show "CREATED", assuming "COMPLETED" or similar for done
+                    logger.info(f"🔍 Full completion response: {result}")
+                    
+                    # Check for 'generated' list (Kling v2 format)
+                    generated = data.get("generated", [])
+                    if generated and isinstance(generated, list) and len(generated) > 0:
+                        video_url = generated[0]
+                    else:
+                        # Fallback to other potential fields
+                        video_url = data.get("video_url") or data.get("url") or data.get("result_url")
+                        
                     logger.info(f"🎉 Video generation complete: {video_url}")
                     return {
                         "status": "completed",
