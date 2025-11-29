@@ -115,6 +115,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
   };
 
   const getActiveImage = () => {
+    if (activeTab === 'video') return null; // Video tab has its own UI
     if (activeTab === 'original') return originalImage;
     if (activeTab === 'render') return result.renderImages[currentRenderIndex];
     return result.planImage;
@@ -303,11 +304,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
                 afterLabel="Original"
               />
             </div>
-          ) : activeImage ? (
+          ) : activeTab !== 'video' && activeImage ? (
             <img src={activeImage} alt={activeTab} className="w-full h-full object-cover transition-opacity duration-300" />
-          ) : (
+          ) : activeTab !== 'video' && !activeImage ? (
             <div className="text-slate-400 italic">Image generation failed or is unavailable.</div>
-          )}
+          ) : null}
 
           {/* Carousel Controls (only for renders with > 1 image) */}
           {activeTab === 'render' && result.renderImages.length > 1 && (
