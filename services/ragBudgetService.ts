@@ -22,7 +22,7 @@ export async function calculateRAGBudget(designImageBase64: string): Promise<Bud
         const formData = new FormData();
         formData.append('design_image', blob, 'design.png');
 
-        const response = await fetch('http://localhost:8002/api/freepik/analyze-and-budget', {
+        const response = await fetch('http://localhost:8001/api/freepik/analyze-and-budget', {
             method: 'POST',
             body: formData,
         });

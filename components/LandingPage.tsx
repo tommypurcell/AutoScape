@@ -3,6 +3,7 @@ import { styleReferences } from '../data/styleReferences';
 
 interface LandingPageProps {
     onGetStarted: () => void;
+    onAbout: () => void;
 }
 
 const DemoSection: React.FC = () => {
@@ -83,7 +84,7 @@ const DemoSection: React.FC = () => {
     );
 };
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     // Cycle through background images
@@ -313,6 +314,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                     Start Designing Now — It's Free!
                 </button>
             </div>
+
+            {/* Footer */}
+            <footer className="bg-slate-900 text-white py-12">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid md:grid-cols-3 gap-8 mb-8">
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold">
+                                    A
+                                </div>
+                                <span className="text-xl font-bold">AutoScape</span>
+                            </div>
+                            <p className="text-slate-400 text-sm">
+                                AI-powered landscape design with instant 3D renders and real-world budgeting.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 className="font-bold mb-4">Quick Links</h3>
+                            <ul className="space-y-2 text-slate-400 text-sm">
+                                <li>
+                                    <button onClick={onAbout} className="hover:text-white transition-colors">
+                                        About Us
+                                    </button>
+                                </li>
+                                <li>
+                                    <button onClick={onGetStarted} className="hover:text-white transition-colors">
+                                        Get Started
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 className="font-bold mb-4">Powered By</h3>
+                            <ul className="space-y-2 text-slate-400 text-sm">
+                                <li>Google Gemini 2.0</li>
+                                <li>Qdrant Vector DB</li>
+                                <li>Freepik API</li>
+                                <li>Firebase</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-slate-800 pt-8 text-center text-slate-400 text-sm">
+                        <p>© 2024 AutoScape. Built for Freepik Hackathon. All rights reserved.</p>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 };

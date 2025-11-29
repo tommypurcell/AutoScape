@@ -159,6 +159,42 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
         </div>
       </div>
 
+      {/* Save Controls */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-4">Save Your Design</h3>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={() => {
+              // Save as private
+              const saveEvent = new CustomEvent('saveDesign', { detail: { isPublic: false } });
+              window.dispatchEvent(saveEvent);
+            }}
+            className="flex-1 py-3 px-6 bg-slate-600 hover:bg-slate-500 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            Save as Private
+          </button>
+          <button
+            onClick={() => {
+              // Save as public
+              const saveEvent = new CustomEvent('saveDesign', { detail: { isPublic: true } });
+              window.dispatchEvent(saveEvent);
+            }}
+            className="flex-1 py-3 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Save & Share Publicly
+          </button>
+        </div>
+        <p className="text-xs text-slate-500 mt-3 text-center">
+          Public designs will appear in the Community Gallery for others to discover
+        </p>
+      </div>
+
       {/* Visuals Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
         <div className="flex border-b border-slate-100">
@@ -432,43 +468,48 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
         )
       }
 
-      {/* RAG Budget Section */}
+      {/* RAG Product Gallery */}
       {ragBudget && (
-        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl shadow-sm border border-purple-100 p-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                RAG-Powered Product Budget
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                Matched Products from Database
               </h3>
-              <p className="text-sm text-slate-600 mt-1">Real products from our Freepik database matched to your design</p>
+              <p className="text-sm text-slate-600">Real items matched to your design via RAG</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-slate-600">Minimum Estimate</p>
-              <p className="text-3xl font-bold text-purple-700">${ragBudget.total_min_budget}</p>
+              <p className="text-xs text-slate-500">Total Estimate</p>
+              <p className="text-2xl font-bold text-purple-700">${ragBudget.total_min_budget}</p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            {ragBudget.line_items.map((item, i) => (
-              <div key={i} className="bg-white rounded-xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-                {item.image_url && (
-                  <img
-                    src={item.image_url}
-                    alt={item.item}
-                    className="w-20 h-20 object-cover rounded-lg"
-                  />
-                )}
-                <div className="flex-1">
-                  <p className="font-semibold text-slate-800">{item.item}</p>
-                  <p className="text-sm text-slate-600">Matched: {item.match}</p>
-                  <p className="text-xs text-slate-500">{item.price_estimate}</p>
+          {/* Horizontal Scrollable Thumbnail Gallery */}
+          <div className="overflow-x-auto pb-2 -mx-2 px-2">
+            <div className="flex gap-4 min-w-max">
+              {ragBudget.line_items.map((item, i) => (
+                <div key={i} className="flex-shrink-0 w-48 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 group">
+                  {item.image_url && (
+                    <div className="relative aspect-square bg-slate-100 overflow-hidden">
+                      <img
+                        src={item.image_url}
+                        alt={item.item}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      <div className="absolute top-2 right-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+                        ${item.cost}
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-3">
+                    <p className="font-semibold text-slate-800 text-sm mb-1 line-clamp-2">{item.item}</p>
+                    <p className="text-xs text-slate-500 line-clamp-1">{item.match}</p>
+                    <p className="text-xs text-purple-600 font-medium mt-1">{item.price_estimate}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-purple-700">${item.cost}</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}

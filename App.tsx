@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UploadArea } from './components/UploadArea';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ResultsView } from './components/ResultsView';
@@ -9,12 +9,16 @@ import { styleReferences } from './data/styleReferences';
 import { urlsToFiles } from './utils/imageUtils';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal } from './components/AuthModal';
-import { saveDesign } from './services/firestoreService';
+import { saveDesign, getUserDesigns, SavedDesign, deleteDesign } from './services/firestoreService';
 import { uploadBase64Image } from './services/storageService';
 import { Sidebar } from './components/Sidebar';
 import { AccountSettings } from './components/AccountSettings';
-import { SavedDesign } from './services/firestoreService';
+import { DesignHistory } from './components/DesignHistory';
+import CommunityGallery from './components/CommunityGallery';
+import { AdminDashboard } from './components/AdminDashboard';
+import { AboutPage } from './components/AboutPage';
 import { LandingPage } from './components/LandingPage';
+import { Menu } from 'lucide-react'; // Assuming Menu icon is from lucide-react
 
 const AppContent: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -36,7 +40,10 @@ const AppContent: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLanding, setShowLanding] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [showCommunityGallery, setShowCommunityGallery] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [showAboutPage, setShowAboutPage] = useState(false);
 
   const handleYardSelect = (files: File[]) => {
     if (files.length > 0) {
@@ -135,8 +142,61 @@ const AppContent: React.FC = () => {
       error: null
     });
     setSelectedGalleryStyleIds([]);
-    setShowLanding(true);
+    setShowLanding(false);
   };
+
+  const handleSidebarNavigate = (action: string) => {
+    if (action === 'new') {
+      handleNewDesign();
+      setShowCommunityGallery(false);
+      setShowAdminDashboard(false);
+      setShowAboutPage(false);
+    } else if (action === 'settings') {
+      setShowAccountSettings(true);
+    } else if (action === 'gallery') {
+      setShowCommunityGallery(true);
+      setShowLanding(false);
+      setShowAdminDashboard(false);
+      setShowAboutPage(false);
+    } else if (action === 'admin') {
+      setShowAdminDashboard(true);
+      setShowCommunityGallery(false);
+      setShowLanding(false);
+      setShowAboutPage(false);
+    } else if (action === 'about') {
+      setShowAboutPage(true);
+      setShowCommunityGallery(false);
+      setShowAdminDashboard(false);
+      setShowLanding(false);
+    }
+  };
+
+  // Listen for save design events from ResultsView
+  useEffect(() => {
+    const handleSaveDesign = async (event: any) => {
+      if (!user || !state.result) return;
+
+      const isPublic = event.detail?.isPublic || false;
+
+      try {
+        await saveDesign(user.uid, {
+          renderImages: state.result.renderImages,
+          planImage: state.result.planImage || '',
+          estimates: state.result.estimates,
+          analysis: state.result.analysis,
+          isPublic: isPublic
+        });
+
+        alert(isPublic ? '✅ Design saved and published to Community Gallery!' : '✅ Design saved privately!');
+      } catch (error) {
+        console.error('Failed to save design:', error);
+        alert('❌ Failed to save design. Please try again.');
+      }
+    };
+
+    window.addEventListener('saveDesign', handleSaveDesign);
+    return () => window.removeEventListener('saveDesign', handleSaveDesign);
+  }, [user, state.result]);
 
   const handleGenerate = async () => {
     if (!state.yardImage) return;
@@ -243,9 +303,39 @@ const AppContent: React.FC = () => {
 
       {/* Landing Page or Main App */}
       {showLanding ? (
-        <LandingPage onGetStarted={() => setShowLanding(false)} />
+        <LandingPage
+          onGetStarted={() => setShowLanding(false)}
+          onAbout={() => {
+            setShowAboutPage(true);
+            setShowLanding(false);
+          }}
+        />
+      ) : showCommunityGallery ? (
+        <div className="min-h-screen bg-slate-50">
+          <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between h-16 items-center">
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setShowCommunityGallery(false); setShowLanding(true); }}>
+                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold">
+                    A
+                  </div>
+                  <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-blue-600">
+                    AutoScape
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowSidebar(true)}
+                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <Menu className="w-6 h-6 text-slate-600" />
+                </button>
+              </div>
+            </div>
+          </nav>
+          <CommunityGallery onLoadDesign={handleLoadDesign} />
+        </div>
       ) : (
-        <>
+        <div className="min-h-screen bg-slate-50">
           {/* Main Content */}
           <main className="flex-1 bg-slate-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -483,7 +573,7 @@ const AppContent: React.FC = () => {
               )}
             </div>
           </main>
-        </>
+        </div>
       )}
 
       {/* Auth Modal */}
@@ -499,17 +589,28 @@ const AppContent: React.FC = () => {
         onLoadDesign={handleLoadDesign}
         onOpenSettings={() => {
           setShowSidebar(false);
-          setShowSettings(true);
+          setShowAccountSettings(true);
         }}
         onLogin={() => {
           setShowSidebar(false);
           setShowAuthModal(true);
         }}
+        onNavigate={handleSidebarNavigate}
       />
 
       {/* Account Settings */}
-      {showSettings && (
-        <AccountSettings onClose={() => setShowSettings(false)} />
+      {showAccountSettings && (
+        <AccountSettings onClose={() => setShowAccountSettings(false)} />
+      )}
+
+      {/* Admin Dashboard */}
+      {showAdminDashboard && (
+        <AdminDashboard onClose={() => setShowAdminDashboard(false)} />
+      )}
+
+      {/* About Page */}
+      {showAboutPage && (
+        <AboutPage onClose={() => setShowAboutPage(false)} />
       )}
     </div>
   );

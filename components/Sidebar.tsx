@@ -1,3 +1,4 @@
+import { X, History, Menu, Settings, LogOut, Plus, Trash2, ChevronRight, Globe } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserDesigns, deleteDesign, SavedDesign } from '../services/firestoreService';
@@ -9,6 +10,7 @@ interface SidebarProps {
     onLoadDesign: (design: SavedDesign) => void;
     onOpenSettings: () => void;
     onLogin: () => void;
+    onNavigate: (action: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -17,7 +19,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onNewDesign,
     onLoadDesign,
     onOpenSettings,
-    onLogin
+    onLogin,
+    onNavigate
 }) => {
     const { user } = useAuth();
     const [designs, setDesigns] = useState<SavedDesign[]>([]);
@@ -124,8 +127,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                         onClick={() => setActiveTab('menu')}
                         className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'menu'
-                                ? 'text-emerald-600 border-b-2 border-emerald-600'
-                                : 'text-slate-500 hover:text-slate-700'
+                            ? 'text-emerald-600 border-b-2 border-emerald-600'
+                            : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         Menu
@@ -133,8 +136,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                         onClick={() => setActiveTab('history')}
                         className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'history'
-                                ? 'text-emerald-600 border-b-2 border-emerald-600'
-                                : 'text-slate-500 hover:text-slate-700'
+                            ? 'text-emerald-600 border-b-2 border-emerald-600'
+                            : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         History
@@ -147,17 +150,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <div className="space-y-2">
                             <button
                                 onClick={() => {
-                                    onNewDesign();
+                                    onNavigate('new');
                                     onClose();
                                 }}
-                                className="w-full p-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-medium transition-colors flex items-center gap-3 group"
+                                className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl transition-colors group"
                             >
-                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
+                                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 group-hover:bg-emerald-200 transition-colors">
+                                    <Plus className="w-5 h-5" />
                                 </div>
-                                New Design
+                                <div className="text-left">
+                                    <div className="font-semibold">New Design</div>
+                                    <div className="text-xs text-slate-400">Start from scratch</div>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    onNavigate('gallery');
+                                    onClose();
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors group"
+                            >
+                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 group-hover:bg-blue-200 transition-colors">
+                                    <Globe className="w-5 h-5" />
+                                </div>
+                                <div className="text-left">
+                                    <div className="font-semibold">Community Gallery</div>
+                                    <div className="text-xs text-slate-400">Explore other designs</div>
+                                </div>
                             </button>
 
                             <button
@@ -186,6 +206,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         </svg>
                                     </div>
                                     Settings
+                                </button>
+                            )}
+
+                            {/* About Page */}
+                            <button
+                                onClick={() => {
+                                    onNavigate('about');
+                                    onClose();
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-800 rounded-xl transition-colors group"
+                            >
+                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 group-hover:bg-slate-200 transition-colors">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div className="text-left">
+                                    <div className="font-semibold">About</div>
+                                    <div className="text-xs text-slate-400">Meet the team</div>
+                                </div>
+                            </button>
+
+                            {/* Admin Dashboard (only for admins) */}
+                            {user && (user.email === 'admin@autoscape.com' || user.email?.endsWith('@autoscape.com')) && (
+                                <button
+                                    onClick={() => {
+                                        onNavigate('admin');
+                                        onClose();
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors group"
+                                >
+                                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center text-red-600 group-hover:bg-red-200 transition-colors">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="font-semibold">Admin Dashboard</div>
+                                        <div className="text-xs text-slate-400">System overview</div>
+                                    </div>
                                 </button>
                             )}
                         </div>
