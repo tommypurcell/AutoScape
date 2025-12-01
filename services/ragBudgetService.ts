@@ -14,6 +14,11 @@ interface Budget {
     line_items: BudgetLineItem[];
 }
 
+const BUDGET_API_BASE =
+    import.meta.env.VITE_BUDGET_API_BASE_URL ||
+    process.env.BUDGET_API_BASE_URL ||
+    "http://localhost:8001";
+
 export async function calculateRAGBudget(designImageBase64: string): Promise<Budget | null> {
     try {
         // Convert base64 to blob
@@ -22,7 +27,8 @@ export async function calculateRAGBudget(designImageBase64: string): Promise<Bud
         const formData = new FormData();
         formData.append('design_image', blob, 'design.png');
 
-        const response = await fetch('http://localhost:8001/api/freepik/analyze-and-budget', {
+        const apiUrl = `${BUDGET_API_BASE.replace(/\/$/, '')}/api/freepik/analyze-and-budget`;
+        const response = await fetch(apiUrl, {
             method: 'POST',
             body: formData,
         });

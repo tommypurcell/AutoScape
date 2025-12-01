@@ -130,18 +130,29 @@ const AppContent: React.FC = () => {
     setShowLanding(false);
   };
 
-  const handleNewDesign = () => {
+  const resetToUploadState = () => {
+    // Clean up any object URLs before resetting
+    state.styleImagePreviews.forEach(url => URL.revokeObjectURL(url));
+    if (state.yardImagePreview) {
+      URL.revokeObjectURL(state.yardImagePreview);
+    }
+
     setState({
       step: 'upload',
       yardImage: null,
       yardImagePreview: null,
-      maskImage: null,
-      selectedStyleId: null,
+      styleImages: [],
+      styleImagePreviews: [],
+      userPrompt: '',
+      selectedStyle: DesignStyle.MODERN,
       result: null,
-      isProcessing: false,
-      error: null
+      error: null,
     });
     setSelectedGalleryStyleIds([]);
+  };
+
+  const handleNewDesign = () => {
+    resetToUploadState();
     setShowLanding(false);
   };
 
@@ -249,25 +260,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleReset = () => {
-    // Revoke all URLs for style image previews before resetting
-    state.styleImagePreviews.forEach(url => URL.revokeObjectURL(url));
-    if (state.yardImagePreview) {
-      URL.revokeObjectURL(state.yardImagePreview);
-    }
-
-    setState({
-      step: 'upload',
-      yardImage: null,
-      yardImagePreview: null,
-      styleImages: [],
-      styleImagePreviews: [],
-      userPrompt: '',
-      selectedStyle: DesignStyle.MODERN,
-      result: null,
-      error: null,
-    });
-  };
+  const handleReset = () => resetToUploadState();
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

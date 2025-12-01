@@ -30,18 +30,23 @@ const extractImage = (res: any): string | null => {
   return null;
 };
 
+const GEMINI_API_KEY =
+  import.meta.env.VITE_GEMINI_API_KEY ||
+  import.meta.env.VITE_API_KEY ||
+  process.env.GEMINI_API_KEY ||
+  process.env.API_KEY;
+
 export const generateLandscapeDesign = async (
   yardFile: File,
   styleFiles: File[],
   prompt: string,
   stylePreference: string
 ): Promise<GeneratedDesign> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key not found in environment variables");
+  if (!GEMINI_API_KEY) {
+    throw new Error("Gemini API key not found in environment variables");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
   // Convert files to base64
   const yardBase64 = await fileToGenericBase64(yardFile);
@@ -246,8 +251,13 @@ export const generateLandscapeDesign = async (
     let ragEnhanced = false;
 
     try {
+      const ragApiBase =
+        import.meta.env.VITE_RAG_API_BASE_URL ||
+        process.env.RAG_API_BASE_URL ||
+        "http://localhost:8002";
+      const ragUrl = `${ragApiBase.replace(/\/$/, "")}/api/enhance-with-rag`;
       console.log("Phase 5: RAG Enhancement");
-      const ragResponse = await fetch('http://localhost:8002/api/enhance-with-rag', {
+      const ragResponse = await fetch(ragUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
