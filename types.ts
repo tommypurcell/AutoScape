@@ -10,9 +10,9 @@ export enum LocationType {
 }
 
 export enum SpaceSize {
-  SMALL = "Small (< 500 sq ft)",
-  MEDIUM = "Medium (500-2000 sq ft)",
-  LARGE = "Large (> 2000 sq ft)",
+  SMALL = "Small (Home Garden)",
+  MEDIUM = "Medium (Park)",
+  LARGE = "Large (Cityscape)",
 }
 
 // Grouped design styles

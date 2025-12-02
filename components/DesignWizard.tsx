@@ -219,147 +219,61 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                     🎨 Choose Your Design Style
                                 </h2>
                                 <p className="text-gray-600">
-                                    Select style references and pick your preferred aesthetic
+                                    Select the aesthetic that best matches your vision
                                 </p>
                             </div>
 
-                            {/* Style References */}
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between">
-                                    <label className="block text-lg font-semibold text-gray-800">
-                                        Style References
-                                    </label>
-                                    {(selectedGalleryStyleIds.length > 0 || styleImages.length > 0) && (
-                                        <span className="text-sm text-green-700 font-medium">
-                                            {selectedGalleryStyleIds.length + styleImages.length} selected
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Mode Toggle */}
-                                <div className="flex gap-2 bg-gray-100 p-1 rounded-lg max-w-xs">
-                                    <button
-                                        onClick={() => setStyleSelectionMode('gallery')}
-                                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${styleSelectionMode === 'gallery'
-                                            ? 'bg-white text-green-700 shadow-sm'
-                                            : 'text-gray-600 hover:text-gray-800'
-                                            }`}
-                                    >
-                                        🖼️ Gallery
-                                    </button>
-                                    <button
-                                        onClick={() => setStyleSelectionMode('upload')}
-                                        className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${styleSelectionMode === 'upload'
-                                            ? 'bg-white text-green-700 shadow-sm'
-                                            : 'text-gray-600 hover:text-gray-800'
-                                            }`}
-                                    >
-                                        📤 Upload
-                                    </button>
-                                </div>
-
-                                {/* Gallery Mode */}
-                                {styleSelectionMode === 'gallery' && (
-                                    <StyleGallery
-                                        availableStyles={styleReferences}
-                                        selectedStyleIds={selectedGalleryStyleIds}
-                                        onStyleToggle={onGalleryStyleToggle}
-                                        onClearAll={onClearGalleryStyles}
-                                    />
-                                )}
-
-                                {/* Upload Mode */}
-                                {styleSelectionMode === 'upload' && (
-                                    <>
-                                        <label className="block cursor-pointer">
-                                            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-green-600 hover:bg-green-50/50 transition-all">
-                                                <svg className="w-10 h-10 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <p className="text-sm text-gray-600 font-medium">Add Custom Style Images</p>
-                                                <p className="text-xs text-gray-400 mt-1">Click to select multiple images</p>
-                                            </div>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                multiple
-                                                onChange={(e) => {
-                                                    const files = e.target.files ? Array.from(e.target.files) as File[] : [];
-                                                    if (files.length > 0) {
-                                                        onStyleSelect(files);
-                                                        e.target.value = '';
-                                                    }
-                                                }}
-                                                className="hidden"
-                                            />
-                                        </label>
-
-                                        {styleImagePreviews.length > 0 && (
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-gray-600 font-medium">Uploaded Images</span>
-                                                    <button
-                                                        onClick={onClearAllStyles}
-                                                        className="text-xs text-gray-500 hover:text-red-600 transition-colors"
-                                                    >
-                                                        Clear all ({styleImages.length})
-                                                    </button>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {styleImagePreviews.map((preview, index) => (
-                                                        <div key={index} className="relative group">
-                                                            <img
-                                                                src={preview}
-                                                                alt={`Style ${index + 1}`}
-                                                                className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                                                            />
-                                                            <button
-                                                                onClick={() => onClearStyleImage(index)}
-                                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                                                            >
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-
-                            <hr className="border-gray-200 my-8" />
-
                             {/* Grouped Aesthetic Selection */}
-                            <div className="space-y-6">
-                                <label className="block text-lg font-semibold text-gray-800">
-                                    Select Design Aesthetic
-                                </label>
-                                <div className="space-y-6">
-                                    {Object.entries(DesignStyleGroups).map(([groupName, styles]) => (
-                                        <div key={groupName} className="space-y-3">
-                                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-                                                {groupName}
-                                            </h3>
-                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                                {styles.map((style) => (
+                            <div className="space-y-8">
+                                {Object.entries(DesignStyleGroups).map(([groupName, styles]) => (
+                                    <div key={groupName} className="space-y-4">
+                                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">
+                                            {groupName}
+                                        </h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                            {styles.map((style) => {
+                                                // Deterministic image selection
+                                                const hash = style.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                                                const imageIndex = hash % styleReferences.length;
+                                                const imageUrl = styleReferences[imageIndex].imageUrl;
+
+                                                const isSelected = selectedStyle === style;
+
+                                                return (
                                                     <button
                                                         key={style}
                                                         onClick={() => onStyleChange(style)}
-                                                        className={`px-4 py-3 text-sm font-medium rounded-lg border text-left transition-all ${selectedStyle === style
-                                                            ? 'border-green-600 bg-green-50 text-green-800 ring-2 ring-green-600'
-                                                            : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                                                        className={`group relative rounded-xl overflow-hidden aspect-[4/3] transition-all ${isSelected
+                                                                ? 'ring-4 ring-green-600 ring-offset-2 shadow-xl scale-105 z-10'
+                                                                : 'hover:shadow-lg hover:scale-105 hover:z-10'
                                                             }`}
                                                     >
-                                                        {style}
+                                                        <img
+                                                            src={imageUrl}
+                                                            alt={style}
+                                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                        />
+                                                        <div className={`absolute inset-0 transition-opacity duration-300 ${isSelected ? 'bg-black/20' : 'bg-black/40 group-hover:bg-black/20'
+                                                            }`} />
+
+                                                        <div className="absolute inset-0 flex flex-col justify-end p-3 text-left">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-white font-bold text-sm md:text-base shadow-black/50 drop-shadow-md">
+                                                                    {style}
+                                                                </span>
+                                                                {isSelected && (
+                                                                    <div className="bg-green-600 text-white p-1 rounded-full">
+                                                                        <Check className="w-3 h-3" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </button>
-                                                ))}
-                                            </div>
+                                                );
+                                            })}
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}

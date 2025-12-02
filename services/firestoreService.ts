@@ -4,6 +4,7 @@ import {
     query,
     where,
     getDocs,
+    getDoc,
     deleteDoc,
     doc,
     orderBy,
@@ -73,6 +74,26 @@ export const getPublicDesigns = async (limitCount: number = 20): Promise<SavedDe
             .slice(0, limitCount);
     } catch (error) {
         console.error('Error fetching public designs:', error);
+        throw error;
+    }
+};
+
+export const getDesignById = async (designId: string): Promise<SavedDesign | null> => {
+    try {
+        const docRef = doc(db, 'designs', designId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            return {
+                id: docSnap.id,
+                ...docSnap.data(),
+                createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+            } as SavedDesign;
+        } else {
+            return null;
+        }
+    } catch (error) {
+        console.error('Error fetching design:', error);
         throw error;
     }
 };

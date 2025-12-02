@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UploadArea } from './components/UploadArea';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ResultsView } from './components/ResultsView';
@@ -9,7 +10,7 @@ import { styleReferences } from './data/styleReferences';
 import { urlsToFiles } from './utils/imageUtils';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthModal } from './components/AuthModal';
-import { saveDesign, getUserDesigns, SavedDesign, deleteDesign } from './services/firestoreService';
+import { saveDesign, getUserDesigns, SavedDesign, deleteDesign, getDesignById } from './services/firestoreService';
 import { uploadBase64Image } from './services/storageService';
 import { Sidebar } from './components/Sidebar';
 import { AccountSettings } from './components/AccountSettings';
@@ -18,12 +19,15 @@ import CommunityGallery from './components/CommunityGallery';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AboutPage } from './components/AboutPage';
 import { LandingPage } from './components/LandingPage';
-import { Menu } from 'lucide-react'; // Assuming Menu icon is from lucide-react
+import { Menu } from 'lucide-react';
 import { TutorialWalkthrough } from './components/TutorialWalkthrough';
 import { tutorialSteps } from './data/tutorialSteps';
 import { DesignWizard } from './components/DesignWizard';
+import { ResultsPage } from './components/ResultsPage';
 
 const AppContent: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [state, setState] = useState<AppState>({
     step: 'upload',
     yardImage: null,
@@ -126,17 +130,7 @@ const AppContent: React.FC = () => {
   };
 
   const handleLoadDesign = (design: SavedDesign) => {
-    setState(prev => ({
-      ...prev,
-      step: 'results',
-      result: {
-        renderImages: design.renderImages,
-        planImage: design.planImage,
-        estimates: design.estimates,
-        analysis: design.analysis,
-      }
-    }));
-    setShowLanding(false);
+    navigate(`/result/${design.id}`);
   };
 
   const resetToUploadState = () => {
@@ -162,12 +156,12 @@ const AppContent: React.FC = () => {
 
   const handleNewDesign = () => {
     resetToUploadState();
-    setShowLanding(false);
+    navigate('/create');
   };
 
   const handleStartTutorial = () => {
     setShowTutorial(true);
-    setShowLanding(false);
+    navigate('/create');
     resetToUploadState();
   };
 
@@ -178,35 +172,23 @@ const AppContent: React.FC = () => {
   };
 
   const getCurrentPage = (): 'landing' | 'upload' | 'processing' | 'results' => {
-    if (showLanding) return 'landing';
+    if (location.pathname === '/') return 'landing';
     if (state.step === 'processing') return 'processing';
-    if (state.step === 'results') return 'results';
+    if (location.pathname.startsWith('/result')) return 'results';
     return 'upload';
   };
 
   const handleSidebarNavigate = (action: string) => {
     if (action === 'new') {
       handleNewDesign();
-      setShowCommunityGallery(false);
-      setShowAdminDashboard(false);
-      setShowAboutPage(false);
     } else if (action === 'settings') {
       setShowAccountSettings(true);
     } else if (action === 'gallery') {
-      setShowCommunityGallery(true);
-      setShowLanding(false);
-      setShowAdminDashboard(false);
-      setShowAboutPage(false);
+      navigate('/gallery');
     } else if (action === 'admin') {
-      setShowAdminDashboard(true);
-      setShowCommunityGallery(false);
-      setShowLanding(false);
-      setShowAboutPage(false);
+      navigate('/admin');
     } else if (action === 'about') {
-      setShowAboutPage(true);
-      setShowCommunityGallery(false);
-      setShowAdminDashboard(false);
-      setShowLanding(false);
+      navigate('/about');
     }
   };
 
@@ -272,12 +254,19 @@ const AppContent: React.FC = () => {
       // Save to Firestore if user is logged in
       if (user) {
         try {
+          // We need to await the save to get the ID if we want to navigate to /result/:id
+          // But saveDesign currently returns void. 
+          // For now, let's just navigate with state.
           await saveDesign(user.uid, result);
           console.log('Design saved successfully');
         } catch (error) {
           console.error('Failed to save design:', error);
         }
       }
+
+      // Navigate to result page with the result data
+      navigate('/result/generated', { state: { result } });
+
     } catch (err) {
       console.error(err);
       setState(prev => ({
@@ -292,149 +281,135 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navbar */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <button
-              onClick={() => setShowSidebar(true)}
-              className="p-2 hover:bg-gray-50 rounded transition-colors"
-            >
-              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <span className="font-bold text-xl text-green-700">AutoScape</span>
-
-            {/* Navigation Links */}
-            <div className="hidden md:flex items-center gap-6">
-              <button className="text-gray-700 hover:text-green-700 transition-colors font-normal">About</button>
-              <button className="text-gray-700 hover:text-green-700 transition-colors font-normal">Business</button>
+      {/* Navbar - Hidden on Landing Page */}
+      {location.pathname !== '/' && (
+        <nav className="bg-white border-b border-gray-200 sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-8">
               <button
-                onClick={() => handleSidebarNavigate('gallery')}
-                className="text-gray-700 hover:text-green-700 transition-colors font-normal"
+                onClick={() => setShowSidebar(true)}
+                className="p-2 hover:bg-gray-50 rounded transition-colors"
               >
-                Gallery
+                <Menu className="w-6 h-6 text-gray-700" />
               </button>
-            </div>
-          </div>
+              <span
+                onClick={() => navigate('/')}
+                className="font-bold text-xl text-green-700 cursor-pointer"
+              >
+                AutoScape
+              </span>
 
-          <div className="flex items-center gap-3">
-            {user ? (
-              <button
-                onClick={() => setShowAccountSettings(true)}
-                className="text-gray-700 hover:text-green-700 transition-colors font-normal"
-              >
-                Account
-              </button>
-            ) : (
-              <>
+              {/* Navigation Links */}
+              <div className="hidden md:flex items-center gap-6">
+                <button onClick={() => navigate('/about')} className="text-gray-700 hover:text-green-700 transition-colors font-normal">About</button>
+                <button className="text-gray-700 hover:text-green-700 transition-colors font-normal">Business</button>
                 <button
-                  onClick={() => setShowAuthModal(true)}
+                  onClick={() => navigate('/gallery')}
                   className="text-gray-700 hover:text-green-700 transition-colors font-normal"
                 >
-                  Sign in
-                </button>
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-full font-normal transition-colors"
-                >
-                  Sign up
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      {/* Landing Page or Main App */}
-      {showLanding ? (
-        <LandingPage
-          onGetStarted={() => setShowLanding(false)}
-          onAbout={() => {
-            setShowAboutPage(true);
-            setShowLanding(false);
-          }}
-          onStartTutorial={handleStartTutorial}
-        />
-      ) : showCommunityGallery ? (
-        <div className="min-h-screen bg-gray-50">
-          <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between h-16 items-center">
-                <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setShowCommunityGallery(false); setShowLanding(true); }}>
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold">
-                    A
-                  </div>
-                  <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-700 to-blue-600">
-                    AutoScape
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowSidebar(true)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <Menu className="w-6 h-6 text-gray-600" />
+                  Gallery
                 </button>
               </div>
             </div>
-          </nav>
-          <CommunityGallery onLoadDesign={handleLoadDesign} />
-        </div>
-      ) : (
-        <div className="min-h-screen bg-gray-50">
-          {/* Main Content */}
-          <main className="flex-1 bg-gray-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
-              {state.step === 'processing' && <LoadingScreen />}
-
-              {state.step === 'results' && state.result && (
-                <ResultsView
-                  result={state.result}
-                  onReset={handleReset}
-                  originalImage={state.yardImagePreview}
-                />
-              )}
-
-              {state.step === 'upload' && (
+            <div className="flex items-center gap-3">
+              {user ? (
+                <button
+                  onClick={() => setShowAccountSettings(true)}
+                  className="text-gray-700 hover:text-green-700 transition-colors font-normal"
+                >
+                  Account
+                </button>
+              ) : (
                 <>
-                  {state.error && (
-                    <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2 max-w-5xl mx-auto">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      {state.error}
-                    </div>
-                  )}
-
-                  <DesignWizard
-                    yardImage={state.yardImage}
-                    yardImagePreview={state.yardImagePreview}
-                    styleImages={state.styleImages}
-                    styleImagePreviews={state.styleImagePreviews}
-                    selectedGalleryStyleIds={selectedGalleryStyleIds}
-                    selectedStyle={state.selectedStyle}
-                    userPrompt={state.userPrompt}
-                    onYardSelect={handleYardSelect}
-                    onClearYard={handleClearYard}
-                    onStyleSelect={handleStyleSelect}
-                    onClearStyleImage={handleClearStyleImage}
-                    onClearAllStyles={handleClearAllStyles}
-                    onGalleryStyleToggle={handleGalleryStyleToggle}
-                    onClearGalleryStyles={handleClearGalleryStyles}
-                    onStyleChange={(style) => setState(s => ({ ...s, selectedStyle: style }))}
-                    locationType={state.locationType}
-                    spaceSize={state.spaceSize}
-                    onLocationChange={(type) => setState(s => ({ ...s, locationType: type }))}
-                    onSizeChange={(size) => setState(s => ({ ...s, spaceSize: size }))}
-                    onPromptChange={(prompt) => setState(s => ({ ...s, userPrompt: prompt }))}
-                    onGenerate={handleGenerate}
-                  />
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="text-gray-700 hover:text-green-700 transition-colors font-normal"
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-full font-normal transition-colors"
+                  >
+                    Sign up
+                  </button>
                 </>
               )}
             </div>
-          </main>
-        </div>
+          </div>
+        </nav>
       )}
+
+      <Routes>
+        <Route path="/" element={
+          <LandingPage
+            onGetStarted={() => navigate('/create')}
+            onAbout={() => navigate('/about')}
+            onStartTutorial={handleStartTutorial}
+          />
+        } />
+
+        <Route path="/create" element={
+          <div className="min-h-screen bg-gray-50">
+            <main className="flex-1 bg-gray-50">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                {state.step === 'processing' ? (
+                  <LoadingScreen />
+                ) : (
+                  <>
+                    {state.error && (
+                      <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2 max-w-5xl mx-auto">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        {state.error}
+                      </div>
+                    )}
+
+                    <DesignWizard
+                      yardImage={state.yardImage}
+                      yardImagePreview={state.yardImagePreview}
+                      styleImages={state.styleImages}
+                      styleImagePreviews={state.styleImagePreviews}
+                      selectedGalleryStyleIds={selectedGalleryStyleIds}
+                      selectedStyle={state.selectedStyle}
+                      userPrompt={state.userPrompt}
+                      onYardSelect={handleYardSelect}
+                      onClearYard={handleClearYard}
+                      onStyleSelect={handleStyleSelect}
+                      onClearStyleImage={handleClearStyleImage}
+                      onClearAllStyles={handleClearAllStyles}
+                      onGalleryStyleToggle={handleGalleryStyleToggle}
+                      onClearGalleryStyles={handleClearGalleryStyles}
+                      onStyleChange={(style) => setState(s => ({ ...s, selectedStyle: style }))}
+                      locationType={state.locationType}
+                      spaceSize={state.spaceSize}
+                      onLocationChange={(type) => setState(s => ({ ...s, locationType: type }))}
+                      onSizeChange={(size) => setState(s => ({ ...s, spaceSize: size }))}
+                      onPromptChange={(prompt) => setState(s => ({ ...s, userPrompt: prompt }))}
+                      onGenerate={handleGenerate}
+                    />
+                  </>
+                )}
+              </div>
+            </main>
+          </div>
+        } />
+
+        <Route path="/result/:id" element={<ResultsPage />} />
+
+        {/* Temporary route for immediate results without ID */}
+        <Route path="/result/generated" element={<ResultsPage />} />
+
+        <Route path="/gallery" element={
+          <div className="min-h-screen bg-gray-50">
+            <CommunityGallery onLoadDesign={handleLoadDesign} />
+          </div>
+        } />
+
+        <Route path="/about" element={<AboutPage onClose={() => navigate('/')} />} />
+
+        <Route path="/admin" element={<AdminDashboard onClose={() => navigate('/')} />} />
+      </Routes>
 
       {/* Auth Modal */}
       {showAuthModal && !user && (
@@ -463,12 +438,12 @@ const AppContent: React.FC = () => {
         <AccountSettings onClose={() => setShowAccountSettings(false)} />
       )}
 
-      {/* Admin Dashboard */}
+      {/* Admin Dashboard - Modal version if accessed via sidebar/state */}
       {showAdminDashboard && (
         <AdminDashboard onClose={() => setShowAdminDashboard(false)} />
       )}
 
-      {/* About Page */}
+      {/* About Page - Modal version if accessed via sidebar/state */}
       {showAboutPage && (
         <AboutPage onClose={() => setShowAboutPage(false)} />
       )}
