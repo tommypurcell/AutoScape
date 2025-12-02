@@ -195,20 +195,35 @@ const AppContent: React.FC = () => {
   // Listen for save design events from ResultsView
   useEffect(() => {
     const handleSaveDesign = async (event: any) => {
-      if (!user || !state.result) return;
+      if (!user) return;
 
       const isPublic = event.detail?.isPublic || false;
+      const designData = event.detail?.design || state.result;
+      const yardUrl = event.detail?.yardImageUrl || state.yardImagePreview;
+
+      if (!designData) {
+        alert('❌ No design data available to save.');
+        return;
+      }
 
       try {
-        await saveDesign(user.uid, {
-          renderImages: state.result.renderImages,
-          planImage: state.result.planImage || '',
-          estimates: state.result.estimates,
-          analysis: state.result.analysis,
+        const { id, shortId } = await saveDesign(user.uid, {
+          renderImages: designData.renderImages,
+          planImage: designData.planImage || '',
+          estimates: designData.estimates,
+          analysis: designData.analysis,
+          yardImageUrl: yardUrl,
           isPublic: isPublic
         });
 
-        alert(isPublic ? '✅ Design saved and published to Community Gallery!' : '✅ Design saved privately!');
+        if (isPublic) {
+          alert(`✅ Design saved and published to Community Gallery!\n\n🔗 Share link: ${window.location.origin}/result/${shortId}`);
+        } else {
+          alert(`✅ Design saved privately!\n\n🔗 Your link: ${window.location.origin}/result/${shortId}`);
+        }
+
+        // Reload gallery if on gallery page
+        window.dispatchEvent(new CustomEvent('refreshGallery'));
       } catch (error) {
         console.error('Failed to save design:', error);
         alert('❌ Failed to save design. Please try again.');
@@ -217,7 +232,7 @@ const AppContent: React.FC = () => {
 
     window.addEventListener('saveDesign', handleSaveDesign);
     return () => window.removeEventListener('saveDesign', handleSaveDesign);
-  }, [user, state.result]);
+  }, [user, state.result, state.yardImagePreview]);
 
   const handleGenerate = async () => {
     if (!state.yardImage) return;
@@ -227,6 +242,7 @@ const AppContent: React.FC = () => {
     try {
       // Merge gallery selections with custom uploads
       let allStyleImages = [...state.styleImages];
+
 
       // Convert gallery selections to File objects
       if (selectedGalleryStyleIds.length > 0) {
@@ -254,18 +270,41 @@ const AppContent: React.FC = () => {
       // Save to Firestore if user is logged in and navigate to the saved design
       if (user) {
         try {
-          const designId = await saveDesign(user.uid, result);
-          console.log('Design saved successfully with ID:', designId);
-          navigate(`/result/${designId}`);
+          // Upload the yard image to get a permanent URL for comparison
+          let yardImageUrl = state.yardImagePreview;
+          if (state.yardImage) {
+            try {
+              // Convert the file to base64 for upload
+              const reader = new FileReader();
+              const base64Promise = new Promise<string>((resolve, reject) => {
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(state.yardImage!);
+              });
+              const base64 = await base64Promise;
+              yardImageUrl = await uploadBase64Image(base64, `yards/${user.uid}`);
+            } catch (uploadError) {
+              console.error('Failed to upload yard image:', uploadError);
+              // Continue without the yard image URL
+            }
+          }
+
+          const { id, shortId } = await saveDesign(user.uid, {
+            ...result,
+            yardImageUrl,
+          });
+          console.log('Design saved successfully with shortId:', shortId);
+          navigate(`/result/${shortId}`, { state: { result, yardImageUrl } });
         } catch (error) {
           console.error('Failed to save design:', error);
           // Still navigate even if save failed, using state
-          navigate('/result/generated', { state: { result } });
+          navigate('/result/generated', { state: { result, yardImageUrl: state.yardImagePreview } });
         }
       } else {
         // For non-logged in users, navigate with state
-        navigate('/result/generated', { state: { result } });
+        navigate('/result/generated', { state: { result, yardImageUrl: state.yardImagePreview } });
       }
+
 
     } catch (err) {
       console.error(err);
@@ -281,65 +320,63 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navbar - Hidden on Landing Page */}
-      {location.pathname !== '/' && (
-        <nav className="bg-white border-b border-gray-200 sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-8">
+      {/* Navbar - Visible on all pages */}
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            <button
+              onClick={() => setShowSidebar(true)}
+              className="p-2 hover:bg-gray-50 rounded transition-colors"
+            >
+              <Menu className="w-6 h-6 text-gray-700" />
+            </button>
+            <span
+              onClick={() => navigate('/')}
+              className="font-bold text-xl text-green-700 cursor-pointer"
+            >
+              AutoScape
+            </span>
+
+            {/* Navigation Links */}
+            <div className="hidden md:flex items-center gap-6">
+              <button onClick={() => navigate('/about')} className="text-gray-700 hover:text-green-700 transition-colors font-normal">About</button>
+              <button className="text-gray-700 hover:text-green-700 transition-colors font-normal">Business</button>
               <button
-                onClick={() => setShowSidebar(true)}
-                className="p-2 hover:bg-gray-50 rounded transition-colors"
+                onClick={() => navigate('/gallery')}
+                className="text-gray-700 hover:text-green-700 transition-colors font-normal"
               >
-                <Menu className="w-6 h-6 text-gray-700" />
+                Gallery
               </button>
-              <span
-                onClick={() => navigate('/')}
-                className="font-bold text-xl text-green-700 cursor-pointer"
-              >
-                AutoScape
-              </span>
-
-              {/* Navigation Links */}
-              <div className="hidden md:flex items-center gap-6">
-                <button onClick={() => navigate('/about')} className="text-gray-700 hover:text-green-700 transition-colors font-normal">About</button>
-                <button className="text-gray-700 hover:text-green-700 transition-colors font-normal">Business</button>
-                <button
-                  onClick={() => navigate('/gallery')}
-                  className="text-gray-700 hover:text-green-700 transition-colors font-normal"
-                >
-                  Gallery
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {user ? (
-                <button
-                  onClick={() => setShowAccountSettings(true)}
-                  className="text-gray-700 hover:text-green-700 transition-colors font-normal"
-                >
-                  Account
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="text-gray-700 hover:text-green-700 transition-colors font-normal"
-                  >
-                    Sign in
-                  </button>
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-full font-normal transition-colors"
-                  >
-                    Sign up
-                  </button>
-                </>
-              )}
             </div>
           </div>
-        </nav>
-      )}
+
+          <div className="flex items-center gap-3">
+            {user ? (
+              <button
+                onClick={() => setShowAccountSettings(true)}
+                className="text-gray-700 hover:text-green-700 transition-colors font-normal"
+              >
+                Account
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="text-gray-700 hover:text-green-700 transition-colors font-normal"
+                >
+                  Sign in
+                </button>
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-full font-normal transition-colors"
+                >
+                  Sign up
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </nav>
 
       <Routes>
         <Route path="/" element={

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ResultsView } from './ResultsView';
-import { getDesignById, SavedDesign } from '../services/firestoreService';
+import { getDesignByShortId, SavedDesign } from '../services/firestoreService';
 import { LoadingScreen } from './LoadingScreen';
 import { GeneratedDesign } from '../types';
 
@@ -10,6 +10,8 @@ export const ResultsPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [design, setDesign] = useState<GeneratedDesign | null>(null);
+    const [yardImageUrl, setYardImageUrl] = useState<string | null>(null);
+    const [designShortId, setDesignShortId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -18,6 +20,8 @@ export const ResultsPage: React.FC = () => {
             // Check if result is passed in state (from fresh generation)
             if (location.state?.result) {
                 setDesign(location.state.result);
+                setYardImageUrl(location.state.yardImageUrl || null);
+                setDesignShortId(id || null); // Use the ID from URL as shortId
                 setLoading(false);
                 return;
             }
@@ -29,7 +33,8 @@ export const ResultsPage: React.FC = () => {
             }
 
             try {
-                const savedDesign = await getDesignById(id);
+                // Use shortId to fetch the design
+                const savedDesign = await getDesignByShortId(id);
                 if (savedDesign) {
                     setDesign({
                         renderImages: savedDesign.renderImages,
@@ -37,6 +42,8 @@ export const ResultsPage: React.FC = () => {
                         estimates: savedDesign.estimates,
                         analysis: savedDesign.analysis,
                     });
+                    setYardImageUrl(savedDesign.yardImageUrl || null);
+                    setDesignShortId(savedDesign.shortId);
                 } else {
                     setError('Design not found');
                 }
@@ -49,7 +56,7 @@ export const ResultsPage: React.FC = () => {
         };
 
         fetchDesign();
-    }, [id]);
+    }, [id, location.state]);
 
     if (loading) return <LoadingScreen />;
     if (error) return (
@@ -75,9 +82,8 @@ export const ResultsPage: React.FC = () => {
                 <ResultsView
                     result={design}
                     onReset={() => navigate('/create')}
-                    originalImage={null} // We might not have the original image URL easily accessible if it wasn't saved or if it's a blob. 
-                // For saved designs, we might need to update the data model to store the original image URL if we want to show it.
-                // For now, passing null is acceptable as it just hides the comparison slider or shows only the result.
+                    originalImage={yardImageUrl}
+                    designShortId={designShortId || undefined}
                 />
             </div>
         </div>

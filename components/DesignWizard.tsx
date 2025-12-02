@@ -251,16 +251,17 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                                             alt={style}
                                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                                         />
-                                                        <div className={`absolute inset-0 transition-opacity duration-300 ${isSelected ? 'bg-black/20' : 'bg-black/40 group-hover:bg-black/20'
-                                                            }`} />
+
+                                                        {/* Gradient overlay for text readability */}
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
                                                         <div className="absolute inset-0 flex flex-col justify-end p-3 text-left">
                                                             <div className="flex items-center justify-between">
-                                                                <span className="text-white font-bold text-sm md:text-base shadow-black/50 drop-shadow-md">
+                                                                <span className="text-white font-bold text-sm md:text-base drop-shadow-lg">
                                                                     {style}
                                                                 </span>
                                                                 {isSelected && (
-                                                                    <div className="bg-green-600 text-white p-1 rounded-full">
+                                                                    <div className="bg-green-600 text-white p-1 rounded-full shadow-lg">
                                                                         <Check className="w-3 h-3" />
                                                                     </div>
                                                                 )}

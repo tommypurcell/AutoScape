@@ -22,9 +22,10 @@ interface ResultsViewProps {
   result: GeneratedDesign;
   onReset: () => void;
   originalImage: string | null;
+  designShortId?: string; // For sharing
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, originalImage }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, originalImage, designShortId }) => {
   const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare' | 'video'>('compare');
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
@@ -160,10 +161,45 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
     document.body.removeChild(link);
   };
 
-  const chartData = result.estimates.breakdown.map(item => ({
-    name: item.name.length > 15 ? item.name.substring(0, 15) + '...' : item.name,
-    cost: parseFloat(item.totalCost.replace(/[^0-9.]/g, '')) || 0
-  }));
+  // Group items by category for the chart
+  const chartData = React.useMemo(() => {
+    const categories = {
+      'Hardscape': 0,
+      'Softscape': 0,
+      'Plants': 0,
+      'Labor': 0,
+      'Other': 0
+    };
+
+    result.estimates.breakdown.forEach(item => {
+      const name = item.name.toLowerCase();
+      const cost = parseFloat(item.totalCost.replace(/[^0-9.]/g, '')) || 0;
+
+      if (name.includes('labor') || name.includes('install') || name.includes('removal') || name.includes('prep')) {
+        categories['Labor'] += cost;
+      } else if (name.includes('paver') || name.includes('stone') || name.includes('concrete') || name.includes('gravel') || name.includes('wood') || name.includes('deck') || name.includes('patio') || name.includes('fence') || name.includes('wall') || name.includes('rock') || name.includes('path')) {
+        categories['Hardscape'] += cost;
+      } else if (name.includes('mulch') || name.includes('soil') || name.includes('compost') || name.includes('turf') || name.includes('grass') || name.includes('sod')) {
+        categories['Softscape'] += cost;
+      } else if (name.includes('plant') || name.includes('tree') || name.includes('shrub') || name.includes('flower') || name.includes('bush') || name.includes('seed')) {
+        categories['Plants'] += cost;
+      } else {
+        categories['Other'] += cost;
+      }
+    });
+
+    return Object.entries(categories)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({ name, cost: value }));
+  }, [result.estimates.breakdown]);
+
+  const findRagImage = (itemName: string) => {
+    if (!ragBudget) return null;
+    return ragBudget.line_items.find(ragItem =>
+      ragItem.item.toLowerCase().includes(itemName.toLowerCase()) ||
+      itemName.toLowerCase().includes(ragItem.item.toLowerCase())
+    )?.image_url;
+  };
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
 
@@ -177,6 +213,17 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
     setCurrentRenderIndex((prev) => (prev - 1 + result.renderImages.length) % result.renderImages.length);
   };
 
+  const shareableUrl = designShortId ? `${window.location.origin}/result/${designShortId}` : null;
+  const [copied, setCopied] = useState(false);
+
+  const copyShareLink = () => {
+    if (shareableUrl) {
+      navigator.clipboard.writeText(shareableUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <div className="space-y-12 animate-fade-in pb-20">
 
@@ -184,48 +231,53 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Your Redesign</h2>
         <div className="flex items-center gap-3">
-          <button onClick={onReset} className="text-sm text-slate-500 hover:text-emerald-600 flex items-center gap-2 transition-colors">
+          <button onClick={onReset} className="text-sm text-slate-500 hover:text-green-600 flex items-center gap-2 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             Start New Project
           </button>
         </div>
       </div>
 
-      {/* Save Controls */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h3 className="text-lg font-bold text-slate-900 mb-4">Save Your Design</h3>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={() => {
-              // Save as private
-              const saveEvent = new CustomEvent('saveDesign', { detail: { isPublic: false } });
-              window.dispatchEvent(saveEvent);
-            }}
-            className="flex-1 py-3 px-6 bg-slate-600 hover:bg-slate-500 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      {/* Shareable Link */}
+      {shareableUrl && (
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl shadow-sm border border-green-200 p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
-            Save as Private
-          </button>
-          <button
-            onClick={() => {
-              // Save as public
-              const saveEvent = new CustomEvent('saveDesign', { detail: { isPublic: true } });
-              window.dispatchEvent(saveEvent);
-            }}
-            className="flex-1 py-3 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Save & Share Publicly
-          </button>
+            <h3 className="text-lg font-bold text-slate-900">Share Your Design</h3>
+          </div>
+          <p className="text-sm text-slate-600 mb-4">Share this link with others to show them your design:</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={shareableUrl}
+              readOnly
+              className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-lg text-sm font-mono text-slate-700"
+            />
+            <button
+              onClick={copyShareLink}
+              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+            >
+              {copied ? (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Copy Link
+                </>
+              )}
+            </button>
+          </div>
         </div>
-        <p className="text-xs text-slate-500 mt-3 text-center">
-          Public designs will appear in the Community Gallery for others to discover
-        </p>
-      </div>
+      )}
 
       {/* Visuals Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
@@ -428,26 +480,41 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
                 <tr>
+                  <th className="px-4 py-3 w-16">Image</th>
                   <th className="px-4 py-3">Material</th>
                   <th className="px-4 py-3">Quantity</th>
                   <th className="px-4 py-3 text-right">Est. Cost</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {result.estimates.breakdown.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-slate-700">
-                      {item.name}
-                      <div className="text-xs text-slate-400 font-normal">{item.notes}</div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-700">{item.totalCost}</td>
-                  </tr>
-                ))}
+                {result.estimates.breakdown.map((item, idx) => {
+                  const ragImage = findRagImage(item.name);
+                  return (
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        {ragImage ? (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                            <img src={ragImage} alt={item.name} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-slate-700">
+                        {item.name}
+                        <div className="text-xs text-slate-400 font-normal">{item.notes}</div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-700">{item.totalCost}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
                 <tr>
-                  <td className="px-4 py-3" colSpan={2}>Estimated Total</td>
+                  <td className="px-4 py-3" colSpan={3}>Estimated Total</td>
                   <td className="px-4 py-3 text-right text-emerald-700">
                     {formatCurrency(result.estimates.totalCost)}
                   </td>
@@ -455,10 +522,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
               </tfoot>
             </table>
           </div>
-        </div >
+        </div>
 
         {/* Cost Breakdown Chart */}
-        < div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col" >
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
             Cost Distribution
@@ -501,57 +568,108 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
       }
 
       {/* RAG Product Gallery */}
-      {ragBudget && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                Matched Products from Database
-              </h3>
-              <p className="text-sm text-slate-600">Real items matched to your design via RAG</p>
+      {
+        ragBudget && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  Matched Products from Database
+                </h3>
+                <p className="text-sm text-slate-600">Real items matched to your design via RAG</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-500">Total Estimate</p>
+                <p className="text-2xl font-bold text-purple-700">${ragBudget.total_min_budget}</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-slate-500">Total Estimate</p>
-              <p className="text-2xl font-bold text-purple-700">${ragBudget.total_min_budget}</p>
-            </div>
-          </div>
 
-          {/* Horizontal Scrollable Thumbnail Gallery */}
-          <div className="overflow-x-auto pb-2 -mx-2 px-2">
-            <div className="flex gap-4 min-w-max">
-              {ragBudget.line_items.map((item, i) => (
-                <div key={i} className="flex-shrink-0 w-48 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 group">
-                  {item.image_url && (
-                    <div className="relative aspect-square bg-slate-100 overflow-hidden">
-                      <img
-                        src={item.image_url}
-                        alt={item.item}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                      <div className="absolute top-2 right-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
-                        ${item.cost}
+            {/* Horizontal Scrollable Thumbnail Gallery */}
+            <div className="overflow-x-auto pb-2 -mx-2 px-2">
+              <div className="flex gap-4 min-w-max">
+                {ragBudget.line_items.map((item, i) => (
+                  <div key={i} className="flex-shrink-0 w-48 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 group">
+                    {item.image_url && (
+                      <div className="relative aspect-square bg-slate-100 overflow-hidden">
+                        <img
+                          src={item.image_url}
+                          alt={item.item}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                        <div className="absolute top-2 right-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+                          ${item.cost}
+                        </div>
                       </div>
+                    )}
+                    <div className="p-3">
+                      <p className="font-semibold text-slate-800 text-sm mb-1 line-clamp-2">{item.item}</p>
+                      <p className="text-xs text-slate-500 line-clamp-1">{item.match}</p>
+                      <p className="text-xs text-purple-600 font-medium mt-1">{item.price_estimate}</p>
                     </div>
-                  )}
-                  <div className="p-3">
-                    <p className="font-semibold text-slate-800 text-sm mb-1 line-clamp-2">{item.item}</p>
-                    <p className="text-xs text-slate-500 line-clamp-1">{item.match}</p>
-                    <p className="text-xs text-purple-600 font-medium mt-1">{item.price_estimate}</p>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {isLoadingBudget && (
-        <div className="bg-purple-50 rounded-2xl p-8 text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-slate-600">Analyzing your design and matching products...</p>
+      {
+        isLoadingBudget && (
+          <div className="bg-purple-50 rounded-2xl p-8 text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-slate-600">Analyzing your design and matching products...</p>
+          </div>
+        )
+      }
+
+      {/* Save Your Design - At Bottom */}
+      <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl shadow-sm border border-green-200 p-8">
+        <h3 className="text-2xl font-bold text-slate-900 mb-3 text-center">💾 Save Your Design</h3>
+        <p className="text-slate-600 mb-6 text-center">Keep your design for future reference or share it with the community!</p>
+        <div className="flex flex-col sm:flex-row gap-4 max-w-2xl mx-auto">
+          <button
+            onClick={() => {
+              const saveEvent = new CustomEvent('saveDesign', {
+                detail: {
+                  isPublic: false,
+                  design: result,
+                  yardImageUrl: originalImage
+                }
+              });
+              window.dispatchEvent(saveEvent);
+            }}
+            className="flex-1 py-4 px-6 bg-slate-600 hover:bg-slate-700 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            Save Privately
+          </button>
+          <button
+            onClick={() => {
+              const saveEvent = new CustomEvent('saveDesign', {
+                detail: {
+                  isPublic: true,
+                  design: result,
+                  yardImageUrl: originalImage
+                }
+              });
+              window.dispatchEvent(saveEvent);
+            }}
+            className="flex-1 py-4 px-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg shadow-green-200 hover:shadow-xl hover:shadow-green-300 transform hover:-translate-y-0.5"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Share to Gallery
+          </button>
         </div>
-      )}
+        <p className="text-sm text-slate-500 mt-4 text-center">
+          Public designs will appear in the <strong>Community Gallery</strong> for others to discover and get inspired!
+        </p>
+      </div>
     </div >
   );
 };

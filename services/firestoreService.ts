@@ -15,7 +15,9 @@ import { GeneratedDesign } from '../types';
 
 export interface SavedDesign {
     id: string;
+    shortId: string; // 6-character shareable ID
     userId: string;
+    yardImageUrl?: string; // Original yard image for comparison
     isPublic?: boolean;
     createdAt: Date;
     renderImages: string[];
@@ -24,14 +26,26 @@ export interface SavedDesign {
     analysis: any;
 }
 
-export const saveDesign = async (userId: string, design: Omit<SavedDesign, 'id' | 'userId' | 'createdAt'>): Promise<string> => {
+// Generate a random 6-character alphanumeric ID
+const generateShortId = (): string => {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+};
+
+export const saveDesign = async (userId: string, design: Omit<SavedDesign, 'id' | 'userId' | 'createdAt' | 'shortId'>): Promise<{ id: string; shortId: string }> => {
+    const shortId = generateShortId();
     const docRef = await addDoc(collection(db, 'designs'), {
         userId,
+        shortId,
         ...design,
         isPublic: design.isPublic || false,
         createdAt: Timestamp.now(),
     });
-    return docRef.id;
+    return { id: docRef.id, shortId };
 };
 
 export const getUserDesigns = async (userId: string): Promise<SavedDesign[]> => {
@@ -95,6 +109,31 @@ export const getDesignById = async (designId: string): Promise<SavedDesign | nul
         }
     } catch (error) {
         console.error('Error fetching design:', error);
+        throw error;
+    }
+};
+
+export const getDesignByShortId = async (shortId: string): Promise<SavedDesign | null> => {
+    try {
+        const q = query(
+            collection(db, 'designs'),
+            where('shortId', '==', shortId)
+        );
+
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            return null;
+        }
+
+        const docSnap = querySnapshot.docs[0];
+        return {
+            id: docSnap.id,
+            ...docSnap.data(),
+            createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+        } as SavedDesign;
+    } catch (error) {
+        console.error('Error fetching design by shortId:', error);
         throw error;
     }
 };

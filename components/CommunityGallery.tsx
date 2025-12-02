@@ -14,6 +14,12 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
 
     useEffect(() => {
         loadDesigns();
+
+        // Listen for refresh events (e.g., after saving a new design)
+        const handleRefresh = () => loadDesigns();
+        window.addEventListener('refreshGallery', handleRefresh);
+
+        return () => window.removeEventListener('refreshGallery', handleRefresh);
     }, []);
 
     const loadDesigns = async () => {
