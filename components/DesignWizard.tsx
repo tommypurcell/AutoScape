@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { UploadArea } from './UploadArea';
-import { StyleGallery } from './StyleGallery';
 import { DesignStyle, LocationType, SpaceSize, DesignStyleGroups } from '../types';
 import { styleReferences } from '../data/styleReferences';
 import { Check, ChevronRight, ChevronLeft } from 'lucide-react';
@@ -53,7 +52,6 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
     onGenerate,
 }) => {
     const [currentStep, setCurrentStep] = useState(1);
-    const [styleSelectionMode, setStyleSelectionMode] = useState<'gallery' | 'upload'>('gallery');
 
     const steps = [
         { number: 1, title: 'Upload Photo', description: 'Add your yard image' },
@@ -62,7 +60,7 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
     ];
 
     const canProceedFromStep1 = yardImage !== null;
-    const canProceedFromStep2 = selectedGalleryStyleIds.length > 0 || styleImages.length > 0;
+    const canProceedFromStep2 = selectedStyle !== null; // Style is always selected by default
 
     const handleNext = () => {
         if (currentStep < 3) {
@@ -244,8 +242,8 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                                         key={style}
                                                         onClick={() => onStyleChange(style)}
                                                         className={`group relative rounded-xl overflow-hidden aspect-[4/3] transition-all ${isSelected
-                                                                ? 'ring-4 ring-green-600 ring-offset-2 shadow-xl scale-105 z-10'
-                                                                : 'hover:shadow-lg hover:scale-105 hover:z-10'
+                                                            ? 'ring-4 ring-green-600 ring-offset-2 shadow-xl scale-105 z-10'
+                                                            : 'hover:shadow-lg hover:scale-105 hover:z-10'
                                                             }`}
                                                     >
                                                         <img

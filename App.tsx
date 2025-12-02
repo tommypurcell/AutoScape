@@ -251,21 +251,21 @@ const AppContent: React.FC = () => {
         result
       }));
 
-      // Save to Firestore if user is logged in
+      // Save to Firestore if user is logged in and navigate to the saved design
       if (user) {
         try {
-          // We need to await the save to get the ID if we want to navigate to /result/:id
-          // But saveDesign currently returns void. 
-          // For now, let's just navigate with state.
-          await saveDesign(user.uid, result);
-          console.log('Design saved successfully');
+          const designId = await saveDesign(user.uid, result);
+          console.log('Design saved successfully with ID:', designId);
+          navigate(`/result/${designId}`);
         } catch (error) {
           console.error('Failed to save design:', error);
+          // Still navigate even if save failed, using state
+          navigate('/result/generated', { state: { result } });
         }
+      } else {
+        // For non-logged in users, navigate with state
+        navigate('/result/generated', { state: { result } });
       }
-
-      // Navigate to result page with the result data
-      navigate('/result/generated', { state: { result } });
 
     } catch (err) {
       console.error(err);
@@ -462,7 +462,9 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => (
   <AuthProvider>
-    <AppContent />
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   </AuthProvider>
 );
 

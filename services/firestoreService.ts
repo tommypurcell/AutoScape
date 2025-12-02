@@ -24,13 +24,14 @@ export interface SavedDesign {
     analysis: any;
 }
 
-export const saveDesign = async (userId: string, design: Omit<SavedDesign, 'id' | 'userId' | 'createdAt'>): Promise<void> => {
-    await addDoc(collection(db, 'designs'), {
+export const saveDesign = async (userId: string, design: Omit<SavedDesign, 'id' | 'userId' | 'createdAt'>): Promise<string> => {
+    const docRef = await addDoc(collection(db, 'designs'), {
         userId,
         ...design,
         isPublic: design.isPublic || false,
         createdAt: Timestamp.now(),
     });
+    return docRef.id;
 };
 
 export const getUserDesigns = async (userId: string): Promise<SavedDesign[]> => {
