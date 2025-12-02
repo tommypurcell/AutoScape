@@ -48,10 +48,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-fade-in">
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
                     {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
                 </h2>
-                <p className="text-slate-600 mb-6">
+                <p className="text-gray-600 mb-6">
                     {mode === 'signin' ? 'Sign in to save your designs' : 'Sign up to get started'}
                 </p>
 
@@ -65,7 +65,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 <button
                     onClick={handleGoogleSignIn}
                     disabled={loading}
-                    className="w-full bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 py-3 rounded-xl font-medium flex items-center justify-center gap-3 transition-all mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-3 transition-all mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -78,42 +78,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
 
                 <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-slate-200"></div>
+                        <div className="w-full border-t border-gray-200"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-4 bg-white text-slate-500">Or continue with email</span>
+                        <span className="px-4 bg-white text-gray-500">Or continue with email</span>
                     </div>
                 </div>
 
                 {/* Email/Password Form */}
                 <form onSubmit={handleEmailAuth} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all"
+                            className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-green-600 focus:ring-2 focus:ring-green-200 transition-all"
                             placeholder="you@example.com"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             minLength={6}
-                            className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all"
+                            className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-green-600 focus:ring-2 focus:ring-green-200 transition-all"
                             placeholder="••••••••"
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-green-700 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : 'Sign Up'}
                     </button>
@@ -122,7 +122,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 <div className="mt-6 text-center">
                     <button
                         onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-                        className="text-sm text-slate-600 hover:text-emerald-600 transition-colors"
+                        className="text-sm text-gray-600 hover:text-green-700 transition-colors"
                     >
                         {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
                     </button>

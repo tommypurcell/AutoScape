@@ -1,13 +1,74 @@
 import { Type } from "@google/genai";
 
+export enum LocationType {
+  HOME_GARDEN = "Home Garden",
+  BACKYARD = "Backyard",
+  FRONT_YARD = "Front Yard",
+  PARK = "Park",
+  COMMERCIAL = "Commercial Space",
+  ROOFTOP = "Rooftop Garden",
+}
+
+export enum SpaceSize {
+  SMALL = "Small (< 500 sq ft)",
+  MEDIUM = "Medium (500-2000 sq ft)",
+  LARGE = "Large (> 2000 sq ft)",
+}
+
+// Grouped design styles
+export const DesignStyleGroups = {
+  "Modern & Contemporary": [
+    "Modern Minimalist",
+    "Contemporary Urban",
+    "Scandinavian Simple",
+  ],
+  "Traditional & Classic": [
+    "English Cottage Garden",
+    "French Formal Garden",
+    "Victorian Garden",
+    "Colonial Garden",
+  ],
+  "Regional & Cultural": [
+    "Japanese Zen Garden",
+    "Mediterranean",
+    "Tropical Paradise",
+    "Desert Xeriscape",
+  ],
+  "Eco-Friendly & Natural": [
+    "Native Wildflower Meadow",
+    "Pollinator Garden",
+    "Sustainable Permaculture",
+    "Rain Garden",
+  ],
+  "Specialty Styles": [
+    "Mid-Century Modern",
+    "Rustic Farmhouse",
+    "Coastal Beach Garden",
+    "Mountain Lodge",
+  ],
+};
+
+// Flatten for backwards compatibility
 export enum DesignStyle {
-  MODERN = "Modern & Minimalist",
-  XERISCAPE = "Xeriscape & Drought Tolerant",
+  MODERN = "Modern Minimalist",
+  CONTEMPORARY = "Contemporary Urban",
+  SCANDINAVIAN = "Scandinavian Simple",
   COTTAGE = "English Cottage Garden",
+  FRENCH = "French Formal Garden",
+  VICTORIAN = "Victorian Garden",
+  COLONIAL = "Colonial Garden",
   JAPANESE = "Japanese Zen Garden",
-  TROPICAL = "Lush Tropical",
   MEDITERRANEAN = "Mediterranean",
-  NATIVE = "Native Wildflower",
+  TROPICAL = "Tropical Paradise",
+  XERISCAPE = "Desert Xeriscape",
+  NATIVE = "Native Wildflower Meadow",
+  POLLINATOR = "Pollinator Garden",
+  PERMACULTURE = "Sustainable Permaculture",
+  RAIN_GARDEN = "Rain Garden",
+  MID_CENTURY = "Mid-Century Modern",
+  RUSTIC = "Rustic Farmhouse",
+  COASTAL = "Coastal Beach Garden",
+  MOUNTAIN = "Mountain Lodge",
 }
 
 export interface MaterialItem {
@@ -59,6 +120,8 @@ export interface AppState {
   styleImagePreviews: string[];
   userPrompt: string;
   selectedStyle: DesignStyle | string;
+  locationType: LocationType;
+  spaceSize: SpaceSize;
   result: GeneratedDesign | null;
   error: string | null;
 }
