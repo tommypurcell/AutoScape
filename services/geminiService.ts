@@ -34,7 +34,8 @@ export const generateLandscapeDesign = async (
   yardFile: File,
   styleFiles: File[],
   prompt: string,
-  stylePreference: string
+  stylePreference: string,
+  onProgress?: (partialResult: Partial<GeneratedDesign>) => void
 ): Promise<GeneratedDesign> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
@@ -57,15 +58,12 @@ export const generateLandscapeDesign = async (
     // -------------------------------------------------------------------------
     // PHASE 1: SCENE UNDERSTANDING & DESIGN INTENT (Pro Model)
     // -------------------------------------------------------------------------
-    // Goal: Identify fixed geometry and define the redesign plan before rendering.
-
     console.log("Phase 1: Scene Understanding");
     const analysisParts: any[] = [
       { inlineData: { mimeType: yardFile.type, data: yardBase64 } },
       { text: `[The User's Yard]` }
     ];
 
-    // Add all style reference images
     if (styleFiles.length > 0) {
       styleFiles.forEach((styleFile, index) => {
         analysisParts.push({
@@ -77,7 +75,6 @@ export const generateLandscapeDesign = async (
       });
     }
 
-    // Strict prompt to force JSON output for geometry consistency
     analysisParts.push({
       text: `
       You are a Senior Landscape Architect.
@@ -117,8 +114,6 @@ export const generateLandscapeDesign = async (
     // -------------------------------------------------------------------------
     // PHASE 2: GENERATE 3D RENDER (Image Model)
     // -------------------------------------------------------------------------
-    // Goal: Redesign the single view using the scene context.
-
     console.log("Phase 2: Generating Render");
 
     const renderPrompt = `
@@ -153,11 +148,18 @@ export const generateLandscapeDesign = async (
     }
     const renderBase64Raw = renderImage.split(',')[1];
 
+    // EMIT PARTIAL RESULT: Render is ready!
+    if (onProgress) {
+      onProgress({
+        renderImages: [renderImage],
+        // We can emit empty/loading states for others if needed, or just omit them
+        // The UI should handle missing fields gracefully
+      });
+    }
+
     // -------------------------------------------------------------------------
     // PHASE 3: GENERATE 2D PLAN (Image Model)
     // -------------------------------------------------------------------------
-    // Goal: Derive strictly from the 3D render. No hallucination. No Labels.
-
     console.log("Phase 3: Generating Plan");
 
     const planPrompt = `
@@ -196,8 +198,6 @@ export const generateLandscapeDesign = async (
     // -------------------------------------------------------------------------
     // PHASE 4: COST & QUANTITY ANALYSIS (Pro Model)
     // -------------------------------------------------------------------------
-    // Goal: Accurate counting and estimation using the Pro model's reasoning.
-
     console.log("Phase 4: Cost Analysis");
     const analysisPrompt = `
       Act as a Senior Quantity Surveyor.
@@ -227,6 +227,7 @@ export const generateLandscapeDesign = async (
       }
     });
 
+    // Wait for both Plan and Analysis
     const [planRes, analysisRes] = await Promise.all([planPromise, analysisPromise]);
 
     const planImage = extractImage(planRes);
@@ -241,7 +242,6 @@ export const generateLandscapeDesign = async (
     // -------------------------------------------------------------------------
     // PHASE 5: RAG ENHANCEMENT (Optional)
     // -------------------------------------------------------------------------
-    // Enhance materials list with RAG plant data
     let plantPalette: any[] = [];
     let ragEnhanced = false;
 
@@ -269,7 +269,7 @@ export const generateLandscapeDesign = async (
       console.warn("RAG Enhancement unavailable:", error);
     }
 
-    return {
+    const finalResult: GeneratedDesign = {
       analysis: {
         currentLayout: "Scene Analyzed",
         designConcept: data.designConcept || `A ${stylePreference} transformation`,
@@ -283,9 +283,16 @@ export const generateLandscapeDesign = async (
         plantPalette,
         ragEnhanced,
       },
-      renderImages: [renderImage], // Return single image in array for compatibility
+      renderImages: [renderImage],
       planImage: planImageUri,
     };
+
+    // Final emit
+    if (onProgress) {
+      onProgress(finalResult);
+    }
+
+    return finalResult;
 
   } catch (error) {
     console.error("Gemini Generation Error:", error);
