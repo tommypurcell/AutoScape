@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { PlantPalette } from './PlantPalette';
 import { calculateRAGBudget } from '../services/ragBudgetService';
+import { ProductSwapModal } from './ProductSwapModal';
 import { useEffect } from 'react';
 
 interface RAGBudget {
@@ -32,7 +33,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [ragBudget, setRagBudget] = useState<RAGBudget | null>(null);
+
   const [isLoadingBudget, setIsLoadingBudget] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [swapModalOpen, setSwapModalOpen] = useState(false);
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
 
   // Automatically fetch RAG budget when component mounts
   useEffect(() => {
@@ -222,6 +227,50 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleSwapItem = (newItem: any) => {
+    if (!ragBudget || selectedItemIndex === null) return;
+
+    const newLineItems = [...ragBudget.line_items];
+    const oldItem = newLineItems[selectedItemIndex];
+
+    // Extract price from new item
+    let cost = 0;
+    if (newItem.price_estimate) {
+      const match = newItem.price_estimate.match(/\$(\d+)/);
+      if (match) cost = parseInt(match[1]);
+    }
+
+    newLineItems[selectedItemIndex] = {
+      ...oldItem,
+      match: newItem.specific_name || newItem.title,
+      price_estimate: newItem.price_estimate || 'N/A',
+      cost: cost,
+      image_url: newItem.image_url
+    };
+
+    const newTotal = newLineItems.reduce((sum, item) => sum + item.cost, 0);
+
+    setRagBudget({
+      ...ragBudget,
+      total_min_budget: newTotal,
+      line_items: newLineItems
+    });
+
+    setSwapModalOpen(false);
+    setSelectedItemIndex(null);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    if (!ragBudget) return;
+    const newLineItems = ragBudget.line_items.filter((_, i) => i !== index);
+    const newTotal = newLineItems.reduce((sum, item) => sum + item.cost, 0);
+    setRagBudget({
+      ...ragBudget,
+      total_min_budget: newTotal,
+      line_items: newLineItems
+    });
   };
 
   return (
@@ -579,9 +628,20 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
                 </h3>
                 <p className="text-sm text-slate-600">Real items matched to your design via RAG</p>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-slate-500">Total Estimate</p>
-                <p className="text-2xl font-bold text-purple-700">${ragBudget.total_min_budget}</p>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-slate-500">Total Estimate</p>
+                  <p className="text-2xl font-bold text-purple-700">${ragBudget.total_min_budget}</p>
+                </div>
+                <button
+                  onClick={() => setIsEditMode(!isEditMode)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isEditMode
+                    ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                >
+                  {isEditMode ? 'Done Editing' : 'Edit Components'}
+                </button>
               </div>
             </div>
 
@@ -589,7 +649,20 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
             <div className="overflow-x-auto pb-2 -mx-2 px-2">
               <div className="flex gap-4 min-w-max">
                 {ragBudget.line_items.map((item, i) => (
-                  <div key={i} className="flex-shrink-0 w-48 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 group">
+                  <div key={i} className="relative flex-shrink-0 w-48 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 group">
+                    {isEditMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveItem(i);
+                        }}
+                        className="absolute top-2 left-2 z-10 bg-red-500 text-white p-1.5 rounded-full shadow-md hover:bg-red-600 transition-colors"
+                        title="Remove item"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    )}
+
                     {item.image_url && (
                       <div className="relative aspect-square bg-slate-100 overflow-hidden">
                         <img
@@ -600,6 +673,21 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
                         <div className="absolute top-2 right-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
                           ${item.cost}
                         </div>
+
+                        {isEditMode && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => {
+                                setSelectedItemIndex(i);
+                                setSwapModalOpen(true);
+                              }}
+                              className="bg-white text-slate-900 px-4 py-2 rounded-lg font-medium text-sm shadow-xl hover:bg-emerald-50 transition-colors flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                              Swap
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                     <div className="p-3">
@@ -611,6 +699,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
                 ))}
               </div>
             </div>
+
+            <ProductSwapModal
+              isOpen={swapModalOpen}
+              onClose={() => setSwapModalOpen(false)}
+              currentItemName={selectedItemIndex !== null ? ragBudget.line_items[selectedItemIndex].item : ''}
+              onSelect={handleSwapItem}
+            />
           </div>
         )
       }

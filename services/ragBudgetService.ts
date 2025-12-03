@@ -17,7 +17,7 @@ interface Budget {
 const BUDGET_API_BASE =
     import.meta.env.VITE_BUDGET_API_BASE_URL ||
     process.env.BUDGET_API_BASE_URL ||
-    "http://localhost:8001";
+    "http://localhost:8002";
 
 export async function calculateRAGBudget(designImageBase64: string): Promise<Budget | null> {
     try {
