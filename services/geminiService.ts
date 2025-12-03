@@ -1,3 +1,8 @@
+// geminiService.ts
+// This file contains the logic for interacting with the Google GenAI API
+// It is used to generate landscape designs based on user input
+
+
 import { GoogleGenAI } from "@google/genai";
 import { AnalysisSchema, GeneratedDesign } from "../types";
 

@@ -1,3 +1,8 @@
+// DesignContext.tsx
+// This file contains the logic for interacting with the Google GenAI API
+// It is used to generate landscape designs based on user input
+
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { AppState, DesignStyle, GeneratedDesign } from '../types';
 import { styleReferences } from '../data/styleReferences';
