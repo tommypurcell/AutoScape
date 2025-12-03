@@ -103,7 +103,7 @@ export const ResultsView: React.FC = () => {
       console.log('📤 Sending request body keys:', Object.keys(requestBody));
       console.log('📤 original_image present:', !!requestBody.original_image);
 
-      const response = await fetch('http://localhost:8001/api/generate-video', {
+      const response = await fetch('http://localhost:8002/api/generate-video', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -45,10 +45,11 @@ export default function GenerativeDesign() {
         formData.append('concept_image', conceptImage);
 
         try {
-            const response = await fetch('http://localhost:8002/api/freepik/generate-design', {
+            const response = await fetch('http://localhost:8002/api/enhance-with-rag', {
                 method: 'POST',
                 body: formData,
             });
+
 
             if (!response.ok) {
                 throw new Error(`API error: ${response.statusText}`);
