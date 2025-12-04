@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GeneratedDesign, MaterialItem } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { PlantPalette } from './PlantPalette';
 import { calculateRAGBudget } from '../services/ragBudgetService';
+import { useDesign } from '../contexts/DesignContext';
 import { ProductSwapModal } from './ProductSwapModal';
-import { useEffect } from 'react';
 
 interface RAGBudget {
   total_min_budget: number;
@@ -19,14 +20,9 @@ interface RAGBudget {
   }>;
 }
 
-interface ResultsViewProps {
-  result: GeneratedDesign;
-  onReset: () => void;
-  originalImage: string | null;
-  designShortId?: string; // For sharing
-}
-
-export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, originalImage, designShortId }) => {
+export const ResultsView: React.FC = () => {
+  const navigate = useNavigate();
+  const { result, yardImagePreview, resetDesign } = useDesign();
   const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare' | 'video'>('compare');
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
@@ -38,6 +34,21 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
   const [isEditMode, setIsEditMode] = useState(false);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
+
+  // Redirect if no result
+  useEffect(() => {
+    if (!result) {
+      navigate('/upload');
+    }
+  }, [result, navigate]);
+
+  if (!result) return null;
+
+  const originalImage = yardImagePreview;
+  const onReset = () => {
+    resetDesign();
+    navigate('/upload');
+  };
 
   // Automatically fetch RAG budget when component mounts
   useEffect(() => {
@@ -97,7 +108,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
       console.log('📤 Sending request body keys:', Object.keys(requestBody));
       console.log('📤 original_image present:', !!requestBody.original_image);
 
-      const response = await fetch('http://localhost:8001/api/generate-video', {
+      const response = await fetch('http://localhost:8002/api/generate-video', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -441,6 +452,12 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
                 afterLabel="Original"
               />
             </div>
+          ) : activeTab === 'plan' && !result.planImage ? (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50">
+              <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mb-4"></div>
+              <p className="text-slate-600 font-medium">Drafting 2D Architectural Plan...</p>
+              <p className="text-slate-400 text-sm mt-2">This usually takes about 10-15 seconds</p>
+            </div>
           ) : activeTab !== 'video' && activeImage ? (
             <img src={activeImage} alt={activeTab} className="w-full h-full object-cover transition-opacity duration-300" />
           ) : activeTab !== 'video' && !activeImage ? (
@@ -506,51 +523,44 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
       </div >
 
       {/* Analysis & Costs Grid */}
-      < div className="grid grid-cols-1 lg:grid-cols-2 gap-8" >
+      {result.estimates.totalCost === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center animate-pulse">
+          <div className="w-16 h-16 bg-slate-200 rounded-full mx-auto mb-4"></div>
+          <h3 className="text-xl font-bold text-slate-800 mb-2">Calculating Project Estimates...</h3>
+          <p className="text-slate-500">Analyzing materials, quantities, and labor costs based on the design.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-        {/* Material List */}
-        < div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 relative" >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-              Material List & Estimates
-            </h3>
-            <button
-              onClick={downloadCSV}
-              className="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-slate-200"
-              title="Download as CSV (Excel)"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              Export to Excel
-            </button>
-          </div>
+          {/* Material List */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 relative">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                Material List & Estimates
+              </h3>
+              <button
+                onClick={downloadCSV}
+                className="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-slate-200"
+                title="Download as CSV (Excel)"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Export to Excel
+              </button>
+            </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-                <tr>
-                  <th className="px-4 py-3 w-16">Image</th>
-                  <th className="px-4 py-3">Material</th>
-                  <th className="px-4 py-3">Quantity</th>
-                  <th className="px-4 py-3 text-right">Est. Cost</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {result.estimates.breakdown.map((item, idx) => {
-                  const ragImage = findRagImage(item.name);
-                  return (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    <th className="px-4 py-3">Material</th>
+                    <th className="px-4 py-3">Quantity</th>
+                    <th className="px-4 py-3 text-right">Est. Cost</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {result.estimates.breakdown.map((item, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-3">
-                        {ragImage ? (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
-                            <img src={ragImage} alt={item.name} className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                          </div>
-                        )}
-                      </td>
                       <td className="px-4 py-3 font-medium text-slate-700">
                         {item.name}
                         <div className="text-xs text-slate-400 font-normal">{item.notes}</div>
@@ -558,50 +568,50 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, origi
                       <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
                       <td className="px-4 py-3 text-right font-semibold text-slate-700">{item.totalCost}</td>
                     </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
-                <tr>
-                  <td className="px-4 py-3" colSpan={3}>Estimated Total</td>
-                  <td className="px-4 py-3 text-right text-emerald-700">
-                    {formatCurrency(result.estimates.totalCost)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        {/* Cost Breakdown Chart */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
-            Cost Distribution
-          </h3>
-          <div className="flex-1 min-h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11, fill: '#64748b' }} />
-                <Tooltip
-                  formatter={(value: number) => [`$${value}`, 'Cost']}
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#10b981' : '#3b82f6'} />
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                </tbody>
+                <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
+                  <tr>
+                    <td className="px-4 py-3" colSpan={2}>Estimated Total</td>
+                    <td className="px-4 py-3 text-right text-emerald-700">
+                      {formatCurrency(result.estimates.totalCost)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
-          <p className="text-xs text-slate-400 mt-4 text-center">
-            *Estimates are based on national averages and visual approximation. Labor costs may vary significantly by region.
-          </p>
-        </div >
 
-      </div >
+          {/* Cost Breakdown Chart */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col">
+            <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+              Cost Distribution
+            </h3>
+            <div className="flex-1 min-h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11, fill: '#64748b' }} />
+                  <Tooltip
+                    formatter={(value: number) => [`$${value}`, 'Cost']}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#10b981' : '#3b82f6'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-xs text-slate-400 mt-4 text-center">
+              *Estimates are based on national averages and visual approximation. Labor costs may vary significantly by region.
+            </p>
+          </div>
+
+        </div>
+      )}
 
       {/* RAG Plant Palette */}
       {

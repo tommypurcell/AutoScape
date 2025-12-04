@@ -27,11 +27,11 @@ export async function calculateRAGBudget(designImageBase64: string): Promise<Bud
         const formData = new FormData();
         formData.append('design_image', blob, 'design.png');
 
-        const apiUrl = `${BUDGET_API_BASE.replace(/\/$/, '')}/api/freepik/analyze-and-budget`;
-        const response = await fetch(apiUrl, {
+        const response = await fetch('http://localhost:8002/api/enhance-with-rag', {
             method: 'POST',
             body: formData,
         });
+
 
         if (!response.ok) {
             console.error('RAG budget API failed:', response.statusText);

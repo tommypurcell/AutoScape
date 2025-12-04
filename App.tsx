@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UploadArea } from './components/UploadArea';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ResultsView } from './components/ResultsView';
@@ -9,25 +9,27 @@ import { AppState, DesignStyle, LocationType, SpaceSize } from './types';
 import { styleReferences } from './data/styleReferences';
 import { urlsToFiles } from './utils/imageUtils';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DesignProvider, useDesign } from './contexts/DesignContext';
 import { AuthModal } from './components/AuthModal';
 import { saveDesign, getUserDesigns, SavedDesign, deleteDesign, getDesignById } from './services/firestoreService';
 import { uploadBase64Image } from './services/storageService';
 import { Sidebar } from './components/Sidebar';
 import { AccountSettings } from './components/AccountSettings';
-import { DesignHistory } from './components/DesignHistory';
 import CommunityGallery from './components/CommunityGallery';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AboutPage } from './components/AboutPage';
 import { LandingPage } from './components/LandingPage';
 import { Menu } from 'lucide-react';
-import { TutorialWalkthrough } from './components/TutorialWalkthrough';
-import { tutorialSteps } from './data/tutorialSteps';
 import { DesignWizard } from './components/DesignWizard';
 import { ResultsPage } from './components/ResultsPage';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const { loadDesign, setYardImage, setYardImagePreview, setResult } = useDesign();
+
+  // Local state for design wizard (not in context)
   const [state, setState] = useState<AppState>({
     step: 'upload',
     yardImage: null,
@@ -42,21 +44,12 @@ const AppContent: React.FC = () => {
     error: null,
   });
 
-  // Gallery selection state
   const [selectedGalleryStyleIds, setSelectedGalleryStyleIds] = useState<string[]>([]);
-  const [styleSelectionMode, setStyleSelectionMode] = useState<'gallery' | 'upload'>('gallery');
-  const { user, logout } = useAuth();
+
+  // UI State for Modals/Overlays
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showLanding, setShowLanding] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
-  const [showCommunityGallery, setShowCommunityGallery] = useState(false);
-  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
-  const [showAboutPage, setShowAboutPage] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
-  const [hasSeenTutorial, setHasSeenTutorial] = useState(() => {
-    return localStorage.getItem('autoscape_tutorial_completed') === 'true';
-  });
 
   const handleYardSelect = (files: File[]) => {
     if (files.length > 0) {
@@ -130,6 +123,7 @@ const AppContent: React.FC = () => {
   };
 
   const handleLoadDesign = (design: SavedDesign) => {
+    loadDesign(design);
     navigate(`/result/${design.id}`);
   };
 
@@ -148,6 +142,8 @@ const AppContent: React.FC = () => {
       styleImagePreviews: [],
       userPrompt: '',
       selectedStyle: DesignStyle.MODERN,
+      locationType: LocationType.BACKYARD,
+      spaceSize: SpaceSize.MEDIUM,
       result: null,
       error: null,
     });
@@ -159,26 +155,8 @@ const AppContent: React.FC = () => {
     navigate('/create');
   };
 
-  const handleStartTutorial = () => {
-    setShowTutorial(true);
-    navigate('/create');
-    resetToUploadState();
-  };
-
-  const handleCompleteTutorial = () => {
-    localStorage.setItem('autoscape_tutorial_completed', 'true');
-    setHasSeenTutorial(true);
-    setShowTutorial(false);
-  };
-
-  const getCurrentPage = (): 'landing' | 'upload' | 'processing' | 'results' => {
-    if (location.pathname === '/') return 'landing';
-    if (state.step === 'processing') return 'processing';
-    if (location.pathname.startsWith('/result')) return 'results';
-    return 'upload';
-  };
-
   const handleSidebarNavigate = (action: string) => {
+    setShowSidebar(false);
     if (action === 'new') {
       handleNewDesign();
     } else if (action === 'settings') {
@@ -243,7 +221,6 @@ const AppContent: React.FC = () => {
       // Merge gallery selections with custom uploads
       let allStyleImages = [...state.styleImages];
 
-
       // Convert gallery selections to File objects
       if (selectedGalleryStyleIds.length > 0) {
         const selectedStyles = styleReferences.filter(style =>
@@ -266,6 +243,9 @@ const AppContent: React.FC = () => {
         step: 'results',
         result
       }));
+
+      // Update context with the result
+      setResult(result);
 
       // Save to Firestore if user is logged in and navigate to the saved design
       if (user) {
@@ -294,17 +274,22 @@ const AppContent: React.FC = () => {
             yardImageUrl,
           });
           console.log('Design saved successfully with shortId:', shortId);
+
+          // Update context with yard image
+          setYardImagePreview(yardImageUrl);
+
           navigate(`/result/${shortId}`, { state: { result, yardImageUrl } });
         } catch (error) {
           console.error('Failed to save design:', error);
           // Still navigate even if save failed, using state
+          setYardImagePreview(state.yardImagePreview);
           navigate('/result/generated', { state: { result, yardImageUrl: state.yardImagePreview } });
         }
       } else {
         // For non-logged in users, navigate with state
+        setYardImagePreview(state.yardImagePreview);
         navigate('/result/generated', { state: { result, yardImageUrl: state.yardImagePreview } });
       }
-
 
     } catch (err) {
       console.error(err);
@@ -383,7 +368,7 @@ const AppContent: React.FC = () => {
           <LandingPage
             onGetStarted={() => navigate('/create')}
             onAbout={() => navigate('/about')}
-            onStartTutorial={handleStartTutorial}
+            onStartTutorial={() => navigate('/create')}
           />
         } />
 
@@ -448,12 +433,11 @@ const AppContent: React.FC = () => {
         <Route path="/admin" element={<AdminDashboard onClose={() => navigate('/')} />} />
       </Routes>
 
-      {/* Auth Modal */}
+      {/* Modals & Overlays */}
       {showAuthModal && !user && (
         <AuthModal onClose={() => setShowAuthModal(false)} />
       )}
 
-      {/* Sidebar */}
       <Sidebar
         isOpen={showSidebar}
         onClose={() => setShowSidebar(false)}
@@ -470,39 +454,21 @@ const AppContent: React.FC = () => {
         onNavigate={handleSidebarNavigate}
       />
 
-      {/* Account Settings */}
       {showAccountSettings && (
         <AccountSettings onClose={() => setShowAccountSettings(false)} />
       )}
-
-      {/* Admin Dashboard - Modal version if accessed via sidebar/state */}
-      {showAdminDashboard && (
-        <AdminDashboard onClose={() => setShowAdminDashboard(false)} />
-      )}
-
-      {/* About Page - Modal version if accessed via sidebar/state */}
-      {showAboutPage && (
-        <AboutPage onClose={() => setShowAboutPage(false)} />
-      )}
-
-      {/* Tutorial Walkthrough */}
-      <TutorialWalkthrough
-        steps={tutorialSteps}
-        isOpen={showTutorial}
-        onClose={() => setShowTutorial(false)}
-        onComplete={handleCompleteTutorial}
-        currentPage={getCurrentPage()}
-      />
     </div>
   );
 };
 
 const App: React.FC = () => (
-  <AuthProvider>
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
-  </AuthProvider>
+  <BrowserRouter>
+    <AuthProvider>
+      <DesignProvider>
+        <AppContent />
+      </DesignProvider>
+    </AuthProvider>
+  </BrowserRouter>
 );
 
 export default App;
