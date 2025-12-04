@@ -4,31 +4,24 @@ import { GeneratedDesign, MaterialItem } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { PlantPalette } from './PlantPalette';
-import { calculateRAGBudget } from '../services/ragBudgetService';
+import { saveDesign } from '../services/firestoreService';
+import { useAuth } from '../contexts/AuthContext';
 import { useDesign } from '../contexts/DesignContext';
 
-interface RAGBudget {
-  total_min_budget: number;
-  currency: string;
-  line_items: Array<{
-    item: string;
-    match: string;
-    price_estimate: string;
-    cost: number;
-    image_url?: string;
-  }>;
-}
+
 
 export const ResultsView: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { result, yardImagePreview, resetDesign } = useDesign();
   const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare' | 'video'>('compare');
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
-  const [ragBudget, setRagBudget] = useState<RAGBudget | null>(null);
-  const [isLoadingBudget, setIsLoadingBudget] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
 
   // Redirect if no result
   useEffect(() => {
@@ -45,21 +38,33 @@ export const ResultsView: React.FC = () => {
     navigate('/upload');
   };
 
-  // Automatically fetch RAG budget when component mounts
-  useEffect(() => {
-    const fetchBudget = async () => {
-      if (!result.renderImages[0]) return;
+  const handleSaveDesign = async (isPublic: boolean) => {
+    if (!user) {
+      alert('Please sign in to save your design');
+      return;
+    }
 
-      setIsLoadingBudget(true);
-      // Extract base64 from data URL
-      const base64 = result.renderImages[0].split(',')[1];
-      const budget = await calculateRAGBudget(base64);
-      setRagBudget(budget);
-      setIsLoadingBudget(false);
-    };
+    if (!result) {
+      alert('No design to save');
+      return;
+    }
 
-    fetchBudget();
-  }, [result.renderImages]);
+    setIsSaving(true);
+    setSaveSuccess(null);
+
+    try {
+      await saveDesign(user.uid, result, isPublic);
+      setSaveSuccess(isPublic ? 'Design saved and shared publicly!' : 'Design saved privately!');
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch (error) {
+      console.error('Failed to save design:', error);
+      alert('Failed to save design. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleGenerateVideo = async () => {
     if (!originalImage || !result.renderImages[currentRenderIndex]) return;
@@ -174,7 +179,7 @@ export const ResultsView: React.FC = () => {
 
   const chartData = result.estimates.breakdown.map(item => ({
     name: item.name.length > 15 ? item.name.substring(0, 15) + '...' : item.name,
-    cost: parseFloat(item.totalCost.replace(/[^0-9.]/g, '')) || 0
+    cost: parseFloat((item.totalCost || "0").replace(/[^0-9.]/g, '')) || 0
   }));
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
@@ -206,37 +211,73 @@ export const ResultsView: React.FC = () => {
       {/* Save Controls */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
         <h3 className="text-lg font-bold text-slate-900 mb-4">Save Your Design</h3>
+
+        {/* Success Message */}
+        {saveSuccess && (
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {saveSuccess}
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-4">
           <button
-            onClick={() => {
-              // Save as private
-              const saveEvent = new CustomEvent('saveDesign', { detail: { isPublic: false } });
-              window.dispatchEvent(saveEvent);
-            }}
-            className="flex-1 py-3 px-6 bg-slate-600 hover:bg-slate-500 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+            onClick={() => handleSaveDesign(false)}
+            disabled={isSaving || !user}
+            className="flex-1 py-3 px-6 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            Save as Private
+            {isSaving ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Save as Private
+              </>
+            )}
           </button>
           <button
-            onClick={() => {
-              // Save as public
-              const saveEvent = new CustomEvent('saveDesign', { detail: { isPublic: true } });
-              window.dispatchEvent(saveEvent);
-            }}
-            className="flex-1 py-3 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+            onClick={() => handleSaveDesign(true)}
+            disabled={isSaving || !user}
+            className="flex-1 py-3 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Save & Share Publicly
+            {isSaving ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Save & Share Publicly
+              </>
+            )}
           </button>
         </div>
-        <p className="text-xs text-slate-500 mt-3 text-center">
-          Public designs will appear in the Community Gallery for others to discover
-        </p>
+        {!user && (
+          <p className="text-xs text-amber-600 mt-3 text-center font-medium">
+            Please sign in to save your design
+          </p>
+        )}
+        {user && (
+          <p className="text-xs text-slate-500 mt-3 text-center">
+            Public designs will appear in the Community Gallery for others to discover
+          </p>
+        )}
       </div>
 
       {/* Visuals Section */}
@@ -526,58 +567,7 @@ export const ResultsView: React.FC = () => {
         )
       }
 
-      {/* RAG Product Gallery */}
-      {ragBudget && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                Matched Products from Database
-              </h3>
-              <p className="text-sm text-slate-600">Real items matched to your design via RAG</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-slate-500">Total Estimate</p>
-              <p className="text-2xl font-bold text-purple-700">${ragBudget.total_min_budget}</p>
-            </div>
-          </div>
 
-          {/* Horizontal Scrollable Thumbnail Gallery */}
-          <div className="overflow-x-auto pb-2 -mx-2 px-2">
-            <div className="flex gap-4 min-w-max">
-              {ragBudget.line_items.map((item, i) => (
-                <div key={i} className="flex-shrink-0 w-48 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 group">
-                  {item.image_url && (
-                    <div className="relative aspect-square bg-slate-100 overflow-hidden">
-                      <img
-                        src={item.image_url}
-                        alt={item.item}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                      <div className="absolute top-2 right-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
-                        ${item.cost}
-                      </div>
-                    </div>
-                  )}
-                  <div className="p-3">
-                    <p className="font-semibold text-slate-800 text-sm mb-1 line-clamp-2">{item.item}</p>
-                    <p className="text-xs text-slate-500 line-clamp-1">{item.match}</p>
-                    <p className="text-xs text-purple-600 font-medium mt-1">{item.price_estimate}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isLoadingBudget && (
-        <div className="bg-purple-50 rounded-2xl p-8 text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-slate-600">Analyzing your design and matching products...</p>
-        </div>
-      )}
     </div >
   );
 };

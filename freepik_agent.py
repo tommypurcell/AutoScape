@@ -5,7 +5,13 @@ from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from fastembed import TextEmbedding, ImageEmbedding
-import google.generativeai as genai
+from fastembed import TextEmbedding, ImageEmbedding
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+    logging.warning("⚠️ google.generativeai not found. AI features will be disabled.")
+
 from pricing_data import get_pricing_context
 from PIL import Image
 
@@ -50,15 +56,17 @@ class FreepikLandscapingAgent:
         
         # Initialize Gemini
         gemini_key = os.getenv("GEMINI_API_KEY")
-        if gemini_key:
-            genai.configure(api_key=gemini_key)
+        if gemini_key and genai:
             genai.configure(api_key=gemini_key)
             self.gemini_model = genai.GenerativeModel("gemini-2.0-flash")
             self.image_gen_model = genai.GenerativeModel("gemini-2.0-flash-exp-image-generation")
             logger.info("✅ Gemini initialized")
         else:
             self.gemini_model = None
-            logger.warning("⚠️  GEMINI_API_KEY not found, AI features disabled")
+            if not genai:
+                logger.warning("⚠️ google.generativeai module not loaded")
+            else:
+                logger.warning("⚠️ GEMINI_API_KEY not found, AI features disabled")
         
         logger.info("✅ FreepikLandscapingAgent initialized")
     

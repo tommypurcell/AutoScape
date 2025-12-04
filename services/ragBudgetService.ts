@@ -15,28 +15,6 @@ interface Budget {
 }
 
 export async function calculateRAGBudget(designImageBase64: string): Promise<Budget | null> {
-    try {
-        // Convert base64 to blob
-        const blob = await fetch(`data:image/png;base64,${designImageBase64}`).then(r => r.blob());
-
-        const formData = new FormData();
-        formData.append('design_image', blob, 'design.png');
-
-        const response = await fetch('http://localhost:8002/api/enhance-with-rag', {
-            method: 'POST',
-            body: formData,
-        });
-
-
-        if (!response.ok) {
-            console.error('RAG budget API failed:', response.statusText);
-            return null;
-        }
-
-        const data = await response.json();
-        return data.budget;
-    } catch (error) {
-        console.error('Failed to calculate RAG budget:', error);
-        return null;
-    }
+    console.warn("calculateRAGBudget is deprecated. RAG enhancement is now handled directly in the generation pipeline.");
+    return null;
 }

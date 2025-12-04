@@ -149,13 +149,14 @@ export const DesignConfiguration: React.FC = () => {
             setResult(finalResult);
             setIsProcessing(false);
 
-            // Save to Firestore if user is logged in
+            // Save to Firestore if user is logged in (as private by default)
             if (user) {
                 try {
-                    await saveDesign(user.uid, finalResult);
+                    await saveDesign(user.uid, finalResult, false);
                     console.log('Design saved successfully');
                 } catch (error) {
                     console.error('Failed to save design:', error);
+                    // Don't block the user flow if save fails
                 }
             }
 

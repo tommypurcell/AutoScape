@@ -32,36 +32,7 @@ export default function GenerativeDesign() {
     const [error, setError] = useState<string | null>(null);
 
     const handleGenerate = async () => {
-        if (!placeImage || !conceptImage) {
-            setError('Please upload both images');
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        const formData = new FormData();
-        formData.append('place_image', placeImage);
-        formData.append('concept_image', conceptImage);
-
-        try {
-            const response = await fetch('http://localhost:8002/api/enhance-with-rag', {
-                method: 'POST',
-                body: formData,
-            });
-
-
-            if (!response.ok) {
-                throw new Error(`API error: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            setResult(data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to generate design');
-        } finally {
-            setLoading(false);
-        }
+        setError("This feature is currently being updated to use the new generation pipeline. Please use the main Design Wizard.");
     };
 
     return (
