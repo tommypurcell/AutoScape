@@ -128,16 +128,29 @@ export const saveDesign = async (
 export const getUserDesigns = async (userId: string): Promise<SavedDesign[]> => {
     const q = query(
         collection(db, 'designs'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
+        // orderBy('createdAt', 'desc') // Removed to avoid composite index requirement
     );
 
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt.toDate(),
-    })) as SavedDesign[];
+    try {
+        const querySnapshot = await getDocs(q);
+        const designs = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt.toDate(),
+        })) as SavedDesign[];
+
+        // Sort client-side instead
+        return designs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    } catch (error: any) {
+        console.error('Error fetching user designs:', error);
+        if (error.code === 'permission-denied') {
+            console.error('Permission denied. Check Firestore Rules and Auth state.');
+        } else if (error.code === 'failed-precondition') {
+            console.error('Failed precondition. Likely missing index.', error.message);
+        }
+        throw error;
+    }
 };
 
 export const deleteDesign = async (designId: string): Promise<void> => {
