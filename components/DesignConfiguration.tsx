@@ -35,6 +35,7 @@ export const DesignConfiguration: React.FC = () => {
         styleImages,
         styleImagePreviews,
         userPrompt,
+        budget,
         selectedStyle,
         error,
         selectedGalleryStyleIds,
@@ -44,6 +45,7 @@ export const DesignConfiguration: React.FC = () => {
         removeStyleImage,
         clearAllStyles,
         setUserPrompt,
+        setBudget,
         setSelectedStyle,
         setResult,
         setError,
@@ -117,6 +119,7 @@ export const DesignConfiguration: React.FC = () => {
                 allStyleImages,
                 userPrompt,
                 finalStyle,
+                budget,
                 (partial) => {
                     // Create a safe result object with defaults for missing data
                     const safeResult: any = {
@@ -392,6 +395,17 @@ export const DesignConfiguration: React.FC = () => {
                                 value={userPrompt}
                                 onChange={(e) => setUserPrompt(e.target.value)}
                             />
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Budget Range (Optional)</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. $5,000 - $10,000, Under $2,000, Unlimited"
+                                    value={budget}
+                                    onChange={(e) => setBudget(e.target.value)}
+                                    className="w-full p-4 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 transition-all"
+                                />
+                            </div>
                         </div>
                     )}
 
@@ -418,6 +432,10 @@ export const DesignConfiguration: React.FC = () => {
                                     <div>
                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Style</span>
                                         <p className="font-medium text-slate-800">{customStyle || selectedStyle}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Budget</span>
+                                        <p className="font-medium text-slate-800">{budget || "Not specified"}</p>
                                     </div>
                                     <div>
                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Inspiration</span>
