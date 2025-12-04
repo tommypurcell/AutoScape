@@ -40,6 +40,7 @@ export const generateLandscapeDesign = async (
   styleFiles: File[],
   prompt: string,
   stylePreference: string,
+  budget: string,
   onProgress?: (partialResult: Partial<GeneratedDesign>) => void
 ): Promise<GeneratedDesign> => {
   const apiKey = process.env.API_KEY;
@@ -97,6 +98,7 @@ export const generateLandscapeDesign = async (
          }
       
       2. DESIGN JSON (The Changes): Apply the user's request: "${prompt}" in style "${stylePreference}".
+         ${budget ? `IMPORTANT: The user has a budget of "${budget}". Ensure the design features and materials are realistic for this budget.` : ''}
          Structure:
          {
            "newHardscape": "...",
@@ -252,8 +254,12 @@ export const generateLandscapeDesign = async (
       Your task:
       Analyze the rendered image and the design context to produce a DETAILED QUANTITY TAKEOFF in STRICT JSON format.
       
-      You must break down the design into specific categories: Plants, Hardscape, Features, Structures, Furniture.
-      For each item, extract the Name and Quantity.
+      TASK: 
+      1. VISUAL IDENTIFICATION: Scan the image and list every distinct material and plant group mentioned in the Design JSON.
+      2. ESTIMATION: Estimate the area (sq ft) or count (qty) for each item based on a standard residential yard size.
+      3. PRICING: Apply realistic US market rates (materials + installation).
+      ${budget ? `4. BUDGET CHECK: The user's target budget is "${budget}". If the total exceeds this, suggest cost-saving alternatives in the "visualDescription" or "designConcept" fields.` : ''}
+      5. LABOR: You MUST include a separate line item for "Labor & Installation" (typically 30-50% of the project total) in the materials list.
       
       RETURN JSON ONLY. NO TEXT.
 

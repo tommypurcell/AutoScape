@@ -15,6 +15,7 @@ interface DesignContextType {
     styleImages: File[];
     styleImagePreviews: string[];
     userPrompt: string;
+    budget: string;
     selectedStyle: DesignStyle;
     result: GeneratedDesign | null;
     error: string | null;
@@ -30,6 +31,7 @@ interface DesignContextType {
     removeStyleImage: (index: number) => void;
     clearAllStyles: () => void;
     setUserPrompt: (prompt: string) => void;
+    setBudget: (budget: string) => void;
     setSelectedStyle: (style: DesignStyle) => void;
     setResult: (result: GeneratedDesign | null) => void;
     setError: (error: string | null) => void;
@@ -53,6 +55,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const [styleImages, setStyleImages] = useState<File[]>([]);
     const [styleImagePreviews, setStyleImagePreviews] = useState<string[]>([]);
     const [userPrompt, setUserPrompt] = useState('');
+    const [budget, setBudget] = useState('');
     const [selectedStyle, setSelectedStyle] = useState<DesignStyle>(DesignStyle.MODERN);
     const [result, setResult] = useState<GeneratedDesign | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -115,6 +118,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setStyleImages([]);
         setStyleImagePreviews([]);
         setUserPrompt('');
+        setBudget('');
         setSelectedStyle(DesignStyle.MODERN);
         setResult(null);
         setError(null);
@@ -139,6 +143,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             styleImages,
             styleImagePreviews,
             userPrompt,
+            budget,
             selectedStyle,
             result,
             error,
@@ -150,6 +155,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             removeStyleImage,
             clearAllStyles,
             setUserPrompt,
+            setBudget,
             setSelectedStyle,
             setResult,
             setError,
