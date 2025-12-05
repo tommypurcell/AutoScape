@@ -22,6 +22,7 @@ import { LandingPage } from './components/LandingPage';
 import { Menu } from 'lucide-react';
 import { DesignWizard } from './components/DesignWizard';
 import { ResultsPage } from './components/ResultsPage';
+import { BusinessPage } from './components/BusinessPage';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -325,7 +326,7 @@ const AppContent: React.FC = () => {
             {/* Navigation Links */}
             <div className="hidden md:flex items-center gap-6">
               <button onClick={() => navigate('/about')} className="text-gray-700 hover:text-green-700 transition-colors font-normal">About</button>
-              <button className="text-gray-700 hover:text-green-700 transition-colors font-normal">Business</button>
+              <button onClick={() => navigate('/business')} className="text-gray-700 hover:text-green-700 transition-colors font-normal">Business</button>
               <button
                 onClick={() => navigate('/gallery')}
                 className="text-gray-700 hover:text-green-700 transition-colors font-normal"
@@ -430,6 +431,7 @@ const AppContent: React.FC = () => {
 
         <Route path="/about" element={<AboutPage onClose={() => navigate('/')} />} />
 
+        <Route path="/business" element={<BusinessPage />} />
         <Route path="/admin" element={<AdminDashboard onClose={() => navigate('/')} />} />
       </Routes>
 

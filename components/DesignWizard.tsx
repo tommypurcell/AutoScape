@@ -3,6 +3,7 @@ import { UploadArea } from './UploadArea';
 import { DesignStyle, LocationType, SpaceSize, DesignStyleGroups } from '../types';
 import { styleReferences } from '../data/styleReferences';
 import { Check, ChevronRight, ChevronLeft } from 'lucide-react';
+import { HelpTip } from './HelpTip';
 
 interface DesignWizardProps {
     yardImage: File | null;
@@ -147,8 +148,9 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                     {currentStep === 1 && (
                         <div className="space-y-6 animate-fade-in">
                             <div className="text-center mb-8">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
                                     📸 Upload Your Yard Photo
+                                    <HelpTip content="For best results, use a clear, well-lit photo taken from eye level. Ensure the entire area you want to redesign is visible." />
                                 </h2>
                                 <p className="text-gray-600">
                                     Take a clear photo of your outdoor space. The AI will analyze the layout and create a design that fits perfectly.
@@ -213,8 +215,9 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                     {currentStep === 2 && (
                         <div className="space-y-8 animate-fade-in">
                             <div className="text-center mb-8">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
                                     🎨 Choose Your Design Style
+                                    <HelpTip content="Select a style that matches your personal taste. This will guide the AI in choosing plants, materials, and layout." />
                                 </h2>
                                 <p className="text-gray-600">
                                     Select the aesthetic that best matches your vision
@@ -281,8 +284,9 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                     {currentStep === 3 && (
                         <div className="space-y-6 animate-fade-in">
                             <div className="text-center mb-8">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
                                     ✍️ Add Your Preferences
+                                    <HelpTip content="The more specific you are, the better! Mention specific plants, colors, or features (like a fire pit or pergola) you want to include." />
                                 </h2>
                                 <p className="text-gray-600">
                                     Tell us about specific features you want in your landscape design

@@ -41,7 +41,7 @@ const DemoSection: React.FC = () => {
     }, []);
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div id="demo-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
             <div className="text-center mb-12">
                 <h2 className="text-4xl font-bold text-gray-900 mb-4">See AutoScape in Action</h2>
                 <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -97,6 +97,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
         return () => clearInterval(interval);
     }, []);
 
+    const scrollToDemo = () => {
+        const element = document.getElementById('demo-section');
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
 
@@ -151,18 +158,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
                             </button>
-                            {onStartTutorial && (
-                                <button
-                                    onClick={onStartTutorial}
-                                    className="px-8 py-4 bg-white hover:bg-gray-50 text-green-700 border-2 border-green-700 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    How It Works
-                                </button>
-                            )}
+                            <button
+                                onClick={scrollToDemo}
+                                className="px-8 py-4 bg-white hover:bg-gray-50 text-green-700 border-2 border-green-700 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-2"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                How It Works
+                            </button>
                         </div>
                     </div>
                 </div>

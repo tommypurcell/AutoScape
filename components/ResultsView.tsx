@@ -7,6 +7,7 @@ import { PlantPalette } from './PlantPalette';
 import { calculateRAGBudget } from '../services/ragBudgetService';
 import { useDesign } from '../contexts/DesignContext';
 import { ProductSwapModal } from './ProductSwapModal';
+import { HelpTip } from './HelpTip';
 
 interface RAGBudget {
   total_min_budget: number;
@@ -20,9 +21,30 @@ interface RAGBudget {
   }>;
 }
 
-export const ResultsView: React.FC = () => {
+interface ResultsViewProps {
+  result?: GeneratedDesign;
+  originalImage?: string | null;
+  onReset?: () => void;
+  designShortId?: string;
+}
+
+export const ResultsView: React.FC<ResultsViewProps> = ({
+  result: propResult,
+  originalImage: propOriginalImage,
+  onReset: propOnReset,
+  designShortId
+}) => {
   const navigate = useNavigate();
-  const { result, yardImagePreview, resetDesign } = useDesign();
+  const { result: contextResult, yardImagePreview, resetDesign } = useDesign();
+
+  const result = propResult || contextResult;
+  const originalImage = propOriginalImage || yardImagePreview;
+
+  const onReset = propOnReset || (() => {
+    resetDesign();
+    navigate('/upload');
+  });
+
   const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare' | 'video'>('compare');
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
@@ -43,12 +65,6 @@ export const ResultsView: React.FC = () => {
   }, [result, navigate]);
 
   if (!result) return null;
-
-  const originalImage = yardImagePreview;
-  const onReset = () => {
-    resetDesign();
-    navigate('/upload');
-  };
 
   // Automatically fetch RAG budget when component mounts
   useEffect(() => {
@@ -289,7 +305,10 @@ export const ResultsView: React.FC = () => {
 
       {/* Header Actions */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-800">Your Redesign</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-slate-800">Your Redesign</h2>
+          <HelpTip content="This page shows your AI-generated landscape design, including visual renders, cost estimates, and a plant palette." />
+        </div>
         <div className="flex items-center gap-3">
           <button onClick={onReset} className="text-sm text-slate-500 hover:text-green-600 flex items-center gap-2 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -538,6 +557,7 @@ export const ResultsView: React.FC = () => {
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                 Material List & Estimates
+                <HelpTip content="Estimated costs for materials and labor based on the generated design. These are rough estimates and may vary by location." />
               </h3>
               <button
                 onClick={downloadCSV}
@@ -587,6 +607,7 @@ export const ResultsView: React.FC = () => {
             <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
               Cost Distribution
+              <HelpTip content="Visual breakdown of costs by category (Hardscape, Softscape, Plants, Labor, etc.)." />
             </h3>
             <div className="flex-1 min-h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -635,6 +656,7 @@ export const ResultsView: React.FC = () => {
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                   <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                   Matched Products from Database
+                  <HelpTip content="Real products found in our database that match the items in your design. You can swap these for other options." />
                 </h3>
                 <p className="text-sm text-slate-600">Real items matched to your design via RAG</p>
               </div>

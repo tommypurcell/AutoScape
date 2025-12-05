@@ -67,6 +67,8 @@ export const deleteDesign = async (designId: string): Promise<void> => {
     await deleteDoc(doc(db, 'designs', designId));
 };
 
+import { styleReferences } from '../data/styleReferences';
+
 export const getPublicDesigns = async (limitCount: number = 20): Promise<SavedDesign[]> => {
     try {
         // Simple query without orderBy to avoid composite index requirement
@@ -83,13 +85,54 @@ export const getPublicDesigns = async (limitCount: number = 20): Promise<SavedDe
             createdAt: doc.data().createdAt?.toDate() || new Date(),
         })) as SavedDesign[];
 
-        // Sort by date (newest first) and limit client-side
-        return designs
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-            .slice(0, limitCount);
+        // Sort by date (newest first)
+        let sortedDesigns = designs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+        // If we have fewer than 10 designs, add mock designs from styleReferences
+        if (sortedDesigns.length < 10) {
+            const needed = 12 - sortedDesigns.length;
+
+            // Use styleReferences to generate consistent mock data
+            // We cycle through the available styles
+            for (let i = 0; i < needed; i++) {
+                const styleRef = styleReferences[i % styleReferences.length];
+                // Ensure we have a valid image URL, fallback to a placeholder if needed
+                const imageUrl = styleRef.imageUrl || 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&q=80&w=800';
+
+                sortedDesigns.push({
+                    id: `mock-${i}`,
+                    shortId: `mock-${i}`,
+                    userId: 'mock-user',
+                    yardImageUrl: imageUrl,
+                    isPublic: true,
+                    createdAt: new Date(Date.now() - i * 86400000), // 1 day apart
+                    renderImages: [imageUrl],
+                    planImage: imageUrl, // Placeholder
+                    estimates: { total_cost: "$15,000 - $25,000" },
+                    analysis: {
+                        style: styleRef.name,
+                        description: styleRef.description || `A beautiful ${styleRef.name} design.`
+                    }
+                } as any);
+            }
+        }
+
+        return sortedDesigns.slice(0, limitCount);
     } catch (error) {
         console.error('Error fetching public designs:', error);
-        throw error;
+        // Fallback to mocks if DB fails
+        return styleReferences.slice(0, 10).map((styleRef, i) => ({
+            id: `mock-fallback-${i}`,
+            shortId: `mock-${i}`,
+            userId: 'mock-user',
+            yardImageUrl: styleRef.imageUrl,
+            isPublic: true,
+            createdAt: new Date(),
+            renderImages: [styleRef.imageUrl],
+            planImage: styleRef.imageUrl,
+            estimates: { total_cost: "$10,000+" },
+            analysis: { style: styleRef.name, description: styleRef.description }
+        } as any));
     }
 };
 
