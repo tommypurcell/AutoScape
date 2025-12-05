@@ -27,6 +27,7 @@ interface DesignContextType {
 
     // Actions
     setYardImage: (file: File | null) => void;
+    setYardImagePreview: (url: string | null) => void;
     addStyleImages: (files: File[]) => void;
     removeStyleImage: (index: number) => void;
     clearAllStyles: () => void;
@@ -151,6 +152,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             selectedGalleryStyleIds,
             styleSelectionMode,
             setYardImage,
+            setYardImagePreview,
             addStyleImages,
             removeStyleImage,
             clearAllStyles,
