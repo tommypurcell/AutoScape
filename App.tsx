@@ -248,46 +248,49 @@ const AppContent: React.FC = () => {
       // Update context with the result
       setResult(result);
 
-      // Save to Firestore if user is logged in and navigate to the saved design
-      if (user) {
-        try {
-          // Upload the yard image to get a permanent URL for comparison
-          let yardImageUrl = state.yardImagePreview;
-          if (state.yardImage) {
-            try {
-              // Convert the file to base64 for upload
-              const reader = new FileReader();
-              const base64Promise = new Promise<string>((resolve, reject) => {
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(state.yardImage!);
-              });
-              const base64 = await base64Promise;
-              yardImageUrl = await uploadBase64Image(base64, `yards/${user.uid}`);
-            } catch (uploadError) {
-              console.error('Failed to upload yard image:', uploadError);
-              // Continue without the yard image URL
-            }
+      // Save to Firestore for ALL users (authenticated or anonymous) to generate a unique URL
+      try {
+        // Upload the yard image to get a permanent URL for comparison
+        let yardImageUrl = state.yardImagePreview;
+        if (state.yardImage) {
+          try {
+            // Convert the file to base64 for upload
+            const reader = new FileReader();
+            const base64Promise = new Promise<string>((resolve, reject) => {
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(state.yardImage!);
+            });
+            const base64 = await base64Promise;
+
+            // Use user ID or 'anonymous' for storage path
+            const storageUserId = user ? user.uid : 'anonymous';
+            const timestamp = Date.now();
+            yardImageUrl = await uploadBase64Image(base64, `yards/${storageUserId}/${timestamp}_yard.jpg`);
+          } catch (uploadError) {
+            console.error('Failed to upload yard image:', uploadError);
+            // Continue without the yard image URL (using the blob URL which won't persist across sessions, but better than nothing)
           }
-
-          const { id, shortId } = await saveDesign(user.uid, {
-            ...result,
-            yardImageUrl,
-          });
-          console.log('Design saved successfully with shortId:', shortId);
-
-          // Update context with yard image
-          setYardImagePreview(yardImageUrl);
-
-          navigate(`/result/${shortId}`, { state: { result, yardImageUrl } });
-        } catch (error) {
-          console.error('Failed to save design:', error);
-          // Still navigate even if save failed, using state
-          setYardImagePreview(state.yardImagePreview);
-          navigate('/result/generated', { state: { result, yardImageUrl: state.yardImagePreview } });
         }
-      } else {
-        // For non-logged in users, navigate with state
+
+        // Use user ID or 'anonymous' for Firestore document
+        const ownerId = user ? user.uid : 'anonymous';
+
+        const { id, shortId } = await saveDesign(ownerId, {
+          ...result,
+          yardImageUrl,
+          isPublic: false // Default to private, user can publish later
+        });
+        console.log('Design saved successfully with shortId:', shortId);
+
+        // Update context with yard image
+        setYardImagePreview(yardImageUrl);
+
+        // Navigate to the unique URL
+        navigate(`/result/${shortId}`, { state: { result, yardImageUrl } });
+      } catch (error) {
+        console.error('Failed to save design:', error);
+        // Fallback: Navigate with state only if saving fails
         setYardImagePreview(state.yardImagePreview);
         navigate('/result/generated', { state: { result, yardImageUrl: state.yardImagePreview } });
       }
@@ -410,6 +413,7 @@ const AppContent: React.FC = () => {
                       onSizeChange={(size) => setState(s => ({ ...s, spaceSize: size }))}
                       onPromptChange={(prompt) => setState(s => ({ ...s, userPrompt: prompt }))}
                       onGenerate={handleGenerate}
+                      initialStep={state.error ? 3 : 1}
                     />
                   </>
                 )}

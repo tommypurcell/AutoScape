@@ -27,6 +27,7 @@ interface DesignWizardProps {
     onSizeChange: (size: SpaceSize) => void;
     onPromptChange: (prompt: string) => void;
     onGenerate: () => void;
+    initialStep?: number;
 }
 
 export const DesignWizard: React.FC<DesignWizardProps> = ({
@@ -51,8 +52,9 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
     onSizeChange,
     onPromptChange,
     onGenerate,
+    initialStep = 1,
 }) => {
-    const [currentStep, setCurrentStep] = useState(1);
+    const [currentStep, setCurrentStep] = useState(initialStep);
 
     const steps = [
         { number: 1, title: 'Upload Photo', description: 'Add your yard image' },
