@@ -177,10 +177,67 @@ export const ResultsView: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const chartData = result.estimates.breakdown.map(item => ({
-    name: item.name.length > 15 ? item.name.substring(0, 15) + '...' : item.name,
-    cost: parseFloat((item.totalCost || "0").replace(/[^0-9.]/g, '')) || 0
-  }));
+  const isLoadingBudget = false;
+
+  const ragBudget = React.useMemo(() => {
+    if (!result?.estimates?.plantPalette?.length) return null;
+
+    const line_items = result.estimates.plantPalette.map(p => ({
+      item: p.common_name,
+      match: p.botanical_name,
+      price_estimate: p.total_estimate,
+      cost: parseFloat(p.unit_price.replace(/[^0-9.]/g, '')) || 0,
+      quantity: p.quantity,
+      image_url: p.image_url
+    }));
+
+    const total = line_items.reduce((sum, item) => sum + (item.cost * (item.quantity || 1)), 0);
+
+    return {
+      total_min_budget: total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }),
+      line_items
+    };
+  }, [result]);
+
+  // Group items by category for the chart
+  const chartData = React.useMemo(() => {
+    const categories: Record<string, number> = {
+      'Hardscape': 0,
+      'Softscape': 0,
+      'Plants': 0,
+      'Labor': 0,
+      'Other': 0
+    };
+
+    result.estimates.breakdown.forEach(item => {
+      const name = item.name.toLowerCase();
+      const cost = parseFloat((item.totalCost || "0").replace(/[^0-9.]/g, '')) || 0;
+
+      if (name.includes('labor') || name.includes('install') || name.includes('removal') || name.includes('prep')) {
+        categories['Labor'] += cost;
+      } else if (name.includes('paver') || name.includes('stone') || name.includes('concrete') || name.includes('gravel') || name.includes('wood') || name.includes('deck') || name.includes('patio') || name.includes('fence') || name.includes('wall') || name.includes('rock') || name.includes('path')) {
+        categories['Hardscape'] += cost;
+      } else if (name.includes('mulch') || name.includes('soil') || name.includes('compost') || name.includes('turf') || name.includes('grass') || name.includes('sod')) {
+        categories['Softscape'] += cost;
+      } else if (name.includes('plant') || name.includes('tree') || name.includes('shrub') || name.includes('flower') || name.includes('bush') || name.includes('seed')) {
+        categories['Plants'] += cost;
+      } else {
+        categories['Other'] += cost;
+      }
+    });
+
+    return Object.entries(categories)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({ name, cost: value }));
+  }, [result.estimates.breakdown]);
+
+  const findRagImage = (itemName: string) => {
+    if (!ragBudget) return null;
+    return ragBudget.line_items.find(ragItem =>
+      ragItem.item.toLowerCase().includes(itemName.toLowerCase()) ||
+      itemName.toLowerCase().includes(ragItem.item.toLowerCase())
+    )?.image_url;
+  };
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
 
@@ -208,77 +265,7 @@ export const ResultsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Save Controls */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h3 className="text-lg font-bold text-slate-900 mb-4">Save Your Design</h3>
 
-        {/* Success Message */}
-        {saveSuccess && (
-          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            {saveSuccess}
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={() => handleSaveDesign(false)}
-            disabled={isSaving || !user}
-            className="flex-1 py-3 px-6 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-          >
-            {isSaving ? (
-              <>
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Saving...
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Save as Private
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => handleSaveDesign(true)}
-            disabled={isSaving || !user}
-            className="flex-1 py-3 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-          >
-            {isSaving ? (
-              <>
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Saving...
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Save & Share Publicly
-              </>
-            )}
-          </button>
-        </div>
-        {!user && (
-          <p className="text-xs text-amber-600 mt-3 text-center font-medium">
-            Please sign in to save your design
-          </p>
-        )}
-        {user && (
-          <p className="text-xs text-slate-500 mt-3 text-center">
-            Public designs will appear in the Community Gallery for others to discover
-          </p>
-        )}
-      </div>
 
       {/* Visuals Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
@@ -494,26 +481,41 @@ export const ResultsView: React.FC = () => {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
                   <tr>
+                    <th className="px-4 py-3 w-16">Image</th>
                     <th className="px-4 py-3">Material</th>
                     <th className="px-4 py-3">Quantity</th>
                     <th className="px-4 py-3 text-right">Est. Cost</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {result.estimates.breakdown.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-slate-700">
-                        {item.name}
-                        <div className="text-xs text-slate-400 font-normal">{item.notes}</div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-slate-700">{item.totalCost}</td>
-                    </tr>
-                  ))}
+                  {result.estimates.breakdown.map((item, idx) => {
+                    const ragImage = findRagImage(item.name);
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-4 py-3">
+                          {ragImage ? (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                              <img src={ragImage} alt={item.name} className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-700">
+                          {item.name}
+                          <div className="text-xs text-slate-400 font-normal">{item.notes}</div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-slate-700">{item.totalCost}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
                   <tr>
-                    <td className="px-4 py-3" colSpan={2}>Estimated Total</td>
+                    <td className="px-4 py-3" colSpan={3}>Estimated Total</td>
                     <td className="px-4 py-3 text-right text-emerald-700">
                       {formatCurrency(result.estimates.totalCost)}
                     </td>
@@ -568,6 +570,131 @@ export const ResultsView: React.FC = () => {
       }
 
 
-    </div >
+
+      {/* RAG Product Gallery */}
+      {ragBudget && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                Matched Products from Database
+              </h3>
+              <p className="text-sm text-slate-600">Real items matched to your design via RAG</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-500">Total Estimate</p>
+              <p className="text-2xl font-bold text-purple-700">${ragBudget.total_min_budget}</p>
+            </div>
+          </div>
+
+          {/* Horizontal Scrollable Thumbnail Gallery */}
+          <div className="overflow-x-auto pb-2 -mx-2 px-2">
+            <div className="flex gap-4 min-w-max">
+              {ragBudget.line_items.map((item, i) => (
+                <div key={i} className="flex-shrink-0 w-48 bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1 group">
+                  {item.image_url && (
+                    <div className="relative aspect-square bg-slate-100 overflow-hidden">
+                      <img
+                        src={item.image_url}
+                        alt={item.item}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      <div className="absolute top-2 right-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+                        ${item.cost}
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-3">
+                    <p className="font-semibold text-slate-800 text-sm mb-1 line-clamp-2">{item.item}</p>
+                    <p className="text-xs text-slate-500 line-clamp-1">{item.match}</p>
+                    <p className="text-xs text-purple-600 font-medium mt-1">{item.price_estimate}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLoadingBudget && (
+        <div className="bg-purple-50 rounded-2xl p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-600">Analyzing your design and matching products...</p>
+        </div>
+      )}
+
+      {/* Save Controls - Moved to Bottom */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-4">Save Your Design</h3>
+
+        {/* Success Message */}
+        {saveSuccess && (
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {saveSuccess}
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={() => handleSaveDesign(false)}
+            disabled={isSaving || !user}
+            className="flex-1 py-3 px-6 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Save as Private
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => handleSaveDesign(true)}
+            disabled={isSaving || !user}
+            className="flex-1 py-3 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Save & Share Publicly
+              </>
+            )}
+          </button>
+        </div>
+        {!user && (
+          <p className="text-xs text-amber-600 mt-3 text-center font-medium">
+            Please sign in to save your design
+          </p>
+        )}
+        {user && (
+          <p className="text-xs text-slate-500 mt-3 text-center">
+            Public designs will appear in the Community Gallery for others to discover
+          </p>
+        )}
+      </div>
+    </div>
   );
 };

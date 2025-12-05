@@ -76,10 +76,10 @@ export const StyleGallery: React.FC<StyleGalleryProps> = ({
                 <div className="absolute inset-0 bg-emerald-600/10 pointer-events-none" />
               )}
 
-              {/* Label */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12 pointer-events-none">
-                <p className="text-white text-sm font-bold truncate shadow-sm">{style.name}</p>
-                <p className="text-white/90 text-xs truncate shadow-sm">{style.description}</p>
+              {/* Label - Moved below image */}
+              <div className="p-3 bg-white border-t border-slate-100">
+                <p className="text-slate-800 text-sm font-bold truncate">{style.name}</p>
+                <p className="text-slate-500 text-xs truncate">{style.description}</p>
               </div>
 
               {/* Selection indicator badge */}
@@ -100,8 +100,8 @@ export const StyleGallery: React.FC<StyleGalleryProps> = ({
                     onStyleToggle(style.id);
                   }}
                   className={`w-32 py-2.5 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 flex items-center justify-center gap-2 backdrop-blur-md border ${selected
-                      ? 'bg-red-500/80 hover:bg-red-600/90 text-white border-red-400/50'
-                      : 'bg-emerald-600/80 hover:bg-emerald-500/90 text-white border-emerald-400/50'
+                    ? 'bg-red-500/80 hover:bg-red-600/90 text-white border-red-400/50'
+                    : 'bg-emerald-600/80 hover:bg-emerald-500/90 text-white border-emerald-400/50'
                     } shadow-lg`}
                 >
                   {selected ? (
