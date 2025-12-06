@@ -11,11 +11,11 @@ interface UploadAreaProps {
   onClear?: () => void;
 }
 
-export const UploadArea: React.FC<UploadAreaProps> = ({ 
-  label, 
-  subLabel, 
-  onFileSelect, 
-  previewUrls, 
+export const UploadArea: React.FC<UploadAreaProps> = ({
+  label,
+  subLabel,
+  onFileSelect,
+  previewUrls,
   required = false,
   accept = "image/*",
   multiple = false,
@@ -52,10 +52,10 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
   const hasPreviews = previewUrls && previewUrls.length > 0;
 
   return (
-    <div className="space-y-3">
-      <div 
-        className={`relative group cursor-pointer border-2 border-dashed rounded-xl transition-all duration-200 ease-in-out overflow-hidden h-64
-          ${hasPreviews ? 'border-emerald-500/50 bg-slate-50' : 'border-slate-300 hover:border-emerald-400 hover:bg-slate-50'}
+    <div className="space-y-4 h-full w-full">
+      <div
+        className={`relative group cursor-pointer border border-dashed transition-all duration-300 ease-out overflow-hidden h-full min-h-[320px] flex flex-col items-center justify-center
+          ${hasPreviews ? 'border-gray-300 bg-white' : 'border-gray-300 hover:border-black bg-white hover:bg-gray-50'}
         `}
         onClick={handleClick}
         onDrop={handleDrop}
@@ -69,19 +69,19 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
           multiple={multiple}
           className="hidden"
         />
-        
+
         {hasPreviews ? (
-          <div className="w-full h-full p-4 overflow-y-auto custom-scrollbar">
-            <div className={`grid gap-2 ${previewUrls.length === 1 ? 'grid-cols-1 h-full' : 'grid-cols-2'}`}>
+          <div className="w-full h-full p-4 overflow-y-auto custom-scrollbar relative">
+            <div className={`grid gap-4 ${previewUrls.length === 1 ? 'grid-cols-1 h-full' : 'grid-cols-2'}`}>
               {previewUrls.map((url, idx) => (
-                <div key={idx} className={`relative rounded-lg overflow-hidden border border-slate-200 shadow-sm ${previewUrls.length === 1 ? 'h-full' : 'aspect-square'}`}>
-                  <img 
-                    src={url} 
-                    alt={`Preview ${idx + 1}`} 
+                <div key={idx} className={`relative overflow-hidden ${previewUrls.length === 1 ? 'h-full' : 'aspect-square'}`}>
+                  <img
+                    src={url}
+                    alt={`Preview ${idx + 1}`}
                     className="w-full h-full object-cover"
                   />
                   {multiple && (
-                    <div className="absolute top-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full backdrop-blur-sm">
+                    <div className="absolute top-2 left-2 bg-black text-white text-[10px] uppercase tracking-wider px-2 py-1">
                       #{idx + 1}
                     </div>
                   )}
@@ -89,40 +89,37 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
               ))}
               {/* Add button for multiple uploads */}
               {multiple && (
-                <div className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-emerald-300/50 rounded-lg bg-emerald-50/30 text-emerald-600 hover:bg-emerald-50 transition-colors">
-                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                  <span className="text-xs font-medium">Add More</span>
+                <div className="aspect-square flex flex-col items-center justify-center border border-dashed border-gray-300 text-gray-400 hover:text-black hover:border-black transition-all">
+                  <span className="text-3xl font-light mb-2">+</span>
+                  <span className="text-xs uppercase tracking-widest">Add Image</span>
                 </div>
               )}
             </div>
+
+            {onClear && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onClear(); }}
+                className="absolute top-4 right-4 bg-white/90 backdrop-blur border border-gray-200 text-black p-2 hover:bg-black hover:text-white transition-colors z-10"
+                title="Clear Selection"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
           </div>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-center p-6 pointer-events-none">
-            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          <div className="flex flex-col items-center justify-center text-center p-8 pointer-events-none">
+            <div className="mb-6 opacity-30 group-hover:opacity-100 transition-opacity duration-300">
+              <svg className="w-12 h-12 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-slate-700">
-              {label} {required && <span className="text-red-500">*</span>}
+            <h3 className="font-serif text-2xl italic text-black mb-2">
+              {label} {required && <span className="text-gray-400">*</span>}
             </h3>
-            {subLabel && <p className="text-sm text-slate-500 mt-1">{subLabel}</p>}
-            <p className="text-xs text-slate-400 mt-4">
-              {multiple ? 'Upload multiple photos for better accuracy' : 'JPG, PNG up to 10MB'}
-            </p>
+            {subLabel && <p className="text-xs font-sans uppercase tracking-[0.2em] text-gray-400">{subLabel}</p>}
           </div>
         )}
       </div>
-      
-      {hasPreviews && onClear && (
-        <button 
-          onClick={(e) => { e.stopPropagation(); onClear(); }}
-          className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1 ml-1"
-        >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          Clear Selection
-        </button>
-      )}
     </div>
   );
 };
