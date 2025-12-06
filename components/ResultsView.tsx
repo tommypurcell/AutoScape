@@ -53,7 +53,14 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare' | 'video'>('compare');
   const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(result?.videoUrl || null);
+
+  useEffect(() => {
+    if (result?.videoUrl) {
+      setVideoUrl(result.videoUrl);
+    }
+  }, [result]);
+
   const [videoError, setVideoError] = useState<string | null>(null);
   const [ragBudget, setRagBudget] = useState<RAGBudget | null>(null);
   const [copied, setCopied] = useState(false);

@@ -236,7 +236,8 @@ const AppContent: React.FC = () => {
         state.yardImage,
         allStyleImages,
         state.userPrompt,
-        state.selectedStyle
+        state.selectedStyle,
+        "" // Budget
       );
 
       setState(prev => ({

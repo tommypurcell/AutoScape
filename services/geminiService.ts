@@ -7,10 +7,10 @@ import { GoogleGenAI } from "@google/genai";
 import { AnalysisSchema, GeneratedDesign } from "../types";
 
 // PRO model for reasoning, scene understanding, and complex JSON analysis
-const MODEL_REASONING = "gemini-3-pro-preview";
+const MODEL_REASONING = "gemini-2.0-flash-exp";
 
 // FLASH-IMAGE model for fast, high-quality visual generation
-const MODEL_GENERATION = "gemini-2.5-flash-image";
+const MODEL_GENERATION = "gemini-2.0-flash-exp";
 
 // Helper to convert file to base64 string
 const fileToGenericBase64 = async (file: File): Promise<string> => {
