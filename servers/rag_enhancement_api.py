@@ -131,6 +131,37 @@ async def enhance_with_rag(request: EnhancementRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class VideoRequest(BaseModel):
+    original_image: str  # Base64 encoded
+    redesign_image: str  # Base64 encoded
+    duration: int = 5
+
+@app.post("/api/generate-video")
+async def generate_video(request: VideoRequest):
+    """Generate transformation video with angle rotation"""
+    try:
+        print(f"📥 Received video request - original: {len(request.original_image)} chars, redesign: {len(request.redesign_image)} chars")
+        # Import inside function to avoid circular imports or startup errors if module issues
+        from video_generator import generate_transformation_video
+        
+        result = generate_transformation_video(
+            request.original_image,
+            request.redesign_image,
+            request.duration
+        )
+        
+        if result.get("status") == "completed":
+            return {"success": True, "video_url": result["video_url"]}
+        else:
+            raise HTTPException(
+                status_code=500, 
+                detail=result.get("error", "Video generation failed")
+            )
+    except Exception as e:
+        print(f"❌ Video generation error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/health")
 async def health():
     return {"status": "healthy", "rag_available": PlantCatalog is not None}
