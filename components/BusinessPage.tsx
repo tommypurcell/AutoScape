@@ -31,7 +31,21 @@ export const BusinessPage: React.FC = () => {
             });
             setFilteredPros(filtered);
         } else {
-            setFilteredPros([]);
+            // No state selected: Show random featured professionals (fallback)
+            // Create a deterministic but randomized-looking selection based on the role filter if active
+            let pool = professionals;
+
+            if (filterRole !== 'All') {
+                pool = professionals.filter(p =>
+                    filterRole === 'Designer'
+                        ? (p.role === 'Landscape Architect' || p.role === 'Garden Designer')
+                        : p.role === 'Contractor'
+                );
+            }
+
+            // Shuffle and pick 6
+            const shuffled = [...pool].sort(() => 0.5 - Math.random());
+            setFilteredPros(shuffled.slice(0, 6));
         }
     }, [selectedState, filterRole]);
 
@@ -141,8 +155,8 @@ export const BusinessPage: React.FC = () => {
                                         key={role}
                                         onClick={() => setFilterRole(role as any)}
                                         className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${filterRole === role
-                                                ? 'bg-white text-gray-900 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700'
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
                                             }`}
                                     >
                                         {role}
@@ -154,80 +168,89 @@ export const BusinessPage: React.FC = () => {
                 </div>
 
                 {/* Results Grid */}
-                {!selectedState ? (
+                {/* Results Grid */}
+                {filteredPros.length > 0 ? (
+                    <>
+                        {!selectedState && (
+                            <div className="mb-8 flex items-center gap-2 text-gray-400 font-light uppercase tracking-widest text-sm animate-fade-in">
+                                <Star className="w-4 h-4" />
+                                <span>Featured Professionals</span>
+                            </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {filteredPros.map((pro) => (
+                                <div key={pro.id} className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 group flex flex-col h-full animate-fade-in">
+                                    {/* Portfolio Image (Best Work) */}
+                                    <div
+                                        className="relative h-48 overflow-hidden cursor-pointer"
+                                        onClick={() => handleProfileClick(pro)}
+                                    >
+                                        <img
+                                            src={pro.portfolioImages[0]}
+                                            alt={`${pro.name}'s best work`}
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                        />
+                                        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
+                                            {pro.role}
+                                        </div>
+                                    </div>
+
+                                    {/* Profile Info */}
+                                    <div className="p-6 flex-1 flex flex-col">
+                                        <div
+                                            className="flex items-start gap-4 mb-4 cursor-pointer"
+                                            onClick={() => handleProfileClick(pro)}
+                                        >
+                                            <img
+                                                src={pro.imageUrl}
+                                                alt={pro.name}
+                                                className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md -mt-10 bg-white relative z-10"
+                                            />
+                                            <div>
+                                                <h3 className="text-lg font-bold text-gray-900 leading-tight hover:text-green-600 transition-colors">{pro.name}</h3>
+                                                <div className="flex items-center gap-1 text-yellow-400 mt-1">
+                                                    <Star className="w-4 h-4 fill-current" />
+                                                    <span className="text-sm font-medium text-gray-700">{pro.rating.toFixed(1)}</span>
+                                                    <span className="text-xs text-gray-400">({pro.reviewCount} reviews)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-gray-600 text-sm mb-6 line-clamp-3 flex-1">
+                                            {pro.introduction}
+                                        </p>
+
+                                        <div className="space-y-3 mt-auto pt-6 border-t border-gray-100">
+                                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                                                <MapPin className="w-4 h-4 text-green-600" />
+                                                {pro.city}, {pro.state}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors">
+                                                    <Phone className="w-4 h-4" />
+                                                    Call
+                                                </button>
+                                                <button
+                                                    onClick={() => handleMessageClick(pro)}
+                                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                                                >
+                                                    <Mail className="w-4 h-4" />
+                                                    Message
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                ) : (
                     <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Search className="w-8 h-8 text-gray-400" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">No Location Selected</h3>
-                        <p className="text-gray-500">Please select a state or use your location to see professionals near you.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredPros.map((pro) => (
-                            <div key={pro.id} className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 group flex flex-col h-full">
-                                {/* Portfolio Image (Best Work) */}
-                                <div
-                                    className="relative h-48 overflow-hidden cursor-pointer"
-                                    onClick={() => handleProfileClick(pro)}
-                                >
-                                    <img
-                                        src={pro.portfolioImages[0]}
-                                        alt={`${pro.name}'s best work`}
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                    />
-                                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
-                                        {pro.role}
-                                    </div>
-                                </div>
-
-                                {/* Profile Info */}
-                                <div className="p-6 flex-1 flex flex-col">
-                                    <div
-                                        className="flex items-start gap-4 mb-4 cursor-pointer"
-                                        onClick={() => handleProfileClick(pro)}
-                                    >
-                                        <img
-                                            src={pro.imageUrl}
-                                            alt={pro.name}
-                                            className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md -mt-10 bg-white relative z-10"
-                                        />
-                                        <div>
-                                            <h3 className="text-lg font-bold text-gray-900 leading-tight hover:text-green-600 transition-colors">{pro.name}</h3>
-                                            <div className="flex items-center gap-1 text-yellow-400 mt-1">
-                                                <Star className="w-4 h-4 fill-current" />
-                                                <span className="text-sm font-medium text-gray-700">{pro.rating.toFixed(1)}</span>
-                                                <span className="text-xs text-gray-400">({pro.reviewCount} reviews)</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <p className="text-gray-600 text-sm mb-6 line-clamp-3 flex-1">
-                                        {pro.introduction}
-                                    </p>
-
-                                    <div className="space-y-3 mt-auto pt-6 border-t border-gray-100">
-                                        <div className="flex items-center gap-3 text-sm text-gray-600">
-                                            <MapPin className="w-4 h-4 text-green-600" />
-                                            {pro.city}, {pro.state}
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <button className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors">
-                                                <Phone className="w-4 h-4" />
-                                                Call
-                                            </button>
-                                            <button
-                                                onClick={() => handleMessageClick(pro)}
-                                                className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
-                                            >
-                                                <Mail className="w-4 h-4" />
-                                                Message
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">No Professionals Found</h3>
+                        <p className="text-gray-500">We couldn't find any professionals matching your criteria.</p>
                     </div>
                 )}
             </div>

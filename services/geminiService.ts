@@ -141,26 +141,7 @@ export const generateLandscapeDesign = async (
       1. GEOMETRY ANCHORS: You MUST keep the house architecture, windows, and perimeter fences EXACTLY as they appear in the input photo. Do not move the camera.
       2. STYLE: ${stylePreference}. Photorealistic, high definition.
       3. Do NOT hallucinate new buildings.
-
-      ADDITIONAL OUTPUT REQUIREMENT:
-      After producing the render, output an additional JSON block describing EXACTLY what you added to the scene.
-      Format:
-      {
-        "plants": ["list of specific plants with quantities, e.g., '5 Japanese Maples', '12 Lavender bushes'"],
-        "hardscape": ["list of hardscape features with quantities, e.g., 'Stone patio 200 sqft', 'Gravel pathway 80 sqft'"],
-        "features": ["list of features like 'Fire pit', 'Water fountain', 'Lighting fixtures'"],
-        "structures": ["list of structures like 'Pergola', 'Arbor', 'Trellis'"],
-        "furniture": ["list of outdoor furniture like 'Bench', '2 Lounge chairs'"],
-        "quantities": {
-          "sod_sqft": 0,
-          "mulch_sqft": 0,
-          "gravel_sqft": 0,
-          "pavers_sqft": 0
-        }
-      }
-
-      Return this JSON directly in the text portion of the response after generating the image.
-      Be specific and comprehensive - include EVERYTHING you added to transform the yard.
+      4. OUTPUT: Generate the image ONLY.
     `;
 
     const renderRes = await ai.models.generateContent({
@@ -176,26 +157,21 @@ export const generateLandscapeDesign = async (
     const renderImage = extractImage(renderRes);
 
     if (!renderImage) {
+      console.error("❌ Render Generation Failed. Response Text:", renderRes.text);
       throw new Error("Failed to generate render image");
     }
     const renderBase64Raw = renderImage.split(',')[1];
 
-    // Extract design JSON from text response
+    // Note: We used to extract designJSON here, but we now rely on Phase 4 for detailed analysis
+    // to ensure the image generation is prioritized.
     let designJSON: any = null;
     try {
-      const renderText = renderRes.text || "";
-      console.log("Render response text:", renderText.substring(0, 500));
-
-      // Try to extract JSON from the response
-      const jsonMatch = renderText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        designJSON = JSON.parse(jsonMatch[0]);
-        console.log("✅ Design JSON extracted from render:", JSON.stringify(designJSON, null, 2));
-      } else {
-        console.warn("⚠️ No JSON block found in render response");
+      // Optional: If the model happens to chatter, we can log it
+      if (renderRes.text) {
+        console.log("Render response text:", renderRes.text.substring(0, 500));
       }
-    } catch (error) {
-      console.warn("⚠️ Failed to extract design JSON from render:", error);
+    } catch (e) {
+      // ignore
     }
 
     // EMIT PARTIAL RESULT: Render is ready!

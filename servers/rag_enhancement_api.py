@@ -5,7 +5,7 @@ Enriches material lists with RAG plant data, images, and pricing.
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional, Union
 import os
 from dotenv import load_dotenv
@@ -22,12 +22,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from plant_catalog import PlantCatalog
     from budget_calculator_rag import calculate_budget_with_rag
+    from freepik_agent import FreepikLandscapingAgent
     print("✅ Successfully imported RAG modules")
 except Exception as e:
     print(f"❌ Import failed: {e}")
     traceback.print_exc()
     PlantCatalog = None
     calculate_budget_with_rag = None
+    FreepikLandscapingAgent = None
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -83,6 +85,40 @@ class NarrativeRequest(BaseModel):
     plant_palette: List[Dict[str, Any]]
     location_type: Optional[str] = "Garden"
 
+# --- Models for Freepik Search ---
+
+class SearchRequest(BaseModel):
+    """Request model for image search."""
+    query: str = Field(..., description="Natural language search query")
+    top_k: int = Field(default=10, ge=1, le=50, description="Number of results to return")
+    filters: Optional[Dict[str, Any]] = Field(default=None, description="Optional filters")
+
+class SearchResponse(BaseModel):
+    """Response model for image search."""
+    query: str
+    results: List[Dict[str, Any]]
+    count: int
+
+class RecommendationRequest(BaseModel):
+    """Request model for AI recommendations."""
+    query: str = Field(..., description="User's landscaping question or need")
+    context: Optional[str] = Field(default=None, description="Additional context")
+    top_k: int = Field(default=10, ge=1, le=50, description="Number of results")
+
+class RecommendationResponse(BaseModel):
+    """Response model for AI recommendations."""
+    query: str
+    context: Optional[str]
+    results: List[Dict[str, Any]]
+    explanation: str
+    count: int
+
+class HealthResponse(BaseModel):
+    """Response model for health check."""
+    status: str
+    collection_name: str
+    points_count: Optional[int]
+
 # --- Curatorial Logic ---
 
 STYLE_VECTORS = {
@@ -92,6 +128,15 @@ STYLE_VECTORS = {
     "Tropical": ["lush", "bold-leaf", "vibrant", "dense", "exotic", "fern", "palm"],
     "Native": ["wild", "local", "resilient", "prairie", "naturalistic", "meadow", "pollinator"]
 }
+
+# Initialize simplified agent wrapper for direct access
+freepik_agent = None
+try:
+    if FreepikLandscapingAgent:
+        freepik_agent = FreepikLandscapingAgent()
+        print("✅ Freepik Agent initialized")
+except Exception as e:
+    print(f"⚠️ Failed to initialize Freepik agent: {e}")
 
 @app.post("/api/enhance-with-rag")
 async def enhance_with_rag(request: EnhancementRequest):
@@ -209,6 +254,78 @@ async def generate_narrative(request: NarrativeRequest):
         print(f"Narrative Error: {e}")
         return {"success": False, "narrative": f"A curated selection of {request.design_style} flora designed to harmonize with the local vernacular."}
 
+# --- Freepik/RAG Search Endpoints (merged from old freepik_api.py) ---
+
+@app.post("/api/freepik/search", response_model=SearchResponse, tags=["Search"])
+async def search_images(request: SearchRequest):
+    """
+    Perform semantic search for landscaping images.
+    """
+    if not freepik_agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    
+    try:
+        results = freepik_agent.search_images(
+            query=request.query,
+            top_k=request.top_k,
+            filters=request.filters
+        )
+        
+        return SearchResponse(
+            query=request.query,
+            results=results,
+            count=len(results)
+        )
+        
+    except Exception as e:
+        print(f"❌ Search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+@app.post("/api/freepik/recommend", response_model=RecommendationResponse, tags=["Recommendations"])
+async def get_recommendations(request: RecommendationRequest):
+    """
+    Get AI-powered landscaping recommendations with explanations.
+    """
+    if not freepik_agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    
+    try:
+        recommendation = freepik_agent.get_recommendations(
+            query=request.query,
+            context=request.context,
+            top_k=request.top_k
+        )
+        
+        return RecommendationResponse(
+            query=recommendation["query"],
+            context=recommendation.get("context"),
+            results=recommendation["results"],
+            explanation=recommendation["explanation"],
+            count=len(recommendation["results"])
+        )
+        
+    except Exception as e:
+        print(f"❌ Recommendation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Recommendation failed: {str(e)}")
+
+@app.get("/api/freepik/health", response_model=HealthResponse, tags=["Health"])
+async def health_check_freepik():
+    """Check API and collection health."""
+    if not freepik_agent:
+        raise HTTPException(status_code=503, detail="Agent not initialized")
+    
+    try:
+        stats = freepik_agent.get_collection_stats()
+        
+        return HealthResponse(
+            status=stats["status"],
+            collection_name=stats["collection_name"],
+            points_count=stats.get("points_count")
+        )
+        
+    except Exception as e:
+        print(f"❌ Health check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 class VideoRequest(BaseModel):
     original_image: str  # Base64 encoded
