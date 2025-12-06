@@ -67,305 +67,271 @@ export const generateLandscapeDesign = async (
 
   try {
     // -------------------------------------------------------------------------
-    // PHASE 1: SCENE UNDERSTANDING & DESIGN INTENT (Pro Model)
+    // PHASE 1: SCENE UNDERSTANDING & DESIGN INTENT (Reasoning Model)
     // -------------------------------------------------------------------------
     console.log("Phase 1: Scene Understanding");
-    const analysisParts: any[] = [
-      { inlineData: { mimeType: yardFile.type, data: yardBase64 } },
-      { text: `[The User's Yard]` }
-    ];
+    let sceneContext = "";
 
-    if (styleFiles.length > 0) {
-      styleFiles.forEach((styleFile, index) => {
-        analysisParts.push({
-          inlineData: { mimeType: styleFile.type, data: styleBase64Array[index] }
+    try {
+      const analysisParts: any[] = [
+        { inlineData: { mimeType: yardFile.type, data: yardBase64 } },
+        { text: `[The User's Yard]` }
+      ];
+
+      if (styleFiles.length > 0) {
+        styleFiles.forEach((styleFile, index) => {
+          analysisParts.push({
+            inlineData: { mimeType: styleFile.type, data: styleBase64Array[index] }
+          });
+          analysisParts.push({
+            text: `[Style Reference Image ${index + 1}]`
+          });
         });
-        analysisParts.push({
-          text: `[Style Reference Image ${index + 1}${styleFiles.length > 1 ? ` of ${styleFiles.length}` : ''}]`
-        });
-      });
-    }
-
-    analysisParts.push({
-      text: `
-      You are a Senior Landscape Architect.
-      
-      PHASE 1 TASK: Analyze the yard image to create a strict Scene JSON and Design JSON.
-      
-      1. SCENE JSON (The Truth): Identify the FIXED geometry that must not change.
-         Structure:
-         {
-           "house": { "footprint": "...", "windows": "..." },
-           "fences": "...",
-           "shed": { "exists": boolean, "location": "..." },
-           "terrain": "...",
-           "existingTrees": "..."
-         }
-      
-      2. DESIGN JSON (The Changes): Apply the user's request: "${prompt}" in style "${stylePreference}".
-         ${budget ? `IMPORTANT: The user has a budget of "${budget}". Ensure the design features and materials are realistic for this budget.` : ''}
-         Structure:
-         {
-           "newHardscape": "...",
-           "newPlantings": "...",
-           "furniture": "..."
-         }
-
-      OUTPUT FORMAT: Provide a structured text response containing these two JSON blocks clearly labeled.
-      Do NOT invent structures that aren't in the photo.
-    `});
-
-    const sceneUnderstandingRes = await ai.models.generateContent({
-      model: MODEL_REASONING,
-      contents: { parts: analysisParts }
-    });
-
-    const sceneContext = sceneUnderstandingRes.text || "";
-    console.log("Scene Context Generated:", sceneContext.substring(0, 200) + "...");
-
-    // -------------------------------------------------------------------------
-    // PHASE 2: GENERATE 3D RENDER (Image Model)
-    // -------------------------------------------------------------------------
-    console.log("Phase 2: Generating Render");
-
-    const renderPrompt = `
-      Act as a Photorealist Landscape Renderer.
-      INPUT: [The User's Yard] (The base geometry).
-
-      SCENE DATA (SOURCE OF TRUTH):
-      ${sceneContext}
-
-      TASK: Overpaint this specific view to match the Design JSON described above.
-
-      STRICT RULES:
-      1. GEOMETRY ANCHORS: You MUST keep the house architecture, windows, and perimeter fences EXACTLY as they appear in the input photo. Do not move the camera.
-      2. STYLE: ${stylePreference}. Photorealistic, high definition.
-      3. Do NOT hallucinate new buildings.
-      4. OUTPUT: Generate the image ONLY.
-    `;
-
-    const renderRes = await ai.models.generateContent({
-      model: MODEL_GENERATION,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: yardFile.type, data: yardBase64 } },
-          { text: renderPrompt }
-        ]
       }
-    });
 
-    const renderImage = extractImage(renderRes);
+      analysisParts.push({
+        text: `
+          You are a Senior Landscape Architect.
+          PHASE 1 TASK: Analyze the yard image to create a strict Scene JSON and Design JSON.
+          1. SCENE JSON (The Truth): Identify the FIXED geometry.
+          2. DESIGN JSON (The Changes): Apply the user's request: "${prompt}" in style "${stylePreference}".
+          ${budget ? `Budget: "${budget}".` : ''}
+          OUTPUT: Describe the scene and design intent clearly.
+        `});
 
-    if (!renderImage) {
-      console.error("❌ Render Generation Failed. Response Text:", renderRes.text);
-      throw new Error("Failed to generate render image");
+      const sceneUnderstandingRes = await ai.models.generateContent({
+        model: MODEL_REASONING,
+        contents: [{ role: 'user', parts: analysisParts }]
+      });
+
+      sceneContext = sceneUnderstandingRes.text || "";
+      console.log("Scene Context Generated:", sceneContext.substring(0, 200) + "...");
+
+    } catch (e) {
+      console.error("⚠️ Phase 1 (Scene Understanding) Failed:", e);
+      sceneContext = "A residential backyard space requiring landscape design improvements.";
     }
-    const renderBase64Raw = renderImage.split(',')[1];
+
+    // -------------------------------------------------------------------------
+    // PHASE 2: GENERATION (With Fallback)
+    // -------------------------------------------------------------------------
+    console.log("🎨 Phase 2: Attempting Visual Generation");
+    let primaryImage: string | null = null;
+    let isFallback = false;
+
+    try {
+      // 1. Try Gemini Generation first
+      const renderPrompt = `
+        You are an expert landscape architect visualizer.
+        Generate a PHOTOREALISTIC 3D RENDER of the ${stylePreference} garden design described below.
+        
+        VIEWPOINT: Eye-level from the patio/back door looking out.
+        LIGHTING: Golden hour (warm, inviting sunlight).
+        
+        DESIGN TO VISUALIZE:
+        ${sceneContext}
+        
+        CRITICAL INSTRUCTION:
+        - Call the 'generate_image' tool to create the visual.
+        - Do NOT output markdown or json. Just the image.
+      `;
+
+      const renderRes = await ai.models.generateContent({
+        model: MODEL_GENERATION,
+        contents: [{ role: "user", parts: [{ text: renderPrompt }] }],
+        config: { temperature: 0.7 }
+      });
+
+      primaryImage = extractImage(renderRes);
+
+      if (!primaryImage) {
+        console.warn("⚠️ Gemini returned no image, attempting fallback...");
+        throw new Error("No image generated by Gemini");
+      }
+
+    } catch (genError) {
+      console.warn("⚠️ Generation failed, switching to Freepik RAG Fallback:", genError);
+
+      // 2. Freepik Fallback
+      try {
+        const fallbackRes = await fetch('http://localhost:8002/api/freepik/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `beautiful ${stylePreference} garden landscape design photorealistic`,
+            top_k: 1
+          })
+        });
+
+        const fallbackData = await fallbackRes.json();
+        if (fallbackData.results && fallbackData.results.length > 0) {
+          primaryImage = fallbackData.results[0].image_url;
+          isFallback = true;
+          console.log("✅ Using Freepik fallback image");
+        }
+      } catch (fbError) {
+        console.error("❌ Freepik fallback also failed:", fbError);
+      }
+    }
+
+    if (!primaryImage) {
+      throw new Error("Unable to generate or retrieve a design visual. Please try again.");
+    }
+
+    // Determine if it's a data URL (generated) or Remote URL (fallback)
+    const renderImages = [primaryImage];
 
     // Note: We used to extract designJSON here, but we now rely on Phase 4 for detailed analysis
     // to ensure the image generation is prioritized.
     let designJSON: any = null;
-    try {
-      // Optional: If the model happens to chatter, we can log it
-      if (renderRes.text) {
-        console.log("Render response text:", renderRes.text.substring(0, 500));
-      }
-    } catch (e) {
-      // ignore
+
+
+    // PHASE 3: GENERATE 2D PLAN (Based on 3D Render) - Sequential to ensure we have context
+    console.log("📏 Phase 3: Generating Plan");
+
+    let planPromptContents: any[] = [{ text: "Generate a technical 2D top-down landscape plan based on the design description above." }];
+
+    // Prepare inputs
+    let renderBase64Raw: string | null = null;
+    if (!isFallback && primaryImage && primaryImage.startsWith('data:')) {
+      renderBase64Raw = primaryImage.split(',')[1];
+      planPromptContents.unshift({ inlineData: { mimeType: 'image/jpeg', data: renderBase64Raw } });
     }
+
+    const planPrompt = `
+      Act as a Landscape Architect.
+      TASK: Create a simple 2D top-down schematic plan for the garden.
+      STYLE: Blueprint / Technical Drawing.
+      Do NOT add text labels in the image.
+      CRITICAL: Generate the image ONLY.
+    `;
+
+    planPromptContents.push({ text: planPrompt });
+
+    // Start Plan Generation
+    const planPromise = ai.models.generateContent({
+      model: MODEL_GENERATION,
+      contents: [{ role: 'user', parts: planPromptContents }]
+    }).catch(e => {
+      console.warn("Phase 3 Plan Generation Failed:", e);
+      return { text: null } as any;
+    });
+
+    // PHASE 4: ESTIMATES & ANALYSIS (Parallel with Plan)
+    console.log("💰 Phase 4: Estimates");
+
+    const analysisPrompt = `
+      Analyze this design based on the Style: ${stylePreference}.
+      OUTPUT JSON:
+      {
+        "designConcept": "string",
+        "visualDescription": "string",
+        "maintenanceLevel": "Low/Medium/High",
+        "totalCost": number,
+        "plants": [ { "name": "string", "quantity": number, "description": "string" } ],
+        "hardscape": [ { "name": "string", "quantity": number, "description": "string" } ],
+        "features": [ { "name": "string", "quantity": number, "description": "string" } ],
+        "structures": [ { "name": "string", "quantity": number, "description": "string" } ],
+        "furniture": [ { "name": "string", "quantity": number, "description": "string" } ]
+      }
+    `;
+
+    // Use image for analysis if available
+    const analysisContents: any[] = [{ text: sceneContext }, { text: analysisPrompt }];
+    if (renderBase64Raw) {
+      analysisContents.unshift({ inlineData: { mimeType: 'image/jpeg', data: renderBase64Raw } });
+    }
+
+    const analysisPromise = ai.models.generateContent({
+      model: MODEL_REASONING,
+      contents: [{ role: 'user', parts: analysisContents }],
+      config: { responseMimeType: "application/json" }
+    }).catch(e => {
+      console.warn("Phase 4 Analysis Failed:", e);
+      return { text: "{}" } as any;
+    });
+
+    // Wait for both
+    const [planRes, analysisRes] = await Promise.all([planPromise, analysisPromise]);
+
+    // Process Plan
+    const planImage = extractImage(planRes);
+    // Process Analysis
+    let analysisData: any = {};
+    try {
+      const jsonText = analysisRes.text || "{}";
+      analysisData = JSON.parse(jsonText);
+    } catch (e) {
+      console.warn("Failed to parse analysis JSON", e);
+      analysisData = { designConcept: "Analysis unavailable" };
+    }
+
+    // Transform analysis data to match our schema
+    const analysis = {
+      currentLayout: "Scene Analyzed",
+      designConcept: analysisData.designConcept || `A ${stylePreference} transformation`,
+      visualDescription: analysisData.visualDescription || "See 3D Render",
+      maintenanceLevel: analysisData.maintenanceLevel || "Medium",
+      plants: analysisData.plants || [], // Store for RAG
+    };
+
+    const estimates = {
+      totalCost: analysisData.totalCost || 0,
+      currency: "USD",
+      breakdown: [
+        ...(analysisData.plants || []).map((p: any) => ({ ...p, category: 'Plants', unitCost: "0", totalCost: "0", notes: p.description || "" })),
+        ...(analysisData.hardscape || []).map((h: any) => ({ ...h, category: 'Hardscape', unitCost: "0", totalCost: "0", notes: h.description || "" })),
+        ...(analysisData.features || []).map((f: any) => ({ ...f, category: 'Features', unitCost: "0", totalCost: "0", notes: f.description || "" })),
+        ...(analysisData.structures || []).map((s: any) => ({ ...s, category: 'Structures', unitCost: "0", totalCost: "0", notes: s.description || "" })),
+        ...(analysisData.furniture || []).map((f: any) => ({ ...f, category: 'Furniture', unitCost: "0", totalCost: "0", notes: f.description || "" }))
+      ],
+      plantPalette: [],
+      ragEnhanced: false,
+    };
 
     // EMIT PARTIAL RESULT: Render is ready!
     if (onProgress) {
       onProgress({
-        renderImages: [renderImage],
-        // We can emit empty/loading states for others if needed, or just omit them
-        // The UI should handle missing fields gracefully
+        renderImages: [primaryImage || ''],
+        planImage: planImage || '',
+        analysis,
+        estimates
       });
     }
 
-    // -------------------------------------------------------------------------
-    // PHASE 3: GENERATE 2D PLAN (Image Model)
-    // -------------------------------------------------------------------------
-    console.log("Phase 3: Generating Plan");
-
-    const planPrompt = `
-      Act as a Landscape Architect Drafter.
-      INPUT: The provided 3D RENDER of a designed yard.
-      CONTEXT: ${sceneContext}
-      
-      TASK: Generate a single, accurate, top-down orthographic raster plan based ONLY on the input render.
-      
-      INSTRUCTIONS:
-      1. Analyze the render to identify fixed geometry (house edges, fences) and new design elements (hardscape, plants).
-      2. Transform this into a strictly orthographic 90° overhead view.
-      
-      CRITICAL RULES:
-      - NO LABELS: Do not add any text, labels, or callouts to the image.
-      - NO HALLUCINATIONS: Do not invent objects not visible in the render.
-      - GEOMETRY: Must match the render exactly.
-      
-      STYLING:
-      - Flat architectural style.
-      - Clean lines.
-      - White background.
-      - Simple colors: Green (plants), Gray/Beige (hardscape), Brown (wood).
-    `;
-
-    const planPromise = ai.models.generateContent({
-      model: MODEL_GENERATION,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: "image/png", data: renderBase64Raw } },
-          { text: planPrompt }
-        ]
-      }
-    });
-
-    // -------------------------------------------------------------------------
-    // PHASE 4: COST & QUANTITY ANALYSIS (Pro Model)
-    // -------------------------------------------------------------------------
-    // -------------------------------------------------------------------------
-    // PHASE 4: COST & QUANTITY ANALYSIS (Pro Model)
-    // -------------------------------------------------------------------------
-    console.log("Phase 4: Cost Analysis");
-
-    const analysisPrompt = `
-      Act as a Senior Quantity Surveyor specializing in landscape architecture.
-
-      Your task:
-      Analyze the rendered image and the design context to produce a DETAILED QUANTITY TAKEOFF in STRICT JSON format.
-      
-      TASK: 
-      1. VISUAL IDENTIFICATION: Scan the image and list every distinct material and plant group mentioned in the Design JSON.
-      2. ESTIMATION: Estimate the area (sq ft) or count (qty) for each item based on a standard residential yard size.
-      3. PRICING: Apply realistic US market rates (materials + installation).
-      ${budget ? `4. BUDGET CHECK: The user's target budget is "${budget}". If the total exceeds this, suggest cost-saving alternatives in the "visualDescription" or "designConcept" fields.` : ''}
-      5. LABOR: You MUST include a separate line item for "Labor & Installation" (typically 30-50% of the project total) in the materials list.
-      
-      RETURN JSON ONLY. NO TEXT.
-
-      SCHEMA:
-      {
-        "plants": [
-          { "name": "string (e.g. 'Japanese Maple')", "quantity": number, "description": "string" }
-        ],
-        "hardscape": [
-          { "name": "string (e.g. 'Paver Patio')", "quantity": number, "description": "string (e.g. 'sqft')" }
-        ],
-        "features": [
-          { "name": "string", "quantity": number, "description": "string" }
-        ],
-        "structures": [
-          { "name": "string", "quantity": number, "description": "string" }
-        ],
-        "furniture": [
-          { "name": "string", "quantity": number, "description": "string" }
-        ],
-        "quantities": {
-          "sod_sqft": number,
-          "mulch_sqft": number,
-          "gravel_sqft": number,
-          "pavers_sqft": number,
-          "deck_sqft": number
-        }
-      }
-
-      RULES:
-      - Be precise with plant names (e.g., "Agave attenuata" instead of just "Agave").
-      - Estimate quantities visually from the render.
-      - For "description", use units like "sqft", "linear ft", "each".
-    `;
-
-    const analysisPromise = ai.models.generateContent({
-      model: MODEL_REASONING,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: "image/png", data: renderBase64Raw } },
-          { text: analysisPrompt }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-      }
-    });
-
-    // Wait for both Plan and Analysis
-    const [planRes, analysisRes] = await Promise.all([planPromise, analysisPromise]);
-
-    const planImage = extractImage(planRes);
-    if (!planImage) {
-      throw new Error("Failed to generate plan image");
-    }
-    const planBase64Raw = planImage.split(',')[1];
-    const planImageUri = `data:image/png;base64,${planBase64Raw}`;
-    const jsonText = analysisRes.text || "{}";
-    const data = JSON.parse(jsonText);
-
-    // -------------------------------------------------------------------------
-    // PHASE 5: RAG ENHANCEMENT (Optional)
-    // -------------------------------------------------------------------------
-    let plantPalette: any[] = [];
-    let ragEnhanced = false;
-
+    // PHASE 5: RAG ENHANCEMENT
     try {
-      const ragApiBase =
-        import.meta.env.VITE_RAG_API_BASE_URL ||
-        process.env.RAG_API_BASE_URL ||
-        "http://localhost:8002";
-      const ragUrl = `${ragApiBase.replace(/\/$/, "")}/api/enhance-with-rag`;
-      console.log("Phase 5: RAG Enhancement");
-      const ragResponse = await fetch(ragUrl, {
+      console.log("🌿 Phase 5: RAG Enhancement");
+      const response = await fetch('http://localhost:8002/api/enhance-with-rag', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data) // Send the structured data directly
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plants: analysisData.plants || [],
+          design_style: stylePreference
+        })
       });
 
-      if (ragResponse.ok) {
-        const ragData = await ragResponse.json();
-        plantPalette = ragData.plantPalette || [];
-        ragEnhanced = ragData.rag_enhanced || false;
-        console.log(`✅ RAG Enhancement: Found ${plantPalette.length} plants in catalog`);
-      } else {
-        console.warn("RAG Enhancement failed, continuing without it");
+      if (response.ok) {
+        const ragData = await response.json();
+        if (ragData.success && ragData.plantPalette) {
+          estimates.plantPalette = ragData.plantPalette;
+          estimates.ragEnhanced = true;
+        }
       }
     } catch (error) {
       console.warn("RAG Enhancement unavailable:", error);
     }
 
-    const finalResult: GeneratedDesign = {
-      analysis: {
-        currentLayout: "Scene Analyzed",
-        designConcept: data.designConcept || `A ${stylePreference} transformation`,
-        visualDescription: data.visualDescription || "See 3D Render",
-        maintenanceLevel: data.maintenanceLevel || "Medium",
-      },
-      estimates: {
-        totalCost: data.totalCost || 0,
-        currency: "USD",
-        breakdown: [
-          ...(data.plants || []).map((p: any) => ({ ...p, category: 'Plants', unitCost: "0", totalCost: "0", notes: p.description || "" })),
-          ...(data.hardscape || []).map((h: any) => ({ ...h, category: 'Hardscape', unitCost: "0", totalCost: "0", notes: h.description || "" })),
-          ...(data.features || []).map((f: any) => ({ ...f, category: 'Features', unitCost: "0", totalCost: "0", notes: f.description || "" })),
-          ...(data.structures || []).map((s: any) => ({ ...s, category: 'Structures', unitCost: "0", totalCost: "0", notes: s.description || "" })),
-          ...(data.furniture || []).map((f: any) => ({ ...f, category: 'Furniture', unitCost: "0", totalCost: "0", notes: f.description || "" }))
-        ],
-        plantPalette,
-        ragEnhanced,
-      },
-      renderImages: [renderImage],
-      planImage: planImageUri,
-      designJSON: designJSON, // Include the design specification from Phase 2
+    return {
+      // id: crypto.randomUUID(), // Removed as potential type mismatch
+      // timestamp: Date.now(), // Removed as type mismatch
+      // originalImage: yardBase64, // Removed (not in type)
+      renderImages: [primaryImage || ''],
+      planImage: planImage || '',
+      analysis: analysis,
+      estimates: estimates,
+      designJSON: designJSON
     };
-
-    // Final emit
-    if (onProgress) {
-      onProgress(finalResult);
-    }
-
-    return finalResult;
-
   } catch (error) {
     console.error("Gemini Generation Error:", error);
     throw error;

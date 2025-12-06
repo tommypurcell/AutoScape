@@ -280,7 +280,7 @@ const AppContent: React.FC = () => {
         const { id, shortId } = await saveDesign(ownerId, {
           ...result,
           yardImageUrl,
-          isPublic: false // Default to private, user can publish later
+          isPublic: true // Default to public for demo so it is readable
         });
         console.log('Design saved successfully with shortId:', shortId);
 
@@ -296,12 +296,14 @@ const AppContent: React.FC = () => {
         navigate('/result/generated', { state: { result, yardImageUrl: state.yardImagePreview } });
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      const errorMessage = err?.message || "Unknown error";
+      alert(`❌ Generation Error: ${errorMessage}`);
       setState(prev => ({
         ...prev,
         step: 'upload',
-        error: "Something went wrong while generating your design. Please try again."
+        error: `Generation Failed: ${errorMessage}`
       }));
     }
   };

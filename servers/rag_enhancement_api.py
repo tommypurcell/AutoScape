@@ -225,7 +225,7 @@ async def generate_narrative(request: NarrativeRequest):
              return {"success": False, "narrative": "API Key missing for narrative generation."}
              
         genai.configure(api_key=api_key)
-        gemini = genai.GenerativeModel("gemini-2.0-flash")
+        gemini = genai.GenerativeModel("gemini-2.0-flash-exp")
         
         plants_str = ", ".join([p.get('common_name', 'plants') for p in request.plant_palette[:5]])
         
