@@ -26,6 +26,7 @@ export interface SavedDesign {
     planImage: string;
     estimates: any;
     analysis: any;
+    videoUrl?: string;
 }
 
 /**
@@ -88,7 +89,7 @@ const uploadDesignImages = async (
     if (design.estimates.plantPalette && design.estimates.plantPalette.length > 0) {
         console.log(`Processing ${design.estimates.plantPalette.length} plant palette images...`);
         processedEstimates.plantPalette = await Promise.all(
-            design.estimates.plantPalette.map(async (plant, idx) => {
+            design.estimates.plantPalette.map(async (plant: any, idx: number) => {
                 // Skip if already a URL or missing
                 if (!plant.image_url || plant.image_url.startsWith('http')) {
                     return plant;
@@ -110,7 +111,7 @@ const uploadDesignImages = async (
         analysis: design.analysis,
         yardImageUrl: uploadedYardImageUrl,
         isPublic: false, // Default to private
-        shortId: '', // Will be set by saveDesign
+        videoUrl: design.videoUrl
     };
 };
 
@@ -311,6 +312,17 @@ export const getDesignByShortId = async (shortId: string): Promise<SavedDesign |
         } as SavedDesign;
     } catch (error) {
         console.error('Error fetching design by shortId:', error);
+        throw error;
+    }
+};
+
+export const updateDesign = async (designId: string, updates: Partial<SavedDesign>): Promise<void> => {
+    try {
+        const designRef = doc(db, 'designs', designId);
+        await import('firebase/firestore').then(({ updateDoc }) => updateDoc(designRef, updates));
+        console.log(`✅ Design ${designId} updated successfully`);
+    } catch (error) {
+        console.error('Error updating design:', error);
         throw error;
     }
 };

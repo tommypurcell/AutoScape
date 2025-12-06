@@ -111,6 +111,7 @@ export interface GeneratedDesign {
   renderImages: string[]; // Array of image URLs (Base64 data URIs from Gemini OR Firebase Storage URLs after save)
   planImage: string | null;   // Image URL (Base64 data URI from Gemini OR Firebase Storage URL after save)
   designJSON?: any; // Design specification from Phase 2 (plants, hardscape, features, etc.)
+  videoUrl?: string; // Optional URL for the generated transformation video
 }
 
 export interface AppState {

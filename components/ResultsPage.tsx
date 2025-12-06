@@ -41,6 +41,7 @@ export const ResultsPage: React.FC = () => {
                         planImage: savedDesign.planImage,
                         estimates: savedDesign.estimates,
                         analysis: savedDesign.analysis,
+                        videoUrl: savedDesign.videoUrl
                     });
                     setYardImageUrl(savedDesign.yardImageUrl || null);
                     setDesignShortId(savedDesign.shortId);

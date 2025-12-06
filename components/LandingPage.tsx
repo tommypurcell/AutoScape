@@ -234,6 +234,92 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                 </div>
             </section>
 
+
+            {/* Client Stories Section */}
+            <section className="py-24 bg-white border-t border-gray-100">
+                <div className="max-w-7xl mx-auto px-6 md:px-12">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl font-light uppercase tracking-widest text-gray-900 mb-4">Client Stories</h2>
+                        <div className="w-12 h-0.5 bg-black mx-auto"></div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                        {/* Story 1 */}
+                        <div className="group cursor-pointer">
+                            <div className="relative aspect-[4/5] overflow-hidden mb-6 bg-gray-100">
+                                <img
+                                    src="/demo_clips/scene_2_solution.jpg"
+                                    alt="Modern Courtyard"
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                    onError={(e) => e.currentTarget.src = styleReferences[0].imageUrl}
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500"></div>
+                            </div>
+                            <blockquote className="text-lg font-light italic text-gray-800 mb-4">
+                                "The AI understood my need for privacy better than I did. It turned a exposed yard into a secret garden."
+                            </blockquote>
+                            <div className="flex justify-between items-end border-t border-gray-200 pt-4">
+                                <div>
+                                    <p className="text-sm font-semibold uppercase tracking-wider text-black">Sarah Jenkins</p>
+                                    <p className="text-xs text-gray-500 font-light mt-1">Marin County, CA</p>
+                                </div>
+                                <a href="/result/mock-0" className="text-xs font-medium uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors flex items-center gap-1">
+                                    View Project <ArrowRight size={12} />
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Story 2 */}
+                        <div className="group cursor-pointer">
+                            <div className="relative aspect-[4/5] overflow-hidden mb-6 bg-gray-100">
+                                <img
+                                    src={styleReferences[3].imageUrl}
+                                    alt="Drought Tolerant"
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500"></div>
+                            </div>
+                            <blockquote className="text-lg font-light italic text-gray-800 mb-4">
+                                "I didn't think 'drought-tolerant' could look this lush. The plant palette was spot-on for our climate."
+                            </blockquote>
+                            <div className="flex justify-between items-end border-t border-gray-200 pt-4">
+                                <div>
+                                    <p className="text-sm font-semibold uppercase tracking-wider text-black">David Chen</p>
+                                    <p className="text-xs text-gray-500 font-light mt-1">Austin, TX</p>
+                                </div>
+                                <a href="/result/mock-3" className="text-xs font-medium uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors flex items-center gap-1">
+                                    View Project <ArrowRight size={12} />
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Story 3 */}
+                        <div className="group cursor-pointer">
+                            <div className="relative aspect-[4/5] overflow-hidden mb-6 bg-gray-100">
+                                <img
+                                    src={styleReferences[5].imageUrl}
+                                    alt="Urban Terrace"
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500"></div>
+                            </div>
+                            <blockquote className="text-lg font-light italic text-gray-800 mb-4">
+                                "It maximized every inch of our small terrace. The 3D render helped me convince the HOA instantly."
+                            </blockquote>
+                            <div className="flex justify-between items-end border-t border-gray-200 pt-4">
+                                <div>
+                                    <p className="text-sm font-semibold uppercase tracking-wider text-black">Elena Rodriguez</p>
+                                    <p className="text-xs text-gray-500 font-light mt-1">Miami, FL</p>
+                                </div>
+                                <a href="/result/mock-5" className="text-xs font-medium uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors flex items-center gap-1">
+                                    View Project <ArrowRight size={12} />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Slide Demo Section */}
             <DemoSection />
 
