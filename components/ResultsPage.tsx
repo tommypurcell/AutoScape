@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ResultsView } from './ResultsView';
-import { getDesignByShortId, SavedDesign } from '../services/firestoreService';
+import { getDesignByShortId, getDesignById, SavedDesign } from '../services/firestoreService';
 import { LoadingScreen } from './LoadingScreen';
 import { GeneratedDesign } from '../types';
 
@@ -33,8 +33,20 @@ export const ResultsPage: React.FC = () => {
             }
 
             try {
-                // Use shortId to fetch the design
-                const savedDesign = await getDesignByShortId(id);
+                // Try to fetch by shortId first (6-character code)
+                // If that fails, try fetching by full Firestore document ID
+                let savedDesign: SavedDesign | null = null;
+                
+                // Check if it looks like a shortId (6 characters, alphanumeric)
+                if (id && id.length === 6 && /^[a-z0-9]+$/.test(id)) {
+                    savedDesign = await getDesignByShortId(id);
+                }
+                
+                // If not found by shortId, try by full document ID
+                if (!savedDesign) {
+                    savedDesign = await getDesignById(id);
+                }
+                
                 if (savedDesign) {
                     setDesign({
                         renderImages: savedDesign.renderImages,

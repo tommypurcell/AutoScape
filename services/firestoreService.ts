@@ -8,12 +8,14 @@ import {
     deleteDoc,
     doc,
     orderBy,
+    limit,
+    startAfter,
     Timestamp,
+    QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { GeneratedDesign } from '../types';
 import { uploadBase64Image } from './storageService';
-import { styleReferences } from '../data/styleReferences';
 
 export interface SavedDesign {
     id: string;
@@ -110,7 +112,7 @@ const uploadDesignImages = async (
         analysis: design.analysis,
         yardImageUrl: uploadedYardImageUrl,
         isPublic: false, // Default to private
-        shortId: '', // Will be set by saveDesign
+        // shortId will be set by saveDesign
     };
 };
 
@@ -146,6 +148,9 @@ export const saveDesign = async (
     // Override isPublic if specified
     if (isPublic !== undefined) {
         sanitizedDesign.isPublic = isPublic;
+        console.log(`  Setting isPublic: ${isPublic}`);
+    } else {
+        console.log(`  isPublic not specified, using default: ${sanitizedDesign.isPublic ?? 'undefined'}`);
     }
 
     // Verify no base64 data in final object (safety check)
@@ -203,70 +208,168 @@ export const deleteDesign = async (designId: string): Promise<void> => {
     await deleteDoc(doc(db, 'designs', designId));
 };
 
-export const getPublicDesigns = async (limitCount: number = 20): Promise<SavedDesign[]> => {
+export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedDesign[]> => {
     try {
-        // Simple query without orderBy to avoid composite index requirement
-        // We'll sort client-side instead
-        const q = query(
-            collection(db, 'designs'),
-            where('isPublic', '==', true)
-        );
+        console.log('Getting public designs...');
+        
+        // Fetch ALL designs (not just isPublic=true) to handle cases where:
+        // 1. Designs might have isPublic: false but should be shown
+        // 2. Older designs might not have isPublic field set
+        // We'll filter client-side to include isPublic === true OR isPublic === undefined/null
+        let allDesigns: SavedDesign[] = [];
+        let lastDoc: QueryDocumentSnapshot | null = null;
+        const batchSize = 100; // Fetch in batches of 100
+        
+        do {
+            let q;
+            if (lastDoc) {
+                // Continue from where we left off - fetch ALL designs, no isPublic filter
+                q = query(
+                    collection(db, 'designs'),
+                    orderBy('createdAt', 'desc'),
+                    startAfter(lastDoc),
+                    limit(batchSize)
+                );
+            } else {
+                // First batch - fetch ALL designs, no isPublic filter
+                q = query(
+                    collection(db, 'designs'),
+                    orderBy('createdAt', 'desc'),
+                    limit(batchSize)
+                );
+            }
 
-        const querySnapshot = await getDocs(q);
-        const designs = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate() || new Date(),
-        })) as SavedDesign[];
+            const querySnapshot = await getDocs(q);
+            
+            console.log(`  Batch fetched: ${querySnapshot.docs.length} designs (total so far: ${allDesigns.length})`);
+            
+            if (querySnapshot.empty) {
+                console.log('  No more designs found, stopping pagination');
+                break;
+            }
 
-        // Sort by date (newest first)
-        let sortedDesigns = designs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+            const batchDesigns = querySnapshot.docs.map((doc) => {
+                const data = doc.data() as any;
+                return {
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate() || new Date(),
+                } as SavedDesign;
+            });
 
-        // If we have fewer than 10 designs, add mock designs from styleReferences
-        if (sortedDesigns.length < 10) {
-            const needed = 12 - sortedDesigns.length;
+            allDesigns = [...allDesigns, ...batchDesigns];
+            
+            // Check if we got fewer results than requested (end of collection)
+            if (querySnapshot.docs.length < batchSize) {
+                console.log(`  Reached end of collection (got ${querySnapshot.docs.length} < ${batchSize})`);
+                break;
+            }
+            
+            // Get the last document for pagination
+            lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+            
+            // Safety check: don't fetch more than limitCount total (if specified and reasonable)
+            // Only apply limit if it's less than a reasonable threshold (e.g., 1000)
+            // This allows fetching all designs when limitCount is high
+            if (limitCount && limitCount < 1000 && allDesigns.length >= limitCount) {
+                console.log(`  Reached limit of ${limitCount} designs`);
+                break;
+            }
+        } while (lastDoc);
 
-            // Use styleReferences to generate consistent mock data
-            // We cycle through the available styles
-            for (let i = 0; i < needed; i++) {
-                const styleRef = styleReferences[i % styleReferences.length];
-                // Ensure we have a valid image URL, fallback to a placeholder if needed
-                const imageUrl = styleRef.imageUrl || 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&q=80&w=800';
+        console.log(`Fetched ${allDesigns.length} total designs from Firestore (with pagination)`);
+        console.log(`  Sample IDs: ${allDesigns.slice(0, 5).map(d => d.id).join(', ')}${allDesigns.length > 5 ? '...' : ''}`);
 
-                sortedDesigns.push({
-                    id: `mock-${i}`,
-                    shortId: `mock-${i}`,
-                    userId: 'mock-user',
-                    yardImageUrl: imageUrl,
-                    isPublic: true,
-                    createdAt: new Date(Date.now() - i * 86400000), // 1 day apart
-                    renderImages: [imageUrl],
-                    planImage: imageUrl, // Placeholder
-                    estimates: { total_cost: "$15,000 - $25,000" },
-                    analysis: {
-                        style: styleRef.name,
-                        description: styleRef.description || `A beautiful ${styleRef.name} design.`
+        // Filter to only exclude private designs (isPublic === false)
+        // Keep all designs that are public (isPublic === true) OR don't have the field (undefined/null)
+        // Also filter out designs without render images
+        const publicDesigns = allDesigns.filter(design => {
+            // Exclude designs without render images
+            if (!design.renderImages || design.renderImages.length === 0) {
+                console.log(`  Filtered out design without render images: ${design.id}`);
+                return false;
+            }
+            // Only exclude if isPublic is explicitly false
+            // Include if isPublic is true OR undefined/null (for backward compatibility)
+            const isPublic = design.isPublic === true || design.isPublic === undefined || design.isPublic === null;
+            if (!isPublic) {
+                console.log(`  Filtered out private design: ${design.id} (isPublic: ${design.isPublic})`);
+            }
+            return isPublic;
+        });
+
+        // Already sorted by createdAt desc from the query, but ensure it's sorted
+        let sortedDesigns = publicDesigns.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+        console.log(`Returning ${sortedDesigns.length} public designs (filtered out ${allDesigns.length - sortedDesigns.length} private/mock designs)`);
+
+        // Return all designs or up to limitCount
+        return limitCount ? sortedDesigns.slice(0, limitCount) : sortedDesigns;
+    } catch (error: any) {
+        console.error('Error fetching public designs:', error);
+        
+        // If error is due to missing index, try without orderBy as fallback
+        if (error.code === 'failed-precondition') {
+            console.warn('Composite index missing, falling back to query without orderBy (with pagination)');
+            try {
+                // Fallback: query without orderBy, use pagination to get all results, then sort client-side
+                let allDesigns: SavedDesign[] = [];
+                let lastDoc: QueryDocumentSnapshot | null = null;
+                const batchSize = 100;
+                
+                do {
+                    let q;
+                    if (lastDoc) {
+                        // Fallback: fetch ALL designs without orderBy
+                        q = query(
+                            collection(db, 'designs'),
+                            startAfter(lastDoc),
+                            limit(batchSize)
+                        );
+                    } else {
+                        // Fallback: fetch ALL designs without orderBy
+                        q = query(
+                            collection(db, 'designs'),
+                            limit(batchSize)
+                        );
                     }
-                } as any);
+                    
+                    const querySnapshot = await getDocs(q);
+                    if (querySnapshot.empty) break;
+                    
+                    const batchDesigns = querySnapshot.docs.map((doc) => {
+                        const data = doc.data() as any;
+                        return {
+                            id: doc.id,
+                            ...data,
+                            createdAt: data.createdAt?.toDate() || new Date(),
+                        } as SavedDesign;
+                    });
+                    
+                    allDesigns = [...allDesigns, ...batchDesigns];
+                    
+                    if (querySnapshot.docs.length < batchSize) break;
+                    lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+                    
+                    if (limitCount && limitCount < 1000 && allDesigns.length >= limitCount) break;
+                } while (lastDoc);
+                
+                // Filter to only exclude private designs (isPublic === false)
+                // Keep all designs that are public (isPublic === true) OR don't have the field (undefined/null)
+                const publicDesigns = allDesigns.filter(design => {
+                    // Only exclude if isPublic is explicitly false
+                    return design.isPublic === true || design.isPublic === undefined || design.isPublic === null;
+                });
+                const sortedDesigns = publicDesigns.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+                console.log(`Fallback: Fetched ${sortedDesigns.length} public designs without orderBy`);
+                return limitCount && limitCount < 1000 ? sortedDesigns.slice(0, limitCount) : sortedDesigns;
+            } catch (fallbackError) {
+                console.error('Fallback query also failed:', fallbackError);
             }
         }
-
-        return sortedDesigns.slice(0, limitCount);
-    } catch (error) {
-        console.error('Error fetching public designs:', error);
-        // Fallback to mocks if DB fails
-        return styleReferences.slice(0, 10).map((styleRef, i) => ({
-            id: `mock-fallback-${i}`,
-            shortId: `mock-${i}`,
-            userId: 'mock-user',
-            yardImageUrl: styleRef.imageUrl,
-            isPublic: true,
-            createdAt: new Date(),
-            renderImages: [styleRef.imageUrl],
-            planImage: styleRef.imageUrl,
-            estimates: { total_cost: "$10,000+" },
-            analysis: { style: styleRef.name, description: styleRef.description }
-        } as any));
+        
+        // Return empty array if DB fails - only show real designs from Firestore
+        return [];
     }
 };
 

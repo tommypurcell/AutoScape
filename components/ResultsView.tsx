@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useDesign } from '../contexts/DesignContext';
 import { ProductSwapModal } from './ProductSwapModal';
 import { HelpTip } from './HelpTip';
+import { EditModeCanvas, Annotation } from './EditModeCanvas';
+import { analyzeAndRegenerateDesign } from '../services/geminiService';
 
 
 
@@ -40,9 +42,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { result: contextResult, yardImagePreview, resetDesign } = useDesign();
+  const { result: contextResult, yardImagePreview, resetDesign, setResult: setContextResult } = useDesign();
 
-  const result = propResult || contextResult;
+  const [localResult, setLocalResult] = useState<GeneratedDesign | null>(propResult || contextResult);
+  const result = localResult || propResult || contextResult;
   const originalImage = propOriginalImage || yardImagePreview;
 
   const onReset = propOnReset || (() => {
@@ -60,8 +63,15 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
   const [isLoadingBudget, setIsLoadingBudget] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isImageEditMode, setIsImageEditMode] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
+
+  // Update local result when prop or context changes
+  useEffect(() => {
+    setLocalResult(propResult || contextResult);
+  }, [propResult, contextResult]);
 
   // Redirect if no result
   useEffect(() => {
@@ -377,6 +387,71 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     });
   };
 
+  const handleEditModeSave = async (annotatedImage: string, annotations: Annotation[]) => {
+    if (!result || !result.renderImages[currentRenderIndex] || annotations.length === 0) {
+      alert('Please add at least one annotation before applying changes.');
+      return;
+    }
+
+    setIsRegenerating(true);
+    setIsImageEditMode(false);
+
+    try {
+      // Get the original render image
+      const originalRender = result.renderImages[currentRenderIndex];
+      
+      // Get the original yard image if available (convert from URL to File if needed)
+      let yardImageFile: File | null = null;
+      if (originalImage && originalImage.startsWith('data:')) {
+        // Convert data URI to File
+        const response = await fetch(originalImage);
+        const blob = await response.blob();
+        yardImageFile = new File([blob], 'yard.jpg', { type: 'image/jpeg' });
+      } else if (originalImage) {
+        // Fetch from URL and convert to File
+        const response = await fetch(originalImage);
+        const blob = await response.blob();
+        yardImageFile = new File([blob], 'yard.jpg', { type: 'image/jpeg' });
+      }
+
+      // Call the analyze and regenerate function
+      const newRenderImage = await analyzeAndRegenerateDesign(
+        originalRender,
+        annotatedImage,
+        annotations,
+        yardImageFile
+      );
+
+      // Update the render images array with the new render
+      const updatedRenderImages = [...result.renderImages];
+      updatedRenderImages[currentRenderIndex] = newRenderImage;
+
+      // Update the result
+      const updatedResult: GeneratedDesign = {
+        ...result,
+        renderImages: updatedRenderImages
+      };
+
+      // Update local state
+      setLocalResult(updatedResult);
+
+      // Update context if it was the source
+      if (contextResult && !propResult) {
+        setContextResult(updatedResult);
+      }
+
+      // Show success message
+      alert('✅ Design updated successfully! Your changes have been applied.');
+      
+    } catch (error) {
+      console.error('Error regenerating design:', error);
+      alert('❌ Failed to apply changes. Please try again.');
+      setIsImageEditMode(true); // Re-enable edit mode on error
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-12 animate-fade-in pb-20">
 
@@ -452,6 +527,28 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
         </div>
 
         <div className="relative aspect-video bg-slate-100 flex items-center justify-center group overflow-hidden">
+          {/* Edit Mode Canvas Overlay */}
+          {isImageEditMode && activeTab === 'render' && result.renderImages[currentRenderIndex] && (
+            <div className="absolute inset-0 z-50">
+              <EditModeCanvas
+                imageUrl={result.renderImages[currentRenderIndex]}
+                onSave={handleEditModeSave}
+                onCancel={() => setIsImageEditMode(false)}
+              />
+            </div>
+          )}
+
+          {/* Loading overlay for regeneration */}
+          {isRegenerating && (
+            <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <div className="bg-white rounded-2xl p-8 text-center max-w-md">
+                <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">Applying Your Changes</h3>
+                <p className="text-slate-600">Analyzing your annotations and generating an updated design...</p>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'video' && (
             <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-50 to-slate-100">
               {!videoUrl ? (
@@ -587,14 +684,28 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
             </>
           )}
 
-          {activeImage && (
-            <button
-              onClick={() => downloadImage(activeImage, `autoscape-${activeTab}${activeTab === 'render' ? '-' + (currentRenderIndex + 1) : ''}.png`)}
-              className="absolute top-4 right-4 bg-white/90 hover:bg-white text-slate-800 px-4 py-2 rounded-lg shadow-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-all transform -translate-y-2 group-hover:translate-y-0 flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              Download
-            </button>
+          {activeImage && !isImageEditMode && (
+            <div className="absolute top-4 right-4 flex gap-2 transition-all transform -translate-y-2 group-hover:translate-y-0">
+              {activeTab === 'render' && (
+                <button
+                  onClick={() => setIsImageEditMode(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2"
+                  title="Edit this render - You can make multiple iterative edits, each building on the previous"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Edit Mode
+                </button>
+              )}
+              <button
+                onClick={() => downloadImage(activeImage, `autoscape-${activeTab}${activeTab === 'render' ? '-' + (currentRenderIndex + 1) : ''}.png`)}
+                className="bg-white/90 hover:bg-white text-slate-800 px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Download
+              </button>
+            </div>
           )}
         </div>
 

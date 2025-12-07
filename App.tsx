@@ -125,7 +125,9 @@ const AppContent: React.FC = () => {
 
   const handleLoadDesign = (design: SavedDesign) => {
     loadDesign(design);
-    navigate(`/result/${design.id}`);
+    // Use shortId for the URL, fallback to id if shortId is missing
+    const urlId = design.shortId || design.id;
+    navigate(`/result/${urlId}`);
   };
 
   const resetToUploadState = () => {
@@ -192,8 +194,7 @@ const AppContent: React.FC = () => {
           estimates: designData.estimates,
           analysis: designData.analysis,
           yardImageUrl: yardUrl,
-          isPublic: isPublic
-        });
+        }, isPublic);
 
         if (isPublic) {
           alert(`✅ Design saved and published to Community Gallery!\n\n🔗 Share link: ${window.location.origin}/result/${shortId}`);
@@ -279,8 +280,7 @@ const AppContent: React.FC = () => {
         const { id, shortId } = await saveDesign(ownerId, {
           ...result,
           yardImageUrl,
-          isPublic: false // Default to private, user can publish later
-        });
+        }, false); // Default to private, user can publish later
         console.log('Design saved successfully with shortId:', shortId);
 
         // Update context with yard image
