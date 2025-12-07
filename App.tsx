@@ -249,52 +249,64 @@ const AppContent: React.FC = () => {
       // Update context with the result
       setResult(result);
 
-      // Save to Firestore for ALL users (authenticated or anonymous) to generate a unique URL
-      try {
-        // Upload the yard image to get a permanent URL for comparison
-        let yardImageUrl = state.yardImagePreview;
-        if (state.yardImage) {
-          try {
-            // Convert the file to base64 for upload
-            const reader = new FileReader();
-            const base64Promise = new Promise<string>((resolve, reject) => {
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(state.yardImage!);
-            });
-            const base64 = await base64Promise;
+      // IMMEDIATE NAVIGATION: Don't wait for upload/save to potentially fail (CORS issues)
+      // We pass the temporary blob URL for immediate viewing.
+      // The upload happens in background.
+      const tempYardUrl = state.yardImagePreview;
+      navigate('/result/generated', {
+        state: {
+          result,
+          yardImageUrl: tempYardUrl
+        },
+        replace: true
+      });
 
-            // Use user ID or 'anonymous' for storage path
-            const storageUserId = user ? user.uid : 'anonymous';
-            const timestamp = Date.now();
-            yardImageUrl = await uploadBase64Image(base64, `yards/${storageUserId}/${timestamp}_yard.jpg`);
-          } catch (uploadError) {
-            console.error('Failed to upload yard image:', uploadError);
-            // Continue without the yard image URL (using the blob URL which won't persist across sessions, but better than nothing)
+      // FIRE-AND-FORGET: Save to Firestore in background
+      (async () => {
+        try {
+          // Upload the yard image to get a permanent URL for comparison
+          let yardImageUrl = tempYardUrl;
+          if (state.yardImage) {
+            try {
+              // Convert the file to base64 for upload
+              const reader = new FileReader();
+              const base64Promise = new Promise<string>((resolve, reject) => {
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(state.yardImage!);
+              });
+              const base64 = await base64Promise;
+
+              // Use user ID or 'anonymous' for storage path
+              const storageUserId = user ? user.uid : 'anonymous';
+              const timestamp = Date.now();
+              // Attempt upload, but don't crash if it fails (CORS)
+              yardImageUrl = await uploadBase64Image(base64, `yards/${storageUserId}/${timestamp}_yard.jpg`);
+            } catch (uploadError) {
+              console.warn('Background upload failed (likely CORS), using temp URL:', uploadError);
+            }
           }
+
+          // Use user ID or 'anonymous' for Firestore document
+          const ownerId = user ? user.uid : 'anonymous';
+
+          const { id, shortId } = await saveDesign(ownerId, {
+            ...result,
+            yardImageUrl,
+            isPublic: true // Default to public for demo so it is readable
+          });
+          console.log('Background save successful:', shortId);
+
+          // Optionally update context with permanent URL if successful, 
+          // but valid result is already on screen so no need to force refresh
+          if (yardImageUrl !== tempYardUrl) {
+            setYardImagePreview(yardImageUrl);
+          }
+
+        } catch (bgError) {
+          console.error('Background save failed:', bgError);
         }
-
-        // Use user ID or 'anonymous' for Firestore document
-        const ownerId = user ? user.uid : 'anonymous';
-
-        const { id, shortId } = await saveDesign(ownerId, {
-          ...result,
-          yardImageUrl,
-          isPublic: true // Default to public for demo so it is readable
-        });
-        console.log('Design saved successfully with shortId:', shortId);
-
-        // Update context with yard image
-        setYardImagePreview(yardImageUrl);
-
-        // Navigate to the unique URL
-        navigate(`/result/${shortId}`, { state: { result, yardImageUrl } });
-      } catch (error) {
-        console.error('Failed to save design:', error);
-        // Fallback: Navigate with state only if saving fails
-        setYardImagePreview(state.yardImagePreview);
-        navigate('/result/generated', { state: { result, yardImageUrl: state.yardImagePreview } });
-      }
+      })();
 
     } catch (err: any) {
       console.error(err);

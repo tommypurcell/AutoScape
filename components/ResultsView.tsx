@@ -562,7 +562,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               <p className="text-slate-400 text-sm mt-2">This usually takes about 10-15 seconds</p>
             </div>
           ) : activeTab !== 'video' && activeImage ? (
-            <img src={activeImage} alt={activeTab} className="w-full h-full object-cover transition-opacity duration-300" />
+            <img src={activeImage} alt={activeTab} className="w-full h-full object-contain transition-opacity duration-300" />
           ) : activeTab !== 'video' && !activeImage ? (
             <div className="text-slate-400 italic">Image generation failed or is unavailable.</div>
           ) : null}
