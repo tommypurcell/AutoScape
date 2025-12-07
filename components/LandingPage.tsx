@@ -96,6 +96,24 @@ const DemoSection: React.FC = () => {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout, onStartTutorial }) => {
     const [scrolled, setScrolled] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+
+    const heroImages = [
+        "/concept.jpg",
+        styleReferences[0]?.imageUrl,
+        styleReferences[6]?.imageUrl,
+        styleReferences[2]?.imageUrl,
+        styleReferences[10]?.imageUrl
+    ].filter(Boolean);
+
+    useEffect(() => {
+        setMounted(true);
+        const timer = setInterval(() => {
+            setCurrentHeroIndex((prev) => (prev + 1) % heroImages.length);
+        }, 5000);
+        return () => clearInterval(timer);
+    }, [heroImages.length]);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -115,28 +133,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
 
             {/* Hero Section - Full Viewport */}
             <div className="relative h-screen w-full overflow-hidden">
-                <div className="absolute inset-0">
-                    <img
-                        src="/concept.jpg"
-                        onError={(e) => e.currentTarget.src = styleReferences[4].imageUrl}
-                        className="w-full h-full object-cover object-center scale-105 animate-subtle-zoom"
-                        alt="Landscape Concept"
-                    />
-                    <div className="absolute inset-0 bg-black/30 md:bg-black/20" />
+                <div className="absolute inset-0 bg-black">
+                    {heroImages.map((img, index) => (
+                        <div
+                            key={index}
+                            className={`absolute inset-0 transition-opacity duration-2000 ease-in-out ${index === currentHeroIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                                }`}
+                        >
+                            <img
+                                src={img}
+                                className="w-full h-full object-cover object-center scale-105 animate-subtle-zoom"
+                                alt={`Landscape Concept ${index + 1}`}
+                            />
+                            <div className="absolute inset-0 bg-black/30 md:bg-black/20" />
+                        </div>
+                    ))}
                 </div>
 
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                    <h1 className="text-white text-5xl md:text-7xl lg:text-8xl font-light tracking-tight mb-6 drop-shadow-lg">
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-20">
+                    <h1 className={`text-white text-5xl md:text-7xl lg:text-8xl font-light tracking-tight mb-6 drop-shadow-lg transition-all duration-1000 ease-out transform ${mounted ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'}`}>
                         Living with <br /><span className="font-semibold">Nature</span>
                     </h1>
-                    <p className="text-white/90 text-lg md:text-xl font-light tracking-wide max-w-2xl leading-relaxed drop-shadow-md">
+                    <p className={`text-white/90 text-lg md:text-xl font-light tracking-wide max-w-2xl leading-relaxed drop-shadow-md transition-all duration-1000 delay-300 ease-out transform ${mounted ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0'}`}>
                         AutoScape bridges the gap between architectural precision and organic beauty,
                         using AI to craft sustainable, enduring landscapes.
                     </p>
 
                     <button
                         onClick={onGetStarted}
-                        className="mt-12 px-10 py-4 bg-white text-black text-sm uppercase tracking-widest font-semibold hover:bg-black hover:text-white transition-all duration-300 transform hover:-translate-y-1"
+                        className={`mt-12 px-10 py-4 bg-white text-black text-sm uppercase tracking-widest font-semibold hover:bg-black hover:text-white transition-all duration-300 delay-700 transform hover:-translate-y-1 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
                     >
                         Start Your Project
                     </button>
