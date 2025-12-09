@@ -11,6 +11,7 @@ import { ProductSwapModal } from './ProductSwapModal';
 import { HelpTip } from './HelpTip';
 import { EditModeCanvas, Annotation } from './EditModeCanvas';
 import { analyzeAndRegenerateDesign } from '../services/geminiService';
+import { generateAffiliateLinks, VerifiedMaterialItem } from '../services/affiliateService';
 
 
 
@@ -67,6 +68,9 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
+  const [affiliateLinks, setAffiliateLinks] = useState<Map<string, VerifiedMaterialItem>>(new Map());
+  const [isLoadingAffiliateLinks, setIsLoadingAffiliateLinks] = useState(false);
+  const [showAffiliateLinks, setShowAffiliateLinks] = useState(false);
 
   // Update local result when prop or context changes
   useEffect(() => {
@@ -385,6 +389,36 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
       total_min_budget: newTotal,
       line_items: newLineItems
     });
+  };
+
+  const handleGenerateAffiliateLinks = async () => {
+    if (!result || !result.renderImages[currentRenderIndex] || !result.estimates.breakdown) {
+      alert('Unable to generate affiliate links. Missing render image or materials list.');
+      return;
+    }
+
+    setIsLoadingAffiliateLinks(true);
+    try {
+      const affiliateResult = await generateAffiliateLinks(
+        result.renderImages[currentRenderIndex],
+        result.estimates.breakdown
+      );
+
+      // Create a map for easy lookup by material name
+      const linksMap = new Map<string, VerifiedMaterialItem>();
+      affiliateResult.verifiedMaterials.forEach(item => {
+        linksMap.set(item.name, item);
+      });
+
+      setAffiliateLinks(linksMap);
+      setShowAffiliateLinks(true);
+      console.log(`✅ Generated affiliate links for ${affiliateResult.verifiedCount} verified items`);
+    } catch (error) {
+      console.error('Error generating affiliate links:', error);
+      alert('Failed to generate affiliate links. Please try again.');
+    } finally {
+      setIsLoadingAffiliateLinks(false);
+    }
   };
 
   const handleEditModeSave = async (annotatedImage: string, annotations: Annotation[]) => {
@@ -747,14 +781,38 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                 Material List & Estimates
                 <HelpTip content="Estimated costs for materials and labor based on the generated design. These are rough estimates and may vary by location." />
               </h3>
-              <button
-                onClick={downloadCSV}
-                className="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-slate-200"
-                title="Download as CSV (Excel)"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                Export to Excel
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleGenerateAffiliateLinks}
+                  disabled={isLoadingAffiliateLinks}
+                  className="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-orange-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Generate purchase links for materials"
+                >
+                  {isLoadingAffiliateLinks ? (
+                    <>
+                      <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                      </svg>
+                      Shop Materials
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={downloadCSV}
+                  className="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-slate-200"
+                  title="Download as CSV (Excel)"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Export to Excel
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -764,19 +822,50 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                     <th className="px-4 py-3">Material</th>
                     <th className="px-4 py-3">Quantity</th>
                     <th className="px-4 py-3 text-right">Est. Cost</th>
+                    {showAffiliateLinks && <th className="px-4 py-3 text-center">Purchase</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {result.estimates.breakdown.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-slate-700">
-                        {item.name}
-                        <div className="text-xs text-slate-400 font-normal">{item.notes}</div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-slate-700">{item.totalCost}</td>
-                    </tr>
-                  ))}
+                  {result.estimates.breakdown.map((item, idx) => {
+                    const affiliateItem = affiliateLinks.get(item.name);
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-slate-700">
+                          <div className="flex items-center gap-2">
+                            {item.name}
+                            {affiliateItem?.verified && (
+                              <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full" title="Verified in render">
+                                ✓ Verified
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-400 font-normal">{item.notes}</div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-slate-700">{item.totalCost}</td>
+                        {showAffiliateLinks && (
+                          <td className="px-4 py-3 text-center">
+                            {affiliateItem?.amazonSearchUrl ? (
+                              <a
+                                href={affiliateItem.amazonSearchUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                                title={`Find similar ${item.name} on Amazon`}
+                              >
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M23.27 13.73L22 12.5l-1.27-1.23L19.5 12l1.23 1.27L22 14.5l1.27-1.23L24.5 12l-1.23-1.27zM6.32 2.72c-.35-.35-.92-.35-1.27 0L2.72 5.05c-.35.35-.35.92 0 1.27l2.33 2.33c.35.35.92.35 1.27 0l2.33-2.33c.35-.35.35-.92 0-1.27L6.32 2.72zM12 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                </svg>
+                                Find Similar on Amazon
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-400">Not available</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
                   <tr>
