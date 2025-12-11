@@ -97,11 +97,11 @@ def generate_transformation_video(
         logger.info(f"   task_ids type: {type(task_ids)}")
         logger.info(f"   task_ids length: {len(task_ids) if task_ids else 'N/A'}")
         
-        if not task_ids or len(task_ids) != 2:
+        if not task_ids or len(task_ids) != 2 or not task_ids[0] or not task_ids[1]:
             logger.error(f"❌ Failed to initiate dual video generation - got {task_ids}")
             return {
                 "status": "error",
-                "error": "Failed to initiate dual video generation"
+                "error": "Failed to initiate video generation (API error)"
             }
         
         original_task_id, redesign_task_id = task_ids
@@ -278,9 +278,20 @@ def generate_dual_videos(original_image: str, redesign_image: str, duration: int
     Returns:
         (original_task_id, redesign_task_id)
     """
+    # Ensure images are properly formatted (remove data URI prefix if present)
+    def clean_base64(b64_str):
+        if not b64_str:
+            return ""
+        if "," in b64_str:
+            return b64_str.split(",", 1)[1]
+        return b64_str
+
+    original_clean = clean_base64(original_image)
+    redesign_clean = clean_base64(redesign_image)
+
     with ThreadPoolExecutor(max_workers=2) as executor:
-        original_future = executor.submit(generate_single_video, original_image, "original", duration)
-        redesign_future = executor.submit(generate_single_video, redesign_image, "redesign", duration)
+        original_future = executor.submit(generate_single_video, original_clean, "original", duration)
+        redesign_future = executor.submit(generate_single_video, redesign_clean, "redesign", duration)
         
         original_task_id = original_future.result()
         redesign_task_id = redesign_future.result()
