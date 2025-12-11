@@ -15,6 +15,7 @@ interface DesignWizardProps {
     locationType: LocationType;
     spaceSize: SpaceSize;
     userPrompt: string;
+    useRag: boolean;
     onYardSelect: (files: File[]) => void;
     onClearYard: () => void;
     onStyleSelect: (files: File[]) => void;
@@ -26,6 +27,7 @@ interface DesignWizardProps {
     onLocationChange: (type: LocationType) => void;
     onSizeChange: (size: SpaceSize) => void;
     onPromptChange: (prompt: string) => void;
+    onUseRagChange: (useRag: boolean) => void;
     onGenerate: () => void;
     initialStep?: number;
 }
@@ -40,6 +42,7 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
     locationType,
     spaceSize,
     userPrompt,
+    useRag,
     onYardSelect,
     onClearYard,
     onStyleSelect,
@@ -51,6 +54,7 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
     onLocationChange,
     onSizeChange,
     onPromptChange,
+    onUseRagChange,
     onGenerate,
     initialStep = 1,
 }) => {
@@ -305,6 +309,30 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                     value={userPrompt}
                                     onChange={(e) => onPromptChange(e.target.value)}
                                 />
+
+                                {/* RAG Enhancement Toggle */}
+                                <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <label htmlFor="rag-toggle" className="text-sm font-semibold text-gray-800 cursor-pointer">
+                                            Add RAG Enhancement
+                                        </label>
+                                        <HelpTip content="RAG Enhancement uses our plant database to provide verified plant recommendations with images and accurate pricing for your design." />
+                                    </div>
+                                    <button
+                                        id="rag-toggle"
+                                        type="button"
+                                        onClick={() => onUseRagChange(!useRag)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                                            useRag ? 'bg-green-600' : 'bg-gray-300'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                useRag ? 'translate-x-6' : 'translate-x-1'
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
 
                                 <div className="grid md:grid-cols-2 gap-4 mt-6">
                                     <div className="p-4 bg-gray-50 rounded-lg">

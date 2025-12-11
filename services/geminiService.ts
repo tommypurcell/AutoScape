@@ -47,7 +47,8 @@ export const generateLandscapeDesign = async (
   prompt: string,
   stylePreference: string,
   budget: string,
-  onProgress?: (partialResult: Partial<GeneratedDesign>) => void
+  onProgress?: (partialResult: Partial<GeneratedDesign>) => void,
+  useRag: boolean = true
 ): Promise<GeneratedDesign> => {
   if (!GEMINI_API_KEY) {
     throw new Error("Gemini API key not found in environment variables");
@@ -341,31 +342,35 @@ export const generateLandscapeDesign = async (
     let plantPalette: any[] = [];
     let ragEnhanced = false;
 
-    try {
-      const ragApiBase =
-        import.meta.env.VITE_RAG_API_BASE_URL ||
-        process.env.RAG_API_BASE_URL ||
-        "http://localhost:8002";
-      const ragUrl = `${ragApiBase.replace(/\/$/, "")}/api/enhance-with-rag`;
-      console.log("Phase 5: RAG Enhancement");
-      const ragResponse = await fetch(ragUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data) // Send the structured data directly
-      });
+    if (useRag) {
+      try {
+        const ragApiBase =
+          import.meta.env.VITE_RAG_API_BASE_URL ||
+          process.env.RAG_API_BASE_URL ||
+          "http://localhost:8002";
+        const ragUrl = `${ragApiBase.replace(/\/$/, "")}/api/enhance-with-rag`;
+        console.log("Phase 5: RAG Enhancement");
+        const ragResponse = await fetch(ragUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data) // Send the structured data directly
+        });
 
-      if (ragResponse.ok) {
-        const ragData = await ragResponse.json();
-        plantPalette = ragData.plantPalette || [];
-        ragEnhanced = ragData.rag_enhanced || false;
-        console.log(`✅ RAG Enhancement: Found ${plantPalette.length} plants in catalog`);
-      } else {
-        console.warn("RAG Enhancement failed, continuing without it");
+        if (ragResponse.ok) {
+          const ragData = await ragResponse.json();
+          plantPalette = ragData.plantPalette || [];
+          ragEnhanced = ragData.rag_enhanced || false;
+          console.log(`✅ RAG Enhancement: Found ${plantPalette.length} plants in catalog`);
+        } else {
+          console.warn("RAG Enhancement failed, continuing without it");
+        }
+      } catch (error) {
+        console.warn("RAG Enhancement unavailable:", error);
       }
-    } catch (error) {
-      console.warn("RAG Enhancement unavailable:", error);
+    } else {
+      console.log("Phase 5: RAG Enhancement skipped (disabled by user)");
     }
 
     const finalResult: GeneratedDesign = {

@@ -123,6 +123,7 @@ export interface AppState {
   selectedStyle: DesignStyle | string;
   locationType: LocationType;
   spaceSize: SpaceSize;
+  useRag: boolean;
   result: GeneratedDesign | null;
   error: string | null;
 }
