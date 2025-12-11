@@ -13,7 +13,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import sys
-import os
 import traceback
 
 # Ensure parent directory (project root) is in path for importing modules

@@ -10,6 +10,7 @@ This folder contains active server files for the AutoScape application.
 - **Status**: ✅ ACTIVE - Called by frontend (geminiService.ts)
 - **Endpoints**:
   - POST `/api/enhance-with-rag` - Enhances design materials with RAG data
+  - POST `/api/generate-video` - Generates transformation video with angle rotation
   - GET `/health` - Health check endpoint
 - **Dependencies**:
   - `plant_catalog.py` (in root)
