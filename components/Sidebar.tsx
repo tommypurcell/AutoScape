@@ -209,25 +209,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 </button>
                             )}
 
-                            {/* About Page */}
-                            <button
-                                onClick={() => {
-                                    onNavigate('about');
-                                    onClose();
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-800 rounded-xl transition-colors group"
-                            >
-                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 group-hover:bg-slate-200 transition-colors">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div className="text-left">
-                                    <div className="font-semibold">About</div>
-                                    <div className="text-xs text-slate-400">Meet the team</div>
-                                </div>
-                            </button>
-
                             {/* Admin Dashboard (only for admins) */}
                             {user && (user.email === 'admin@autoscape.com' || user.email?.endsWith('@autoscape.com')) && (
                                 <button
