@@ -1,5 +1,6 @@
-import { X, History, Menu, Settings, LogOut, Plus, Trash2, ChevronRight, Globe } from 'lucide-react';
+import { X, History, Menu, Settings, LogOut, Plus, Trash2, ChevronRight, Globe, Shield, FileText } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserDesigns, deleteDesign, SavedDesign } from '../services/firestoreService';
 
@@ -22,6 +23,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onLogin,
     onNavigate
 }) => {
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [designs, setDesigns] = useState<SavedDesign[]>([]);
     const [loading, setLoading] = useState(false);
@@ -209,25 +211,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 </button>
                             )}
 
-                            {/* About Page */}
-                            <button
-                                onClick={() => {
-                                    onNavigate('about');
-                                    onClose();
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-800 rounded-xl transition-colors group"
-                            >
-                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 group-hover:bg-slate-200 transition-colors">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div className="text-left">
-                                    <div className="font-semibold">About</div>
-                                    <div className="text-xs text-slate-400">Meet the team</div>
-                                </div>
-                            </button>
-
                             {/* Admin Dashboard (only for admins) */}
                             {user && (user.email === 'admin@autoscape.com' || user.email?.endsWith('@autoscape.com')) && (
                                 <button
@@ -248,6 +231,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     </div>
                                 </button>
                             )}
+
+                            <div className="border-t border-slate-100 my-2 pt-2">
+                                <button
+                                    onClick={() => {
+                                        navigate('/terms');
+                                        onClose();
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors"
+                                >
+                                    <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400">
+                                        <FileText className="w-5 h-5" />
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="font-semibold text-sm">Terms of Service</div>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        navigate('/privacy');
+                                        onClose();
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors"
+                                >
+                                    <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400">
+                                        <Shield className="w-5 h-5" />
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="font-semibold text-sm">Privacy Policy</div>
+                                    </div>
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-3">

@@ -211,7 +211,7 @@ export const deleteDesign = async (designId: string): Promise<void> => {
 export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedDesign[]> => {
     try {
         console.log('Getting public designs...');
-        
+
         // Fetch ALL designs (not just isPublic=true) to handle cases where:
         // 1. Designs might have isPublic: false but should be shown
         // 2. Older designs might not have isPublic field set
@@ -219,7 +219,7 @@ export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedD
         let allDesigns: SavedDesign[] = [];
         let lastDoc: QueryDocumentSnapshot | null = null;
         const batchSize = 100; // Fetch in batches of 100
-        
+
         do {
             let q;
             if (lastDoc) {
@@ -240,9 +240,9 @@ export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedD
             }
 
             const querySnapshot = await getDocs(q);
-            
+
             console.log(`  Batch fetched: ${querySnapshot.docs.length} designs (total so far: ${allDesigns.length})`);
-            
+
             if (querySnapshot.empty) {
                 console.log('  No more designs found, stopping pagination');
                 break;
@@ -258,16 +258,16 @@ export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedD
             });
 
             allDesigns = [...allDesigns, ...batchDesigns];
-            
+
             // Check if we got fewer results than requested (end of collection)
             if (querySnapshot.docs.length < batchSize) {
                 console.log(`  Reached end of collection (got ${querySnapshot.docs.length} < ${batchSize})`);
                 break;
             }
-            
+
             // Get the last document for pagination
             lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
-            
+
             // Safety check: don't fetch more than limitCount total (if specified and reasonable)
             // Only apply limit if it's less than a reasonable threshold (e.g., 1000)
             // This allows fetching all designs when limitCount is high
@@ -307,7 +307,7 @@ export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedD
         return limitCount ? sortedDesigns.slice(0, limitCount) : sortedDesigns;
     } catch (error: any) {
         console.error('Error fetching public designs:', error);
-        
+
         // If error is due to missing index, try without orderBy as fallback
         if (error.code === 'failed-precondition') {
             console.warn('Composite index missing, falling back to query without orderBy (with pagination)');
@@ -316,7 +316,7 @@ export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedD
                 let allDesigns: SavedDesign[] = [];
                 let lastDoc: QueryDocumentSnapshot | null = null;
                 const batchSize = 100;
-                
+
                 do {
                     let q;
                     if (lastDoc) {
@@ -333,10 +333,10 @@ export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedD
                             limit(batchSize)
                         );
                     }
-                    
+
                     const querySnapshot = await getDocs(q);
                     if (querySnapshot.empty) break;
-                    
+
                     const batchDesigns = querySnapshot.docs.map((doc) => {
                         const data = doc.data() as any;
                         return {
@@ -345,15 +345,15 @@ export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedD
                             createdAt: data.createdAt?.toDate() || new Date(),
                         } as SavedDesign;
                     });
-                    
+
                     allDesigns = [...allDesigns, ...batchDesigns];
-                    
+
                     if (querySnapshot.docs.length < batchSize) break;
                     lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
-                    
+
                     if (limitCount && limitCount < 1000 && allDesigns.length >= limitCount) break;
                 } while (lastDoc);
-                
+
                 // Filter to only exclude private designs (isPublic === false)
                 // Keep all designs that are public (isPublic === true) OR don't have the field (undefined/null)
                 const publicDesigns = allDesigns.filter(design => {
@@ -367,7 +367,7 @@ export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedD
                 console.error('Fallback query also failed:', fallbackError);
             }
         }
-        
+
         // Return empty array if DB fails - only show real designs from Firestore
         return [];
     }
@@ -415,5 +415,140 @@ export const getDesignByShortId = async (shortId: string): Promise<SavedDesign |
     } catch (error) {
         console.error('Error fetching design by shortId:', error);
         throw error;
+    }
+};
+
+// ==================== DESIGNER PROFILES ====================
+
+export interface DesignerProfile {
+    id: string;
+    userId: string;
+    businessName: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    city: string;
+    state: string;
+    specialties: string[];
+    yearsExperience: string;
+    website?: string;
+    bio: string;
+    portfolioImages: string[];
+    rating?: number;
+    reviewCount?: number;
+    isVerified?: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+/**
+ * Save a new designer profile
+ */
+export const saveDesignerProfile = async (
+    userId: string,
+    profileData: Omit<DesignerProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+    try {
+        const docRef = await addDoc(collection(db, 'designers'), {
+            ...profileData,
+            userId,
+            rating: 0,
+            reviewCount: 0,
+            isVerified: false,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+        });
+        console.log('Designer profile saved with ID:', docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error('Error saving designer profile:', error);
+        throw error;
+    }
+};
+
+/**
+ * Get designer profile by user ID
+ */
+export const getDesignerProfileByUserId = async (userId: string): Promise<DesignerProfile | null> => {
+    try {
+        const q = query(
+            collection(db, 'designers'),
+            where('userId', '==', userId)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            return null;
+        }
+
+        const doc = querySnapshot.docs[0];
+        return {
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+            updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        } as DesignerProfile;
+    } catch (error) {
+        console.error('Error fetching designer profile:', error);
+        throw error;
+    }
+};
+
+/**
+ * Get all designers (for Business page)
+ */
+export const getAllDesigners = async (state?: string): Promise<DesignerProfile[]> => {
+    try {
+        let q;
+        if (state) {
+            q = query(
+                collection(db, 'designers'),
+                where('state', '==', state),
+                orderBy('rating', 'desc')
+            );
+        } else {
+            q = query(
+                collection(db, 'designers'),
+                orderBy('rating', 'desc')
+            );
+        }
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(docSnap => {
+            const data = docSnap.data() as any;
+            return {
+                id: docSnap.id,
+                ...data,
+                createdAt: data.createdAt?.toDate() || new Date(),
+                updatedAt: data.updatedAt?.toDate() || new Date(),
+            } as DesignerProfile;
+        });
+    } catch (error) {
+        console.error('Error fetching designers:', error);
+        return [];
+    }
+};
+
+/**
+ * Get designer's designs (portfolio)
+ */
+export const getDesignerDesigns = async (userId: string): Promise<SavedDesign[]> => {
+    try {
+        const q = query(
+            collection(db, 'designs'),
+            where('userId', '==', userId),
+            where('isPublic', '==', true),
+            orderBy('createdAt', 'desc')
+        );
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+        })) as SavedDesign[];
+    } catch (error) {
+        console.error('Error fetching designer designs:', error);
+        return [];
     }
 };

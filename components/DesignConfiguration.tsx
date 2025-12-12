@@ -38,6 +38,7 @@ export const DesignConfiguration: React.FC = () => {
         budget,
         selectedStyle,
         error,
+        location,
         selectedGalleryStyleIds,
         styleSelectionMode,
         setYardImage,
@@ -50,10 +51,22 @@ export const DesignConfiguration: React.FC = () => {
         setResult,
         setError,
         setIsProcessing,
+        setLocation,
         toggleGalleryStyle,
         clearGalleryStyles,
         setStyleSelectionMode,
     } = useDesign();
+
+    // Location data for climate-aware plant recommendations
+    const locationData: Record<string, string[]> = {
+        'United States': ['California', 'Texas', 'Florida', 'New York', 'Arizona', 'Colorado', 'Washington', 'Oregon', 'Nevada', 'Georgia', 'North Carolina', 'Virginia', 'Massachusetts', 'Illinois', 'Pennsylvania', 'Ohio', 'Michigan', 'New Jersey', 'Other US State'],
+        'Canada': ['British Columbia', 'Ontario', 'Quebec', 'Alberta', 'Manitoba', 'Saskatchewan', 'Nova Scotia', 'Other Province'],
+        'United Kingdom': ['England', 'Scotland', 'Wales', 'Northern Ireland'],
+        'Australia': ['New South Wales', 'Victoria', 'Queensland', 'Western Australia', 'South Australia', 'Tasmania', 'Other Territory'],
+        'Other': ['Tropical Climate', 'Mediterranean Climate', 'Desert Climate', 'Temperate Climate', 'Cold Climate']
+    };
+
+    const [selectedCountry, setSelectedCountry] = useState<string>('United States');
 
     // Local state for the wizard step (1 to 5)
     const [currentStep, setCurrentStep] = useState(1);
@@ -236,6 +249,55 @@ export const DesignConfiguration: React.FC = () => {
                                 previewUrls={yardImagePreview ? [yardImagePreview] : []}
                                 onClear={handleClearYard}
                             />
+
+                            {/* Location Selector */}
+                            <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Where is your property located?
+                                </h3>
+                                <p className="text-xs text-slate-500 mb-4">This helps us recommend climate-appropriate plants for your area.</p>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Country</label>
+                                        <select
+                                            value={selectedCountry}
+                                            onChange={(e) => {
+                                                setSelectedCountry(e.target.value);
+                                                setLocation(locationData[e.target.value]?.[0] || '');
+                                            }}
+                                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        >
+                                            {Object.keys(locationData).map(country => (
+                                                <option key={country} value={country}>{country}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">State / Province</label>
+                                        <select
+                                            value={location}
+                                            onChange={(e) => setLocation(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        >
+                                            {(locationData[selectedCountry] || []).map(region => (
+                                                <option key={region} value={region}>{region}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {location && (
+                                    <p className="mt-3 text-xs text-emerald-600 flex items-center gap-1">
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                        AI will recommend plants suited for {location}'s climate
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -388,14 +450,51 @@ export const DesignConfiguration: React.FC = () => {
                     {currentStep === 4 && (
                         <div className="space-y-6 animate-fade-in">
                             <h2 className="text-xl font-bold text-slate-800">Any specific requests?</h2>
-                            <p className="text-slate-600 text-sm">Tell us about features you want (fire pit, pool, specific plants, etc.).</p>
+                            <p className="text-slate-600 text-sm">Tell us about features you want or click suggestions below to add them.</p>
 
                             <textarea
-                                className="w-full p-4 h-48 bg-slate-50 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 resize-none text-base"
+                                className="w-full p-4 h-32 bg-slate-50 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 resize-none text-base"
                                 placeholder="e.g. I want a low maintenance yard with a stone walkway and a small water feature..."
                                 value={userPrompt}
                                 onChange={(e) => setUserPrompt(e.target.value)}
                             />
+
+                            {/* Additional Preferences */}
+                            <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                <p className="text-sm font-medium text-slate-700">Additional Preferences</p>
+                                <p className="text-xs text-slate-500">Click to add to your request:</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        { label: '👨‍👩‍👧‍👦 Family-friendly', value: 'family-friendly with safe play areas' },
+                                        { label: '🧒 Kid-safe', value: 'kid-safe with no sharp edges or toxic plants' },
+                                        { label: '🐕 Pet-friendly', value: 'pet-friendly with durable grass and secure fencing' },
+                                        { label: '✨ Luxury', value: 'luxury high-end premium finishes' },
+                                        { label: '🪑 Furnished', value: 'fully furnished with outdoor furniture' },
+                                        { label: '🌿 Low maintenance', value: 'low maintenance drought-resistant' },
+                                        { label: '🔥 Fire pit', value: 'cozy fire pit seating area' },
+                                        { label: '💧 Water feature', value: 'relaxing water feature or fountain' },
+                                        { label: '🏊 Pool area', value: 'pool with surrounding deck' },
+                                        { label: '🍽️ Outdoor dining', value: 'outdoor dining and entertainment space' },
+                                        { label: '🌺 Colorful flowers', value: 'colorful seasonal flowers' },
+                                        { label: '🌳 Privacy', value: 'privacy hedges and screening plants' },
+                                        { label: '💡 Lighting', value: 'ambient outdoor lighting for evening use' },
+                                        { label: '🧘 Zen garden', value: 'peaceful zen meditation space' },
+                                    ].map((keyword) => (
+                                        <button
+                                            key={keyword.label}
+                                            onClick={() => {
+                                                const newPrompt = userPrompt
+                                                    ? `${userPrompt}, ${keyword.value}`
+                                                    : keyword.value;
+                                                setUserPrompt(newPrompt);
+                                            }}
+                                            className="px-3 py-1.5 bg-white hover:bg-emerald-100 hover:text-emerald-700 text-slate-600 text-sm rounded-full transition-colors border border-slate-200 hover:border-emerald-300"
+                                        >
+                                            {keyword.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">Budget Range (Optional)</label>

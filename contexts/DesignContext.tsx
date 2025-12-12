@@ -20,6 +20,7 @@ interface DesignContextType {
     result: GeneratedDesign | null;
     error: string | null;
     isProcessing: boolean;
+    location: string; // User's location for climate-aware plant recommendations
 
     // Gallery State
     selectedGalleryStyleIds: string[];
@@ -37,6 +38,7 @@ interface DesignContextType {
     setResult: (result: GeneratedDesign | null) => void;
     setError: (error: string | null) => void;
     setIsProcessing: (isProcessing: boolean) => void;
+    setLocation: (location: string) => void;
 
     // Gallery Actions
     toggleGalleryStyle: (styleId: string) => void;
@@ -61,6 +63,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const [result, setResult] = useState<GeneratedDesign | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [location, setLocation] = useState<string>('California'); // Default to California
 
     // Gallery state
     const [selectedGalleryStyleIds, setSelectedGalleryStyleIds] = useState<string[]>([]);
@@ -126,6 +129,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setIsProcessing(false);
         setSelectedGalleryStyleIds([]);
         setStyleSelectionMode('gallery');
+        setLocation('California');
     };
 
     const loadDesign = (design: any) => {
@@ -149,6 +153,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             result,
             error,
             isProcessing,
+            location,
             selectedGalleryStyleIds,
             styleSelectionMode,
             setYardImage,
@@ -162,6 +167,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setResult,
             setError,
             setIsProcessing,
+            setLocation,
             toggleGalleryStyle,
             clearGalleryStyles,
             setStyleSelectionMode,

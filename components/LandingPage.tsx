@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { styleReferences } from '../data/styleReferences';
 import { ChevronDown, ArrowRight, Sun, Droplets, Wind } from 'lucide-react';
 
@@ -6,6 +7,7 @@ interface LandingPageProps {
     onGetStarted: () => void;
     onAbout: () => void;
     onStartTutorial?: () => void;
+    onDesignerSignup?: () => void;
 }
 
 const DemoSection: React.FC = () => {
@@ -94,7 +96,7 @@ const DemoSection: React.FC = () => {
     );
 };
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout, onStartTutorial }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout, onStartTutorial, onDesignerSignup }) => {
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
@@ -113,33 +115,66 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
     return (
         <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-black selection:text-white">
 
-            {/* Hero Section - Full Viewport */}
-            <div className="relative h-screen w-full overflow-hidden">
+            {/* Hero Section - AI Scanning Effect */}
+            <div className="relative h-screen w-full overflow-hidden bg-slate-900">
+                {/* Background Animation */}
                 <div className="absolute inset-0">
-                    <img
-                        src="/concept.jpg"
-                        onError={(e) => e.currentTarget.src = styleReferences[4].imageUrl}
-                        className="w-full h-full object-cover object-center scale-105 animate-subtle-zoom"
-                        alt="Landscape Concept"
-                    />
-                    <div className="absolute inset-0 bg-black/30 md:bg-black/20" />
+                    {/* "Before" Image (Base) */}
+                    <div className="absolute inset-0">
+                        <img
+                            src="/demo_clips/scene_1_problem.jpg"
+                            onError={(e) => e.currentTarget.src = styleReferences[0].imageUrl}
+                            className="w-full h-full object-cover grayscale-[30%]"
+                            alt="Original Yard"
+                        />
+                        <div className="absolute inset-0 bg-black/40" />
+                    </div>
+
+                    {/* "After" Image (Revealed) */}
+                    <div className="absolute inset-0 animate-scan border-r-4 border-emerald-400 overflow-hidden shadow-[0_0_20px_rgba(52,211,153,0.5)] z-0">
+                        <img
+                            src="/demo_clips/scene_3_design.jpg"
+                            onError={(e) => e.currentTarget.src = styleReferences[4].imageUrl}
+                            className="absolute inset-0 w-screen max-w-none h-full object-cover"
+                            alt="Designed Yard"
+                        />
+                        <div className="absolute inset-0 bg-emerald-500/10 mix-blend-overlay" />
+                    </div>
                 </div>
 
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                    <h1 className="text-white text-5xl md:text-7xl lg:text-8xl font-light tracking-tight mb-6 drop-shadow-lg">
-                        Living with <br /><span className="font-semibold">Nature</span>
+                {/* Content Overlay */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 mb-8 animate-fade-in-up">
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                        <span className="text-emerald-400 text-sm font-medium tracking-wide uppercase">AI-Powered Design Engine</span>
+                    </div>
+
+                    <h1 className="text-white text-5xl md:text-7xl lg:text-8xl font-light tracking-tight mb-8 drop-shadow-2xl">
+                        Reimagine Your <br />
+                        <span className="font-semibold bg-gradient-to-r from-white via-emerald-200 to-emerald-400 bg-clip-text text-transparent">
+                            Outdoor World
+                        </span>
                     </h1>
-                    <p className="text-white/90 text-lg md:text-xl font-light tracking-wide max-w-2xl leading-relaxed drop-shadow-md">
-                        AutoScape bridges the gap between architectural precision and organic beauty,
-                        using AI to craft sustainable, enduring landscapes.
+
+                    <p className="text-white/90 text-lg md:text-xl font-light tracking-wide max-w-2xl leading-relaxed drop-shadow-lg mb-12">
+                        Upload a photo and watch as advanced AI transforms your yard into a sustainable,
+                        breathtaking landscape in seconds.
                     </p>
 
-                    <button
-                        onClick={onGetStarted}
-                        className="mt-12 px-10 py-4 bg-white text-black text-sm uppercase tracking-widest font-semibold hover:bg-black hover:text-white transition-all duration-300 transform hover:-translate-y-1"
-                    >
-                        Start Your Project
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <button
+                            onClick={onGetStarted}
+                            className="px-10 py-4 bg-emerald-500 hover:bg-emerald-400 text-black text-sm uppercase tracking-widest font-bold transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(16,185,129,0.4)] rounded-sm"
+                        >
+                            Design My Yard
+                        </button>
+                        <button
+                            onClick={onDesignerSignup}
+                            className="px-10 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border border-white/30 text-sm uppercase tracking-widest font-semibold transition-all duration-300 rounded-sm"
+                        >
+                            Are you a professional?
+                        </button>
+                    </div>
                 </div>
 
                 <div
@@ -149,6 +184,65 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     <ChevronDown size={32} strokeWidth={1} />
                 </div>
             </div>
+
+            {/* Before/After Examples Section */}
+            <section className="py-20 bg-gradient-to-b from-slate-50 to-white">
+                <div className="max-w-6xl mx-auto px-6">
+                    <div className="text-center mb-12">
+                        <span className="inline-block px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium mb-4">
+                            Real Transformations
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-light text-gray-900 mb-4">
+                            See What's <span className="font-semibold">Possible</span>
+                        </h2>
+                        <p className="text-gray-600 max-w-xl mx-auto">
+                            AI-powered landscape design that transforms ordinary yards into extraordinary outdoor spaces
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8">
+                        {/* Example 1 */}
+                        <div className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow">
+                            <img
+                                src="/examples/example_1.png"
+                                alt="Before and after landscape transformation"
+                                className="w-full aspect-video object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                                <div className="text-white">
+                                    <p className="font-semibold text-lg">Backyard Makeover</p>
+                                    <p className="text-white/80 text-sm">From bare lawn to blooming paradise</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Example 2 */}
+                        <div className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow">
+                            <img
+                                src="/examples/example_2.jpg"
+                                alt="Before and after garden transformation"
+                                className="w-full aspect-video object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                                <div className="text-white">
+                                    <p className="font-semibold text-lg">Garden Retreat</p>
+                                    <p className="text-white/80 text-sm">Creating a serene fountain garden</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="text-center mt-10">
+                        <button
+                            onClick={onGetStarted}
+                            className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors inline-flex items-center gap-2"
+                        >
+                            Create Your Transformation
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            </section>
 
             {/* Philosophy Section - Editorial Style */}
             <section className="py-24 md:py-32 max-w-5xl mx-auto px-6 md:px-12">
@@ -237,9 +331,93 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
             {/* Slide Demo Section */}
             <DemoSection />
 
+            {/* Designer Section - "Are you a Designer?" */}
+            {/* Designer Section - "Are you a Designer?" - Bright & Professional */}
+            <section className="py-24 relative overflow-hidden bg-gradient-to-br from-white via-blue-50 to-indigo-50">
+                {/* Background Decorative Elements */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-amber-100/50 to-transparent rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
+                    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-emerald-100/50 to-transparent rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
+                </div>
+
+                <div className="max-w-6xl mx-auto px-6 relative z-10">
+                    <div className="text-center mb-16">
+                        <span className="inline-block px-4 py-2 bg-indigo-100 text-indigo-600 rounded-full text-sm font-bold uppercase tracking-wider mb-6">
+                            For Professionals
+                        </span>
+                        <h2 className="text-4xl md:text-5xl font-light text-slate-900 mb-6">
+                            Are You a <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Designer</span>?
+                        </h2>
+                        <p className="text-xl text-slate-600 max-w-2xl mx-auto font-light leading-relaxed">
+                            Join AutoScape as a professional and transform how you work with clients using AI-powered tools.
+                        </p>
+                    </div>
+
+                    {/* Benefits Grid */}
+                    <div className="grid md:grid-cols-3 gap-8 mb-16">
+                        {/* Card 1 */}
+                        <div className="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-100 group">
+                            <div className="w-14 h-14 bg-indigo-50 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <svg className="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">AI-Powered Insights</h3>
+                            <p className="text-slate-500 leading-relaxed text-sm">
+                                Get instant design analysis, material estimates, and plant recommendations to speed up your workflow.
+                            </p>
+                        </div>
+
+                        {/* Card 2 */}
+                        <div className="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-100 group">
+                            <div className="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">Find New Clients</h3>
+                            <p className="text-slate-500 leading-relaxed text-sm">
+                                Showcase your portfolio to homeowners actively looking for professional landscape designers.
+                            </p>
+                        </div>
+
+                        {/* Card 3 */}
+                        <div className="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-100 group">
+                            <div className="w-14 h-14 bg-amber-50 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <svg className="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">Match Expectations</h3>
+                            <p className="text-slate-500 leading-relaxed text-sm">
+                                Create vivid visualizations that match client expectations before breaking ground.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="text-center">
+                        <button
+                            onClick={onDesignerSignup}
+                            className="px-10 py-5 bg-slate-900 text-white font-bold uppercase tracking-widest rounded-lg transition-all transform hover:scale-105 shadow-xl hover:bg-slate-800"
+                        >
+                            Join as a Designer
+                        </button>
+                        <p className="mt-6 text-slate-500 text-xs uppercase tracking-widest">
+                            Free to join • Build your portfolio • Connect with clients
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             {/* Text-Heavy Editorial "Note" */}
-            <section className="py-32 bg-gray-900 text-white">
-                <div className="max-w-3xl mx-auto px-6 text-center">
+            <section className="py-32 relative bg-emerald-950 overflow-hidden text-white">
+                <div className="absolute inset-0 opacity-20 mix-blend-soft-light">
+                    <img src={styleReferences[3]?.imageUrl} className="w-full h-full object-cover" alt="" />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-900/80 to-slate-900/90" />
+
+                <div className="max-w-3xl mx-auto px-6 text-center relative z-10">
                     <Wind className="mx-auto mb-8 text-gray-400" size={32} />
                     <h2 className="text-3xl md:text-5xl font-serif italic mb-12">
                         "The goal of life is living in agreement with nature."
@@ -273,8 +451,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     <div className="flex gap-8 text-sm font-light text-gray-400">
                         <button onClick={onAbout} className="hover:text-white transition-colors">Studio</button>
                         <button onClick={onGetStarted} className="hover:text-white transition-colors">Start Project</button>
-                        <a href="#" className="hover:text-white transition-colors">Terms</a>
-                        <a href="#" className="hover:text-white transition-colors">Privacy</a>
+                        <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+                        <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
                     </div>
                     <div className="text-xs text-gray-600 font-mono">
                         © 2025 AutoScape Inc.

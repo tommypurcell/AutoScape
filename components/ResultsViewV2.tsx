@@ -530,20 +530,48 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                         )}
                         {activeTab === 'render' && result.renderImages[currentRenderIndex] && (
                             <div className="relative w-full h-full">
-                                <img src={result.renderImages[currentRenderIndex]} alt="Rendered design" className="w-full h-full object-contain" />
-                                {result.renderImages.length > 1 && (
+                                {isImageEditMode ? (
+                                    /* Edit Mode Canvas */
+                                    <EditModeCanvas
+                                        imageUrl={result.renderImages[currentRenderIndex]}
+                                        onSave={(annotatedImage, annotations) => {
+                                            console.log('Annotated image saved:', annotations.length, 'annotations');
+                                            // Update the render image with annotations
+                                            setIsImageEditMode(false);
+                                            // Optionally save the annotated image
+                                        }}
+                                        onCancel={() => setIsImageEditMode(false)}
+                                    />
+                                ) : (
                                     <>
-                                        <button onClick={prevRender} className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 hover:bg-white shadow-lg flex items-center justify-center">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                        <img src={result.renderImages[currentRenderIndex]} alt="Rendered design" className="w-full h-full object-contain" />
+
+                                        {/* Edit Button */}
+                                        <button
+                                            onClick={() => setIsImageEditMode(true)}
+                                            className="absolute top-4 right-4 px-4 py-2 bg-white/90 hover:bg-white text-slate-700 rounded-lg shadow-lg flex items-center gap-2 font-medium text-sm transition-all hover:scale-105"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                            Edit / Annotate
                                         </button>
-                                        <button onClick={nextRender} className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 hover:bg-white shadow-lg flex items-center justify-center">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                        </button>
-                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                                            {result.renderImages.map((_, idx) => (
-                                                <button key={idx} onClick={() => setCurrentRenderIndex(idx)} className={`w-2.5 h-2.5 rounded-full transition-all ${idx === currentRenderIndex ? 'bg-emerald-500 scale-125' : 'bg-white/60 hover:bg-white'}`} />
-                                            ))}
-                                        </div>
+
+                                        {result.renderImages.length > 1 && (
+                                            <>
+                                                <button onClick={prevRender} className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 hover:bg-white shadow-lg flex items-center justify-center">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                                </button>
+                                                <button onClick={nextRender} className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 hover:bg-white shadow-lg flex items-center justify-center">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                                </button>
+                                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                                                    {result.renderImages.map((_, idx) => (
+                                                        <button key={idx} onClick={() => setCurrentRenderIndex(idx)} className={`w-2.5 h-2.5 rounded-full transition-all ${idx === currentRenderIndex ? 'bg-emerald-500 scale-125' : 'bg-white/60 hover:bg-white'}`} />
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
                                     </>
                                 )}
                             </div>
