@@ -13,7 +13,7 @@ import { DesignProvider, useDesign } from './contexts/DesignContext';
 import { AuthModal } from './components/AuthModal';
 import { saveDesign, getUserDesigns, SavedDesign, deleteDesign, getDesignById } from './services/firestoreService';
 import { auth } from './firebase';
-import { uploadBase64Image } from './services/storageService';
+
 import { Sidebar } from './components/Sidebar';
 import { AccountSettings } from './components/AccountSettings';
 import CommunityGallery from './components/CommunityGallery';
@@ -369,7 +369,7 @@ const AppContent: React.FC = () => {
           <LandingPage
             onGetStarted={() => {
               if (user) {
-                navigate('/design');
+                navigate('/create');
               } else {
                 setShowAuthModal(true);
               }
