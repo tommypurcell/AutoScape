@@ -11,11 +11,11 @@ interface UploadAreaProps {
   onClear?: () => void;
 }
 
-export const UploadArea: React.FC<UploadAreaProps> = ({ 
-  label, 
-  subLabel, 
-  onFileSelect, 
-  previewUrls, 
+export const UploadArea: React.FC<UploadAreaProps> = ({
+  label,
+  subLabel,
+  onFileSelect,
+  previewUrls,
   required = false,
   accept = "image/*",
   multiple = false,
@@ -53,7 +53,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
 
   return (
     <div className="space-y-3">
-      <div 
+      <div
         className={`relative group cursor-pointer border-2 border-dashed rounded-xl transition-all duration-200 ease-in-out overflow-hidden h-64
           ${hasPreviews ? 'border-emerald-500/50 bg-slate-50' : 'border-slate-300 hover:border-emerald-400 hover:bg-slate-50'}
         `}
@@ -69,19 +69,19 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
           multiple={multiple}
           className="hidden"
         />
-        
+
         {hasPreviews ? (
           <div className="w-full h-full p-4 overflow-y-auto custom-scrollbar">
             <div className={`grid gap-2 ${previewUrls.length === 1 ? 'grid-cols-1 h-full' : 'grid-cols-2'}`}>
               {previewUrls.map((url, idx) => (
                 <div key={idx} className={`relative rounded-lg overflow-hidden border border-slate-200 shadow-sm ${previewUrls.length === 1 ? 'h-full' : 'aspect-square'}`}>
-                  <img 
-                    src={url} 
-                    alt={`Preview ${idx + 1}`} 
+                  <img
+                    src={url}
+                    alt={`Preview ${idx + 1}`}
                     className="w-full h-full object-cover"
                   />
                   {multiple && (
-                    <div className="absolute top-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full backdrop-blur-sm">
+                    <div className="absolute top-1 left-1 bg-black/50 text-white text-sm px-1.5 py-0.5 rounded-full backdrop-blur-sm">
                       #{idx + 1}
                     </div>
                   )}
@@ -91,7 +91,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
               {multiple && (
                 <div className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-emerald-300/50 rounded-lg bg-emerald-50/30 text-emerald-600 hover:bg-emerald-50 transition-colors">
                   <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                  <span className="text-xs font-medium">Add More</span>
+                  <span className="text-sm font-medium">Add More</span>
                 </div>
               )}
             </div>
@@ -107,15 +107,15 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
               {label} {required && <span className="text-red-500">*</span>}
             </h3>
             {subLabel && <p className="text-sm text-slate-500 mt-1">{subLabel}</p>}
-            <p className="text-xs text-slate-400 mt-4">
+            <p className="text-sm text-slate-400 mt-4">
               {multiple ? 'Upload multiple photos for better accuracy' : 'JPG, PNG up to 10MB'}
             </p>
           </div>
         )}
       </div>
-      
+
       {hasPreviews && onClear && (
-        <button 
+        <button
           onClick={(e) => { e.stopPropagation(); onClear(); }}
           className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1 ml-1"
         >

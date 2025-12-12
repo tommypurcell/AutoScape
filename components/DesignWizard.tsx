@@ -153,21 +153,21 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
 
                 {/* Mobile Step Indicator (visible on smaller screens) */}
                 <div className="lg:hidden mb-6">
-                    <div className="flex items-center justify-between max-w-md mx-auto">
+                    <div className="flex items-start justify-between max-w-md mx-auto relative px-2">
                         {steps.map((step, index) => (
                             <React.Fragment key={step.number}>
-                                <div className="flex flex-col items-center flex-1">
+                                <div className="flex flex-col items-center flex-1 z-10">
                                     <button
                                         onClick={() => handleStepClick(step.number)}
                                         disabled={
                                             (step.number === 2 && !canProceedFromStep1) ||
                                             (step.number === 3 && (!canProceedFromStep1 || !canProceedFromStep2))
                                         }
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all mb-1 ${currentStep === step.number
-                                            ? 'bg-emerald-600 text-white ring-3 ring-emerald-200 scale-110'
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base transition-all mb-2 shadow-sm ${currentStep === step.number
+                                            ? 'bg-emerald-600 text-white ring-4 ring-emerald-50 scale-105'
                                             : currentStep > step.number
                                                 ? 'bg-emerald-600 text-white cursor-pointer'
-                                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                : 'bg-white border-2 border-gray-200 text-gray-400 cursor-not-allowed'
                                             }`}
                                     >
                                         {currentStep > step.number ? (
@@ -176,12 +176,12 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                             step.number
                                         )}
                                     </button>
-                                    <p className={`font-medium text-sm ${currentStep === step.number ? 'text-emerald-600' : 'text-gray-600'}`}>
+                                    <p className={`font-medium text-sm text-center leading-tight max-w-[80px] ${currentStep === step.number ? 'text-emerald-700' : 'text-gray-500'}`}>
                                         {step.title}
                                     </p>
                                 </div>
                                 {index < steps.length - 1 && (
-                                    <div className={`flex-1 h-0.5 mx-2 mb-5 rounded-full ${currentStep > step.number ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+                                    <div className={`flex-1 h-0.5 mx-2 mt-5 rounded-full transition-colors duration-300 ${currentStep > step.number ? 'bg-emerald-500' : 'bg-gray-200'}`} />
                                 )}
                             </React.Fragment>
                         ))}
