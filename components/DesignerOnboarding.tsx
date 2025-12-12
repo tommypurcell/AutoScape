@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { X, Upload, MapPin, Briefcase, Star, CheckCircle } from 'lucide-react';
 
 interface DesignerOnboardingProps {
-    isOpen: boolean;
-    onClose: () => void;
     onComplete: (designerData: DesignerFormData) => void;
 }
 
@@ -41,7 +39,7 @@ const states = [
     'Massachusetts', 'Illinois', 'Pennsylvania', 'Ohio', 'Michigan', 'New Jersey'
 ];
 
-export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ isOpen, onClose, onComplete }) => {
+export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComplete }) => {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<Partial<DesignerFormData>>({
         specialties: [],
@@ -49,8 +47,6 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ isOpen, 
         role: 'designer'
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    if (!isOpen) return null;
 
     const updateField = (field: keyof DesignerFormData, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -94,18 +90,15 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ isOpen, 
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        <div className="max-w-3xl mx-auto px-4 py-8 animate-fade-in">
+            <div className="bg-white rounded-2xl w-full shadow-xl border border-gray-100 overflow-hidden">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-6">
+                <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-8">
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-amber-100 text-sm font-medium mb-1">Designer Registration</p>
-                            <h2 className="text-2xl font-bold">Join AutoScape Pro</h2>
+                            <h2 className="text-3xl font-bold">Join AutoScape Pro</h2>
                         </div>
-                        <button onClick={onClose} className="text-white/80 hover:text-white">
-                            <X className="w-6 h-6" />
-                        </button>
                     </div>
 
                     {/* Progress Steps */}
@@ -250,8 +243,8 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ isOpen, 
                                             key={specialty}
                                             onClick={() => toggleSpecialty(specialty)}
                                             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.specialties?.includes(specialty)
-                                                    ? 'bg-amber-500 text-white'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                ? 'bg-amber-500 text-white'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                         >
                                             {specialty}
@@ -331,8 +324,8 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ isOpen, 
                             onClick={() => setStep(step + 1)}
                             disabled={!canProceed()}
                             className={`px-8 py-3 rounded-lg font-semibold transition-all ${canProceed()
-                                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                 }`}
                         >
                             Continue
@@ -342,8 +335,8 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ isOpen, 
                             onClick={handleSubmit}
                             disabled={!canProceed() || isSubmitting}
                             className={`px-8 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${canProceed() && !isSubmitting
-                                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                 }`}
                         >
                             {isSubmitting ? (

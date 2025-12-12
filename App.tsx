@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DesignProvider, useDesign } from './contexts/DesignContext';
 import { AuthModal } from './components/AuthModal';
 import { saveDesign, getUserDesigns, SavedDesign, deleteDesign, getDesignById } from './services/firestoreService';
+import { auth } from './firebase';
 import { uploadBase64Image } from './services/storageService';
 import { Sidebar } from './components/Sidebar';
 import { AccountSettings } from './components/AccountSettings';
@@ -25,6 +26,8 @@ import { ResultsPage } from './components/ResultsPage';
 import { BusinessPage } from './components/BusinessPage';
 import { DesignerOnboarding, DesignerFormData } from './components/DesignerOnboarding';
 import { DesignerGallery } from './components/DesignerGallery';
+import { TermsOfService } from './components/TermsOfService';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { saveDesignerProfile } from './services/firestoreService';
 
 const AppContent: React.FC = () => {
@@ -55,7 +58,6 @@ const AppContent: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
-  const [showDesignerOnboarding, setShowDesignerOnboarding] = useState(false);
 
   const handleYardSelect = (files: File[]) => {
     if (files.length > 0) {
@@ -365,10 +367,15 @@ const AppContent: React.FC = () => {
       <Routes>
         <Route path="/" element={
           <LandingPage
-            onGetStarted={() => navigate('/create')}
+            onGetStarted={() => {
+              if (user) {
+                navigate('/design');
+              } else {
+                setShowAuthModal(true);
+              }
+            }}
             onAbout={() => navigate('/about')}
-            onStartTutorial={() => navigate('/create')}
-            onDesignerSignup={() => setShowDesignerOnboarding(true)}
+            onDesignerSignup={() => navigate('/designer-signup')}
           />
         } />
 
@@ -433,8 +440,43 @@ const AppContent: React.FC = () => {
 
         <Route path="/about" element={<AboutPage onClose={() => navigate('/')} />} />
 
-        <Route path="/business" element={<BusinessPage />} />
         <Route path="/designer/:designerId" element={<DesignerGallery />} />
+
+        <Route path="/designer-signup" element={
+          <div className="min-h-screen pt-20 bg-gray-50">
+            <DesignerOnboarding
+              onComplete={async (designerData: DesignerFormData) => {
+                try {
+                  await signUpWithEmail(designerData.email, designerData.password);
+
+                  // Wait for auth state to update or use current user
+                  const currentUser = auth.currentUser;
+                  if (currentUser) {
+                    // Remove password from data before saving to profile
+                    const { password, role, ...profileData } = designerData;
+                    await saveDesignerProfile(currentUser.uid, {
+                      ...profileData,
+                      rating: 0,
+                      reviewCount: 0,
+                      isVerified: false,
+                    });
+                    console.log('Designer profile saved for:', currentUser.email);
+                  }
+
+                  console.log('Designer account created:', designerData.email);
+                  alert('Welcome to AutoScape Pro! Your partner account has been created.');
+                  navigate('/business');
+                } catch (error: any) {
+                  console.error('Error creating designer account:', error);
+                  alert(error.message || 'Failed to create account. Please try again.');
+                }
+              }}
+            />
+          </div>
+        } />
+
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/admin" element={<AdminDashboard onClose={() => navigate('/')} />} />
       </Routes>
 
@@ -463,31 +505,7 @@ const AppContent: React.FC = () => {
         <AccountSettings onClose={() => setShowAccountSettings(false)} />
       )}
 
-      {/* Designer Onboarding Modal */}
-      <DesignerOnboarding
-        isOpen={showDesignerOnboarding}
-        onClose={() => setShowDesignerOnboarding(false)}
-        onComplete={async (designerData: DesignerFormData) => {
-          try {
-            // 1. Create Firebase Auth account
-            await signUpWithEmail(designerData.email, designerData.password);
-
-            // Note: At this point, user will be logged in (Firebase auto-login after signup)
-            // The profile will need to be saved after auth state changes
-            // For now, we'll save without userId and update later
-
-            console.log('Designer account created:', designerData.email);
-            setShowDesignerOnboarding(false);
-
-            // Show success message and redirect to business page
-            alert('Welcome to AutoScape! Your designer account has been created. Complete your profile in settings.');
-            navigate('/business');
-          } catch (error: any) {
-            console.error('Error creating designer account:', error);
-            alert(error.message || 'Failed to create account. Please try again.');
-          }
-        }}
-      />
+      {/* Designer Onboarding Modal Removed */}
     </div>
   );
 };
