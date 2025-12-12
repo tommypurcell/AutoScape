@@ -394,10 +394,40 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                     </div>
                 </div>
 
-                {/* Name of the Concept */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-                    <h3 className="font-bold text-slate-800">{result.concept?.name || 'Modern Landscape Design'}</h3>
-                    <p className="text-sm text-slate-600 mt-1">{result.concept?.description || 'A beautiful redesign of your outdoor space'}</p>
+                {/* Design Intention Section */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+                    <h3 className="font-bold text-slate-800 text-lg mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                        Design Intention
+                    </h3>
+                    <div className="space-y-3">
+                        {/* Style */}
+                        <div className="flex items-start gap-3">
+                            <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">Style:</span>
+                            <span className="text-sm text-slate-700 font-medium">{result.designJSON?.style || result.analysis?.designConcept?.split('.')[0] || 'Modern Landscape'}</span>
+                        </div>
+                        {/* User's Request */}
+                        {result.designJSON?.userPrompt && (
+                            <div className="flex items-start gap-3">
+                                <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">Your Request:</span>
+                                <span className="text-sm text-slate-700 italic">"{result.designJSON.userPrompt}"</span>
+                            </div>
+                        )}
+                        {/* AI Interpretation */}
+                        <div className="flex items-start gap-3">
+                            <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">AI Design:</span>
+                            <span className="text-sm text-slate-700">{result.concept?.description || result.analysis?.designConcept || 'A thoughtfully designed outdoor space with balanced hardscape and plantings.'}</span>
+                        </div>
+                        {/* Maintenance */}
+                        {result.analysis?.maintenanceLevel && (
+                            <div className="flex items-start gap-3">
+                                <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">Maintenance:</span>
+                                <span className={`text-sm font-medium px-2 py-0.5 rounded ${result.analysis.maintenanceLevel === 'Low' ? 'bg-green-100 text-green-700' : result.analysis.maintenanceLevel === 'High' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                    {result.analysis.maintenanceLevel}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Material List & Cost Distribution - Tabbed */}
@@ -478,56 +508,83 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                 )}
             </div>
 
-            {/* Right Column - Plant Palette Sidebar */}
-            {result.estimates.plantPalette && result.estimates.plantPalette.length > 0 && (
-                <div className="w-[200px] flex-shrink-0 hidden lg:block">
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                            <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                            Plant Palette
-                        </h3>
-                        <div className="space-y-4">
-                            {result.estimates.plantPalette.map((plant, index) => {
-                                // Generate Amazon search image URL using their image search
-                                const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' live plant')}&i=lawngarden`;
-                                const amazonImageSearchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(plant.common_name + ' plant')}`;
+            {/* Right Column - Unified Palette Sidebar */}
+            <div className="w-[280px] flex-shrink-0 hidden lg:block">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                    <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                        Palette
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        {/* Materials with Pictures */}
+                        {result.estimates.breakdown && result.estimates.breakdown.slice(0, 6).map((item, index) => {
+                            const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(item.name)}`;
 
-                                return (
-                                    <div key={index} className="group">
-                                        {/* Plant Image - Links to Google Image search */}
-                                        <a
-                                            href={amazonImageSearchUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="block w-[100px] h-[100px] mx-auto rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-emerald-400 group-hover:shadow-md transition-all cursor-pointer"
-                                        >
-                                            {plant.image_url ? (
-                                                <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-slate-300 bg-gradient-to-br from-emerald-50 to-green-100">
-                                                    <svg className="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                                                </div>
-                                            )}
-                                        </a>
-                                        <p className="text-sm text-slate-700 font-medium text-center mt-2 truncate" title={plant.common_name}>{plant.common_name}</p>
-                                        <p className="text-sm text-slate-600 text-center">{plant.unit_price}</p>
-                                        {/* Shop in Amazon Button */}
+                            return (
+                                <div key={`material-${index}`} className="group">
+                                    <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-blue-400 group-hover:shadow-md transition-all">
+                                        {/* Material placeholder with icon based on type */}
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100">
+                                            <svg className="w-10 h-10 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                        </div>
+                                        {/* Shop Button Inside */}
                                         <a
                                             href={amazonSearchUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center justify-center gap-1 w-full mt-2 px-2 py-1.5 bg-amber-400 hover:bg-amber-500 text-amber-900 border border-amber-500 rounded text-xs font-bold transition-colors"
+                                            className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-blue-400/90 hover:bg-blue-500 text-white rounded text-[10px] font-bold transition-colors shadow-sm"
+                                            onClick={e => e.stopPropagation()}
                                         >
-                                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595.427-.16.726-.053.897.32.096.19.086.378-.058.535-.39.426-.94.74-1.65.946-2.618.76-5.287 1.14-8.008 1.14-4.45 0-8.506-1.127-12.168-3.378-.24-.147-.316-.337-.226-.58l.21-.532zm5.18-6.378c0-.32.096-.6.29-.838.192-.24.448-.36.762-.36.56 0 .896.28 1.01.84l1.93 8.406c.116.492.44.738.974.738h4.08c.54 0 .87-.246.986-.738l1.93-8.406c.116-.56.45-.84 1.01-.84.32 0 .576.12.768.36.192.24.288.52.288.838 0 .11-.014.238-.043.385l-2.064 9.15c-.26 1.168-.963 1.752-2.108 1.752H9.544c-1.145 0-1.85-.584-2.11-1.752l-2.064-9.15c-.03-.148-.044-.275-.044-.385z" /></svg>
-                                            Shop Amazon
+                                            Shop
                                         </a>
+                                        {/* Material type badge */}
+                                        <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-blue-500/80 text-white rounded text-[8px] font-medium">
+                                            Material
+                                        </span>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                    <p className="text-xs text-slate-700 font-medium text-center mt-1.5 truncate" title={item.name}>{item.name}</p>
+                                    <p className="text-xs text-slate-500 text-center">{item.totalCost}</p>
+                                </div>
+                            );
+                        })}
+
+                        {/* Plants with Pictures */}
+                        {result.estimates.plantPalette && result.estimates.plantPalette.map((plant, index) => {
+                            const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' live plant')}&i=lawngarden`;
+
+                            return (
+                                <div key={`plant-${index}`} className="group">
+                                    <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-emerald-400 group-hover:shadow-md transition-all">
+                                        {plant.image_url ? (
+                                            <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-100">
+                                                <svg className="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                                            </div>
+                                        )}
+                                        {/* Shop Button Inside */}
+                                        <a
+                                            href={amazonSearchUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-amber-400/90 hover:bg-amber-500 text-amber-900 rounded text-[10px] font-bold transition-colors shadow-sm"
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            Shop
+                                        </a>
+                                        {/* Plant type badge */}
+                                        <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-emerald-500/80 text-white rounded text-[8px] font-medium">
+                                            Plant
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-700 font-medium text-center mt-1.5 truncate" title={plant.common_name}>{plant.common_name}</p>
+                                    <p className="text-xs text-slate-500 text-center">{plant.unit_price}</p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
-            )}
+            </div>
 
             {/* Plant Detail Modal */}
             {selectedPlant && (
