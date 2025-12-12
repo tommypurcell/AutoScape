@@ -355,7 +355,57 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         } catch (err) {
             setVideoError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
-            setIsGeneratingVideo(false);
+        }
+    };
+
+    const handleEditModeSave = async (annotatedImage: string, annotations: Annotation[]) => {
+        if (!result || !result.renderImages[currentRenderIndex] || annotations.length === 0) {
+            alert('Please add at least one annotation before applying changes.');
+            return;
+        }
+
+        setIsRegenerating(true);
+        setIsImageEditMode(false);
+
+        try {
+            const originalRender = result.renderImages[currentRenderIndex];
+            let yardImageFile: File | null = null;
+            if (originalImage && originalImage.startsWith('data:')) {
+                const response = await fetch(originalImage);
+                const blob = await response.blob();
+                yardImageFile = new File([blob], 'yard.jpg', { type: 'image/jpeg' });
+            } else if (originalImage) {
+                const response = await fetch(originalImage);
+                const blob = await response.blob();
+                yardImageFile = new File([blob], 'yard.jpg', { type: 'image/jpeg' });
+            }
+
+            const newRenderImage = await analyzeAndRegenerateDesign(
+                originalRender,
+                annotatedImage,
+                annotations,
+                yardImageFile
+            );
+
+            const updatedRenderImages = [...result.renderImages];
+            updatedRenderImages[currentRenderIndex] = newRenderImage;
+
+            const updatedResult: GeneratedDesign = {
+                ...result,
+                renderImages: updatedRenderImages
+            };
+
+            setLocalResult(updatedResult);
+            if (contextResult && !propResult) {
+                setContextResult(updatedResult);
+            }
+            alert('✅ Design updated successfully! Your changes have been applied.');
+        } catch (error) {
+            console.error('Error regenerating design:', error);
+            alert('❌ Failed to apply changes. Please try again.');
+            setIsImageEditMode(true);
+        } finally {
+            setIsRegenerating(false);
         }
     };
 
@@ -375,6 +425,61 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                         )}
                     </div>
                     <div className="flex items-center gap-3">
+
+                        {/* Save Your Design - Compact */}
+                        {/* Save Privately Button */}
+                        <button
+                            onClick={() => {
+                                const saveEvent = new CustomEvent('saveDesign', {
+                                    detail: {
+                                        isPublic: false,
+                                        design: result,
+                                        yardImageUrl: originalImage
+                                    }
+                                });
+                                window.dispatchEvent(saveEvent);
+                            }}
+                            className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-medium text-sm transition-all flex items-center gap-2 shadow-sm"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Save Privately
+                        </button>
+
+                        {/* Share to Gallery Button */}
+                        <button
+                            onClick={() => {
+                                const saveEvent = new CustomEvent('saveDesign', {
+                                    detail: {
+                                        isPublic: true,
+                                        design: result,
+                                        yardImageUrl: originalImage
+                                    }
+                                });
+                                window.dispatchEvent(saveEvent);
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-medium text-sm transition-all flex items-center gap-2 shadow-sm"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Share to Gallery
+                        </button>
+                        {/* Edit Design Button */}
+                        <button
+                            onClick={() => {
+                                setActiveTab('render');
+                                setIsImageEditMode(true);
+                            }}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            Edit Design
+                        </button>
+
                         {/* Share Link Button */}
                         <button
                             disabled={isSaving}
@@ -434,6 +539,30 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
                     {/* Image Display Area */}
                     <div className="relative aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
+                        {/* Edit Mode Canvas Overlay */}
+                        {isImageEditMode && activeTab === 'render' && result.renderImages[currentRenderIndex] && (
+                            <div className="absolute inset-0 z-50">
+                                <EditModeCanvas
+                                    imageUrl={result.renderImages[currentRenderIndex]}
+                                    onSave={handleEditModeSave}
+                                    onCancel={() => setIsImageEditMode(false)}
+                                />
+                            </div>
+                        )}
+
+                        {/* Loading overlay for regeneration */}
+                        {isRegenerating && (
+                            <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                                <div className="bg-white rounded-2xl p-8 text-center max-w-md">
+                                    <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                                    <h3 className="text-xl font-bold text-slate-800 mb-2">Applying Your Changes</h3>
+                                    <p className="text-slate-600">Analyzing your annotations and generating an updated design...</p>
+                                </div>
+                            </div>
+                        )}
+
+
+
                         {activeTab === 'compare' && originalImage && result.renderImages[currentRenderIndex] && (
                             <BeforeAfterSlider beforeImage={originalImage} afterImage={result.renderImages[currentRenderIndex]} className="w-full h-full" />
                         )}
@@ -582,16 +711,49 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                                 <th className="px-4 py-3">Item</th>
                                                 <th className="px-4 py-3">Qty</th>
                                                 <th className="px-4 py-3 text-right">Est. Cost</th>
+                                                {showAffiliateLinks && <th className="px-4 py-3 text-center">Purchase</th>}
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {result.estimates.breakdown.slice(0, 10).map((item, idx) => (
-                                                <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50">
-                                                    <td className="px-4 py-3 font-medium text-slate-700">{item.name}</td>
-                                                    <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
-                                                    <td className="px-4 py-3 text-right text-slate-700">{item.totalCost}</td>
-                                                </tr>
-                                            ))}
+                                            {result.estimates.breakdown.slice(0, 10).map((item, idx) => {
+                                                const affiliateItem = affiliateLinks.get(item.name);
+                                                return (
+                                                    <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50">
+                                                        <td className="px-4 py-3 font-medium text-slate-700">
+                                                            <div className="flex items-center gap-2">
+                                                                {item.name}
+                                                                {affiliateItem?.verified && (
+                                                                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full" title="Verified in render">
+                                                                        ✓ Verified
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
+                                                        <td className="px-4 py-3 text-right text-slate-700">{item.totalCost}</td>
+                                                        {showAffiliateLinks && (
+                                                            <td className="px-4 py-3 text-center">
+                                                                {affiliateItem?.amazonSearchUrl ? (
+                                                                    <a
+                                                                        href={affiliateItem.amazonSearchUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                                                                        title={`Find similar ${item.name} on Amazon`}
+                                                                    >
+                                                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                                            <path d="M23.27 13.73L22 12.5l-1.27-1.23L19.5 12l1.23 1.27L22 14.5l1.27-1.23L24.5 12l-1.23-1.27zM6.32 2.72c-.35-.35-.92-.35-1.27 0L2.72 5.05c-.35.35-.35.92 0 1.27l2.33 2.33c.35.35.92.35 1.27 0l2.33-2.33c.35-.35.35-.92 0-1.27L6.32 2.72zM12 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                                                        </svg>
+                                                                        Find Similar on Amazon
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-xs text-slate-400">Not available</span>
+                                                                )}
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                         <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
                                             <tr>
