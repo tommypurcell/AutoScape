@@ -98,18 +98,84 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             if (!result || !result.estimates || !result.estimates.breakdown) return;
             setIsLoadingBudget(true);
             try {
-                const plants = result.estimates.breakdown.filter(item =>
+                // Categorize all items from the breakdown
+                const allItems = result.estimates.breakdown;
+
+                const plants = allItems.filter(item =>
                     item.name.toLowerCase().includes('plant') ||
                     item.name.toLowerCase().includes('tree') ||
                     item.name.toLowerCase().includes('shrub') ||
-                    item.name.toLowerCase().includes('flower')
+                    item.name.toLowerCase().includes('flower') ||
+                    item.name.toLowerCase().includes('grass') ||
+                    item.name.toLowerCase().includes('hedge') ||
+                    item.name.toLowerCase().includes('vine') ||
+                    item.name.toLowerCase().includes('fern')
                 ).map(item => ({
                     name: item.name,
                     quantity: item.quantity,
                     description: item.notes
                 }));
 
-                if (plants.length === 0) {
+                const hardscape = allItems.filter(item =>
+                    item.name.toLowerCase().includes('paver') ||
+                    item.name.toLowerCase().includes('stone') ||
+                    item.name.toLowerCase().includes('brick') ||
+                    item.name.toLowerCase().includes('gravel') ||
+                    item.name.toLowerCase().includes('concrete') ||
+                    item.name.toLowerCase().includes('pathway') ||
+                    item.name.toLowerCase().includes('patio') ||
+                    item.name.toLowerCase().includes('deck') ||
+                    item.name.toLowerCase().includes('retaining')
+                ).map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    description: item.notes
+                }));
+
+                const furniture = allItems.filter(item =>
+                    item.name.toLowerCase().includes('bench') ||
+                    item.name.toLowerCase().includes('chair') ||
+                    item.name.toLowerCase().includes('table') ||
+                    item.name.toLowerCase().includes('sofa') ||
+                    item.name.toLowerCase().includes('lounger') ||
+                    item.name.toLowerCase().includes('umbrella') ||
+                    item.name.toLowerCase().includes('swing') ||
+                    item.name.toLowerCase().includes('hammock')
+                ).map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    description: item.notes
+                }));
+
+                const features = allItems.filter(item =>
+                    item.name.toLowerCase().includes('fountain') ||
+                    item.name.toLowerCase().includes('pond') ||
+                    item.name.toLowerCase().includes('fire') ||
+                    item.name.toLowerCase().includes('light') ||
+                    item.name.toLowerCase().includes('sculpture') ||
+                    item.name.toLowerCase().includes('pergola') ||
+                    item.name.toLowerCase().includes('arbor') ||
+                    item.name.toLowerCase().includes('trellis') ||
+                    item.name.toLowerCase().includes('fence') ||
+                    item.name.toLowerCase().includes('gate')
+                ).map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    description: item.notes
+                }));
+
+                // Include remaining uncategorized items as structures
+                const categorizedNames = [...plants, ...hardscape, ...furniture, ...features].map(i => i.name);
+                const structures = allItems.filter(item =>
+                    !categorizedNames.includes(item.name)
+                ).map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    description: item.notes
+                }));
+
+                // Only proceed if we have items to search
+                if (plants.length === 0 && hardscape.length === 0 && furniture.length === 0 && features.length === 0 && structures.length === 0) {
                     setIsLoadingBudget(false);
                     return;
                 }
@@ -117,26 +183,51 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                 const response = await fetch('http://localhost:8002/api/enhance-with-rag', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plants, hardscape: [], features: [], structures: [], furniture: [] }),
+                    body: JSON.stringify({ plants, hardscape, features, structures, furniture }),
                 });
 
                 if (!response.ok) throw new Error('Failed to fetch RAG budget');
                 const data = await response.json();
 
-                if (data.success && data.plantPalette) {
-                    const lineItems: RAGItem[] = data.plantPalette.map((p: any) => {
-                        const priceStr = p.unit_price || "$0";
-                        const price = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0;
-                        const quantity = typeof p.quantity === 'number' ? p.quantity : 1;
-                        return {
-                            item: p.original_name || p.common_name,
-                            match: p.common_name,
-                            price_estimate: p.unit_price,
-                            cost: price * quantity,
-                            image_url: p.image_url
-                        };
-                    });
-                    setRagBudget({ total_min_budget: lineItems.reduce((sum, item) => sum + item.cost, 0), line_items: lineItems });
+                if (data.success) {
+                    const lineItems: RAGItem[] = [];
+
+                    // Process all categories from RAG response
+                    const processItems = (items: any[], category: string) => {
+                        if (!items || !Array.isArray(items)) return;
+                        items.forEach((p: any) => {
+                            const priceStr = p.unit_price || p.price_estimate || "$0";
+                            const price = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0;
+                            const quantity = typeof p.quantity === 'number' ? p.quantity : 1;
+                            lineItems.push({
+                                item: p.original_name || p.common_name || p.name || category,
+                                match: p.common_name || p.match || p.name,
+                                price_estimate: priceStr,
+                                cost: price * quantity,
+                                image_url: p.image_url
+                            });
+                        });
+                    };
+
+                    // Process plant palette (main category)
+                    processItems(data.plantPalette, 'Plant');
+
+                    // Process other categories if they exist
+                    processItems(data.hardscape, 'Hardscape');
+                    processItems(data.furniture, 'Furniture');
+                    processItems(data.features, 'Feature');
+                    processItems(data.structures, 'Structure');
+
+                    // Also check for a generic "items" or "results" array
+                    processItems(data.items, 'Item');
+                    processItems(data.results, 'Item');
+
+                    if (lineItems.length > 0) {
+                        setRagBudget({
+                            total_min_budget: lineItems.reduce((sum, item) => sum + item.cost, 0),
+                            line_items: lineItems
+                        });
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching RAG budget:', error);
