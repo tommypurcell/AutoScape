@@ -324,16 +324,33 @@ const AppContent: React.FC = () => {
 
             {/* Navigation Links */}
             <div className="hidden md:flex items-center gap-6">
-              <button onClick={() => navigate('/business')} className="text-gray-700 hover:text-green-700 transition-colors font-normal">Business</button>
+              <button
+                onClick={() => navigate('/business')}
+                className={`transition-colors font-normal pb-1 border-b-2 ${
+                  location.pathname === '/business'
+                    ? 'text-green-700 border-green-700 font-semibold'
+                    : 'text-gray-700 hover:text-green-700 border-transparent'
+                }`}
+              >
+                Business
+              </button>
               <button
                 onClick={() => navigate('/gallery')}
-                className="text-gray-700 hover:text-green-700 transition-colors font-normal"
+                className={`transition-colors font-normal pb-1 border-b-2 ${
+                  location.pathname === '/gallery'
+                    ? 'text-green-700 border-green-700 font-semibold'
+                    : 'text-gray-700 hover:text-green-700 border-transparent'
+                }`}
               >
                 Gallery
               </button>
               <button
                 onClick={() => navigate('/create')}
-                className="text-rose-700 hover:text-rose-600 transition-colors font-medium"
+                className={`transition-colors font-medium pb-1 border-b-2 ${
+                  location.pathname === '/create'
+                    ? 'text-green-700 border-green-700 font-semibold'
+                    : 'text-gray-700 hover:text-green-700 border-transparent'
+                }`}
               >
                 Create
               </button>
