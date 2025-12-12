@@ -355,7 +355,57 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         } catch (err) {
             setVideoError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
-            setIsGeneratingVideo(false);
+        }
+    };
+
+    const handleEditModeSave = async (annotatedImage: string, annotations: Annotation[]) => {
+        if (!result || !result.renderImages[currentRenderIndex] || annotations.length === 0) {
+            alert('Please add at least one annotation before applying changes.');
+            return;
+        }
+
+        setIsRegenerating(true);
+        setIsImageEditMode(false);
+
+        try {
+            const originalRender = result.renderImages[currentRenderIndex];
+            let yardImageFile: File | null = null;
+            if (originalImage && originalImage.startsWith('data:')) {
+                const response = await fetch(originalImage);
+                const blob = await response.blob();
+                yardImageFile = new File([blob], 'yard.jpg', { type: 'image/jpeg' });
+            } else if (originalImage) {
+                const response = await fetch(originalImage);
+                const blob = await response.blob();
+                yardImageFile = new File([blob], 'yard.jpg', { type: 'image/jpeg' });
+            }
+
+            const newRenderImage = await analyzeAndRegenerateDesign(
+                originalRender,
+                annotatedImage,
+                annotations,
+                yardImageFile
+            );
+
+            const updatedRenderImages = [...result.renderImages];
+            updatedRenderImages[currentRenderIndex] = newRenderImage;
+
+            const updatedResult: GeneratedDesign = {
+                ...result,
+                renderImages: updatedRenderImages
+            };
+
+            setLocalResult(updatedResult);
+            if (contextResult && !propResult) {
+                setContextResult(updatedResult);
+            }
+            alert('✅ Design updated successfully! Your changes have been applied.');
+        } catch (error) {
+            console.error('Error regenerating design:', error);
+            alert('❌ Failed to apply changes. Please try again.');
+            setIsImageEditMode(true);
+        } finally {
+            setIsRegenerating(false);
         }
     };
 
@@ -375,6 +425,20 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                         )}
                     </div>
                     <div className="flex items-center gap-3">
+                        {/* Edit Design Button */}
+                        <button
+                            onClick={() => {
+                                setActiveTab('render');
+                                setIsImageEditMode(true);
+                            }}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            Edit Design
+                        </button>
+
                         {/* Share Link Button */}
                         <button
                             disabled={isSaving}
@@ -434,6 +498,30 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
                     {/* Image Display Area */}
                     <div className="relative aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
+                        {/* Edit Mode Canvas Overlay */}
+                        {isImageEditMode && activeTab === 'render' && result.renderImages[currentRenderIndex] && (
+                            <div className="absolute inset-0 z-50">
+                                <EditModeCanvas
+                                    imageUrl={result.renderImages[currentRenderIndex]}
+                                    onSave={handleEditModeSave}
+                                    onCancel={() => setIsImageEditMode(false)}
+                                />
+                            </div>
+                        )}
+
+                        {/* Loading overlay for regeneration */}
+                        {isRegenerating && (
+                            <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                                <div className="bg-white rounded-2xl p-8 text-center max-w-md">
+                                    <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                                    <h3 className="text-xl font-bold text-slate-800 mb-2">Applying Your Changes</h3>
+                                    <p className="text-slate-600">Analyzing your annotations and generating an updated design...</p>
+                                </div>
+                            </div>
+                        )}
+
+
+
                         {activeTab === 'compare' && originalImage && result.renderImages[currentRenderIndex] && (
                             <BeforeAfterSlider beforeImage={originalImage} afterImage={result.renderImages[currentRenderIndex]} className="w-full h-full" />
                         )}
