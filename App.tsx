@@ -178,6 +178,8 @@ const AppContent: React.FC = () => {
       navigate('/admin');
     } else if (action === 'about') {
       navigate('/about');
+    } else if (action === 'business') {
+      navigate('/business');
     }
   };
 
@@ -439,6 +441,8 @@ const AppContent: React.FC = () => {
         } />
 
         <Route path="/about" element={<AboutPage onClose={() => navigate('/')} />} />
+
+        <Route path="/business" element={<BusinessPage />} />
 
         <Route path="/designer/:designerId" element={<DesignerGallery />} />
 
