@@ -261,6 +261,37 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         document.body.removeChild(link);
     };
 
+    const handleExportToGoogleSheets = async () => {
+        try {
+            const headers = ["Material / Item", "Quantity", "Unit Cost", "Estimated Cost", "Notes"];
+            const rows = result.estimates.breakdown.map(item => [
+                item.name,
+                item.quantity,
+                item.unitCost,
+                item.totalCost,
+                item.notes
+            ]);
+
+            // Format as TSV for pasting into Sheets
+            const tsvContent = [
+                headers.join('\t'),
+                ...rows.map(row => row.join('\t')),
+                '',
+                ['ESTIMATED TOTAL', '', '', formatCurrency(result.estimates.totalCost), ''].join('\t')
+            ].join('\n');
+
+            await navigator.clipboard.writeText(tsvContent);
+
+            // Open new sheet and notify user
+            window.open('https://sheets.new', '_blank');
+            alert('Data copied to clipboard! \n\n1. A new Google Sheet has been opened.\n2. Click inside cell A1.\n3. Press Ctrl+V (or Cmd+V) to paste your estimates.');
+
+        } catch (err) {
+            console.error('Failed to export to Google Sheets:', err);
+            alert('Failed to copy data to clipboard. Please try again.');
+        }
+    };
+
     // Group items by category for the chart
     const chartData = React.useMemo(() => {
         const categories: Record<string, number> = { 'Hardscape': 0, 'Softscape': 0, 'Plants': 0, 'Labor': 0, 'Other': 0 };
@@ -410,7 +441,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     };
 
     return (
-        <div className="flex gap-6 animate-fade-in pb-12">
+        <div className="flex gap-6 animate-fade-in pb-12" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             {/* Left Column - Main Content */}
             <div className="flex-1 space-y-6 min-w-0">
 
@@ -701,6 +732,10 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                         </button>
                                         <button onClick={downloadCSV} className="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-slate-200">
                                             Export to Excel
+                                        </button>
+                                        <button onClick={handleExportToGoogleSheets} className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-green-200">
+                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z" /><path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z" /></svg>
+                                            Export to Sheets
                                         </button>
                                     </div>
                                 </div>
