@@ -21,7 +21,10 @@ export const ResultsPage: React.FC = () => {
             if (location.state?.result) {
                 setDesign(location.state.result);
                 setYardImageUrl(location.state.yardImageUrl || null);
-                setDesignShortId(id || null); // Use the ID from URL as shortId
+                // Only use the URL id as shortId if it's a valid 6-char alphanumeric code
+                // Not a placeholder like 'generated'
+                const isValidShortId = id && id.length === 6 && /^[a-z0-9]+$/.test(id);
+                setDesignShortId(isValidShortId ? id : null);
                 setLoading(false);
                 return;
             }
@@ -36,17 +39,17 @@ export const ResultsPage: React.FC = () => {
                 // Try to fetch by shortId first (6-character code)
                 // If that fails, try fetching by full Firestore document ID
                 let savedDesign: SavedDesign | null = null;
-                
+
                 // Check if it looks like a shortId (6 characters, alphanumeric)
                 if (id && id.length === 6 && /^[a-z0-9]+$/.test(id)) {
                     savedDesign = await getDesignByShortId(id);
                 }
-                
+
                 // If not found by shortId, try by full document ID
                 if (!savedDesign) {
                     savedDesign = await getDesignById(id);
                 }
-                
+
                 if (savedDesign) {
                     setDesign({
                         renderImages: savedDesign.renderImages,
@@ -89,7 +92,7 @@ export const ResultsPage: React.FC = () => {
     if (!design) return null;
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="min-h-screen bg-gray-50 pt-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <ResultsView
                     result={design}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SavedDesign, getPublicDesigns } from '../services/firestoreService';
-import { Loader2, Heart, User, Calendar } from 'lucide-react';
+import { Loader2, Heart, User, Calendar, Link2 } from 'lucide-react';
 
 interface CommunityGalleryProps {
     onLoadDesign: (design: SavedDesign) => void;
@@ -80,13 +80,13 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                 console.warn(`Skipping design ${design.id} - no render images`);
                                 return null;
                             }
-                            
+
                             const imageUrl = design.renderImages[0] || design.yardImageUrl;
                             if (!imageUrl) {
                                 console.warn(`Skipping design ${design.id} - no image URL`);
                                 return null;
                             }
-                            
+
                             return (
                                 <div
                                     key={design.id}
@@ -106,40 +106,56 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                                 e.currentTarget.src = '/placeholder-image.jpg'; // Fallback
                                             }}
                                         />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-4">
-                                <span className="text-white font-medium flex items-center gap-2">
-                                    <Heart className="w-4 h-4 fill-current" /> 12
-                                </span>
-                                <span className="bg-white/20 backdrop-blur-md text-white text-xs px-2 py-1 rounded-full border border-white/30">
-                                    View Details
-                                </span>
-                            </div>
-                        </div>
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-4">
+                                            <span className="text-white font-medium flex items-center gap-2">
+                                                <Heart className="w-4 h-4 fill-current" /> 12
+                                            </span>
+                                            <span className="bg-white/20 backdrop-blur-md text-white text-xs px-2 py-1 rounded-full border border-white/30">
+                                                View Details
+                                            </span>
+                                        </div>
+                                    </div>
 
-                        {/* Content */}
-                        <div className="p-6 flex-1 flex flex-col">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2 text-slate-500 text-sm">
-                                    <User className="w-4 h-4" />
-                                    <span>Designer</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-slate-400 text-xs">
-                                    <Calendar className="w-3 h-3" />
-                                    <span>{design.createdAt.toLocaleDateString()}</span>
-                                </div>
-                            </div>
+                                    {/* Content */}
+                                    <div className="p-6 flex-1 flex flex-col">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-2 text-slate-500 text-sm">
+                                                <User className="w-4 h-4" />
+                                                <span>Designer</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-slate-400 text-xs">
+                                                <Calendar className="w-3 h-3" />
+                                                <span>{design.createdAt.toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
 
-                            <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center">
-                                <span className="text-emerald-600 font-medium text-sm bg-emerald-50 px-3 py-1 rounded-full">
-                                    {design.analysis?.style || "Modern"}
-                                </span>
-                                <button
-                                    onClick={() => onLoadDesign(design)}
-                                    className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors"
-                                >
-                                    Try this style
-                                </button>
-                            </div>
+                                        {/* ShortId Link Badge */}
+                                        {design.shortId && (
+                                            <div
+                                                className="flex items-center gap-1.5 bg-purple-50 text-purple-600 px-2 py-1 rounded-full text-xs font-mono cursor-pointer hover:bg-purple-100 transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigator.clipboard.writeText(`${window.location.origin}/result/${design.shortId}`);
+                                                    alert(`Link copied: ${window.location.origin}/result/${design.shortId}`);
+                                                }}
+                                                title="Click to copy share link"
+                                            >
+                                                <Link2 className="w-3 h-3" />
+                                                {design.shortId}
+                                            </div>
+                                        )}
+
+                                        <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center">
+                                            <span className="text-emerald-600 font-medium text-sm bg-emerald-50 px-3 py-1 rounded-full">
+                                                {design.analysis?.style || "Modern"}
+                                            </span>
+                                            <button
+                                                onClick={() => onLoadDesign(design)}
+                                                className="text-slate-600 hover:text-emerald-600 font-medium text-sm transition-colors"
+                                            >
+                                                Try this style
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -199,6 +215,41 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                         <p className="text-xs text-slate-400">Based on RAG-retrieved item prices.</p>
                                     </div>
                                 </div>
+
+                                {/* Shareable Link */}
+                                {selectedDesign.shortId && (
+                                    <div>
+                                        <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                                            <span className="w-1 h-6 bg-purple-500 rounded-full"></span>
+                                            Shareable Link
+                                        </h4>
+                                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={`${window.location.origin}/result/${selectedDesign.shortId}`}
+                                                    readOnly
+                                                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-600"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(`${window.location.origin}/result/${selectedDesign.shortId}`);
+                                                        // Brief visual feedback
+                                                        const btn = document.getElementById('copy-link-btn');
+                                                        if (btn) {
+                                                            btn.textContent = '✓';
+                                                            setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+                                                        }
+                                                    }}
+                                                    id="copy-link-btn"
+                                                    className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-sm font-medium transition-colors"
+                                                >
+                                                    Copy
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="pt-6 border-t border-slate-100">
                                     <button

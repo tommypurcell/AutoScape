@@ -71,6 +71,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   const [affiliateLinks, setAffiliateLinks] = useState<Map<string, VerifiedMaterialItem>>(new Map());
   const [isLoadingAffiliateLinks, setIsLoadingAffiliateLinks] = useState(false);
   const [showAffiliateLinks, setShowAffiliateLinks] = useState(false);
+  const [isExpandedView, setIsExpandedView] = useState(false);
 
   // Update local result when prop or context changes
   useEffect(() => {
@@ -181,24 +182,71 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     setVideoError(null);
 
     try {
-      // Helper to get base64 from URL (blob or data)
-      const getBase64 = async (url: string): Promise<string> => {
+      // Helper to get base64 from URL (blob, data, or http)
+      const getBase64 = async (url: string, label: string): Promise<string> => {
+        // Already base64 data URI
         if (url.startsWith('data:')) {
+          console.log(`✅ ${label}: Already base64 data URI`);
           return url.split(',')[1];
         }
-        const response = await fetch(url);
-        const blob = await response.blob();
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve((reader.result as string).split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+
+        // Blob URL - these can expire, so handle gracefully
+        if (url.startsWith('blob:')) {
+          try {
+            console.log(`🔄 ${label}: Fetching blob URL...`);
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`Blob URL fetch failed with status ${response.status}`);
+            }
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result as string;
+                console.log(`✅ ${label}: Converted blob to base64 (${result.length} chars)`);
+                resolve(result.split(',')[1]);
+              };
+              reader.onerror = () => reject(new Error(`Failed to read blob for ${label}`));
+              reader.readAsDataURL(blob);
+            });
+          } catch (blobError) {
+            console.error(`❌ ${label}: Blob URL expired or invalid:`, blobError);
+            throw new Error(`The ${label.toLowerCase()} has expired. Please try regenerating the design or refresh the page.`);
+          }
+        }
+
+        // HTTP(S) URL - fetch from remote
+        if (url.startsWith('http')) {
+          try {
+            console.log(`🔄 ${label}: Fetching from URL...`);
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`HTTP fetch failed with status ${response.status}`);
+            }
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result as string;
+                console.log(`✅ ${label}: Fetched and converted (${result.length} chars)`);
+                resolve(result.split(',')[1]);
+              };
+              reader.onerror = () => reject(new Error(`Failed to read data for ${label}`));
+              reader.readAsDataURL(blob);
+            });
+          } catch (fetchError) {
+            console.error(`❌ ${label}: Failed to fetch URL:`, fetchError);
+            throw new Error(`Failed to load ${label.toLowerCase()}. Please check your internet connection.`);
+          }
+        }
+
+        // Unknown URL format
+        throw new Error(`Unsupported image format for ${label}: ${url.substring(0, 30)}...`);
       };
 
       const [originalBase64, redesignBase64] = await Promise.all([
-        getBase64(originalImage),
-        getBase64(result.renderImages[currentRenderIndex])
+        getBase64(originalImage, 'Original Image'),
+        getBase64(result.renderImages[currentRenderIndex], 'Redesign Image')
       ]);
 
       console.log('🔍 Video generation request:', {
@@ -231,6 +279,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
       }
 
       setVideoUrl(data.video_url);
+      // Auto-switch to video tab to show the result
+      setActiveTab('video');
     } catch (err) {
       setVideoError(err instanceof Error ? err.message : 'An error occurred');
       console.error('Video generation error:', err);
@@ -433,7 +483,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     try {
       // Get the original render image
       const originalRender = result.renderImages[currentRenderIndex];
-      
+
       // Get the original yard image if available (convert from URL to File if needed)
       let yardImageFile: File | null = null;
       if (originalImage && originalImage.startsWith('data:')) {
@@ -476,7 +526,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
 
       // Show success message
       alert('✅ Design updated successfully! Your changes have been applied.');
-      
+
     } catch (error) {
       console.error('Error regenerating design:', error);
       alert('❌ Failed to apply changes. Please try again.');
@@ -487,7 +537,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   };
 
   return (
-    <div className="space-y-12 animate-fade-in pb-20">
+    <div className="space-y-6 animate-fade-in pb-12">
 
       {/* Header Actions */}
       <div className="flex justify-between items-center">
@@ -545,223 +595,317 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
       )}
 
       {/* Visuals Section */}
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
-        <div className="flex border-b border-slate-100">
-          {(['compare', 'original', 'render', 'plan', 'video'] as const).map((tab) => (
+      <div className={`transition-all duration-300 ${isExpandedView ? 'max-w-full' : 'max-w-[800px]'} mx-auto`}>
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+          <div className="flex border-b border-slate-100">
+            {(['compare', 'original', 'render', 'plan', 'video'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 py-4 text-sm font-medium capitalize transition-colors relative ${activeTab === tab ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
+              >
+                {tab}
+                {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
+              </button>
+            ))}
+            {/* Expand/Collapse button */}
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-4 text-sm font-medium capitalize transition-colors relative ${activeTab === tab ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                }`}
+              onClick={() => setIsExpandedView(!isExpandedView)}
+              className="px-4 py-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1 border-l border-slate-100"
+              title={isExpandedView ? 'Collapse view' : 'Expand to full width'}
             >
-              {tab}
-              {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
-            </button>
-          ))}
-        </div>
-
-        <div className="relative aspect-video bg-slate-100 flex items-center justify-center group overflow-hidden">
-          {/* Edit Mode Canvas Overlay */}
-          {isImageEditMode && activeTab === 'render' && result.renderImages[currentRenderIndex] && (
-            <div className="absolute inset-0 z-50">
-              <EditModeCanvas
-                imageUrl={result.renderImages[currentRenderIndex]}
-                onSave={handleEditModeSave}
-                onCancel={() => setIsImageEditMode(false)}
-              />
-            </div>
-          )}
-
-          {/* Loading overlay for regeneration */}
-          {isRegenerating && (
-            <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-              <div className="bg-white rounded-2xl p-8 text-center max-w-md">
-                <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Applying Your Changes</h3>
-                <p className="text-slate-600">Analyzing your annotations and generating an updated design...</p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'video' && (
-            <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-50 to-slate-100">
-              {!videoUrl ? (
-                <div className="text-center max-w-md animate-fade-in">
-                  <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm ring-1 ring-purple-50">
-                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-800 mb-3 tracking-tight">Cinematic 3D Tour</h3>
-                  <p className="text-slate-600 mb-8 leading-relaxed">
-                    Transform your design into a stunning 5-second cinematic video. Perfect for visualizing the space in motion.
-                  </p>
-
-                  {videoError && (
-                    <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 flex items-center gap-2">
-                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      {videoError}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleGenerateVideo}
-                    disabled={isGeneratingVideo}
-                    className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-[0.98] shadow-xl ${isGeneratingVideo
-                      ? 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
-                      : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-200 hover:shadow-purple-300 hover:-translate-y-1'
-                      }`}
-                  >
-                    {isGeneratingVideo ? (
-                      <>
-                        <svg className="animate-spin w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 00 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Creating Magic...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Generate Video Tour
-                      </>
-                    )}
-                  </button>
-
-                  {!isGeneratingVideo && (
-                    <p className="mt-4 text-xs text-slate-400">
-                      Powered by AI Video Generation • ~30s processing time
-                    </p>
-                  )}
-                </div>
+              {isExpandedView ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                </svg>
               ) : (
-                <div className="w-full max-w-4xl animate-fade-in">
-                  <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl mb-8 relative group ring-4 ring-white ring-opacity-50">
-                    <video
-                      src={videoUrl}
-                      controls
-                      autoPlay
-                      loop
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex justify-center gap-4">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          <div className="relative aspect-video bg-slate-100 flex items-center justify-center group overflow-hidden">
+            {/* Edit Mode Canvas Overlay */}
+            {isImageEditMode && activeTab === 'render' && result.renderImages[currentRenderIndex] && (
+              <div className="absolute inset-0 z-50">
+                <EditModeCanvas
+                  imageUrl={result.renderImages[currentRenderIndex]}
+                  onSave={handleEditModeSave}
+                  onCancel={() => setIsImageEditMode(false)}
+                />
+              </div>
+            )}
+
+            {/* Loading overlay for regeneration */}
+            {isRegenerating && (
+              <div className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                <div className="bg-white rounded-2xl p-8 text-center max-w-md">
+                  <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">Applying Your Changes</h3>
+                  <p className="text-slate-600">Analyzing your annotations and generating an updated design...</p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'video' && (
+              <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-slate-50 to-slate-100">
+                {!videoUrl ? (
+                  <div className="text-center max-w-md animate-fade-in">
+                    <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm ring-1 ring-purple-50">
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-800 mb-3 tracking-tight">Cinematic 3D Tour</h3>
+                    <p className="text-slate-600 mb-8 leading-relaxed">
+                      Transform your design into a stunning 5-second cinematic video. Perfect for visualizing the space in motion.
+                    </p>
+
+                    {videoError && (
+                      <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 flex items-center gap-2">
+                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        {videoError}
+                      </div>
+                    )}
+
                     <button
-                      onClick={() => setVideoUrl(null)}
-                      className="px-6 py-3 bg-white text-slate-600 hover:text-slate-900 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 transition-colors"
+                      onClick={handleGenerateVideo}
+                      disabled={isGeneratingVideo}
+                      className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all transform active:scale-[0.98] shadow-xl ${isGeneratingVideo
+                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none'
+                        : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-200 hover:shadow-purple-300 hover:-translate-y-1'
+                        }`}
                     >
-                      Generate New Video
+                      {isGeneratingVideo ? (
+                        <>
+                          <svg className="animate-spin w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 00 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Creating Magic...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Generate Video Tour
+                        </>
+                      )}
                     </button>
-                    <a
-                      href={videoUrl}
-                      download="redesign-tour.mp4"
-                      className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-200 hover:-translate-y-0.5"
+
+                    {!isGeneratingVideo && (
+                      <p className="mt-4 text-xs text-slate-400">
+                        Powered by AI Video Generation • ~30s processing time
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full max-w-4xl animate-fade-in">
+                    <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl mb-8 relative group ring-4 ring-white ring-opacity-50">
+                      <video
+                        src={videoUrl}
+                        controls
+                        autoPlay
+                        loop
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex justify-center gap-4">
+                      <button
+                        onClick={() => setVideoUrl(null)}
+                        className="px-6 py-3 bg-white text-slate-600 hover:text-slate-900 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 transition-colors"
+                      >
+                        Generate New Video
+                      </button>
+                      <a
+                        href={videoUrl}
+                        download="redesign-tour.mp4"
+                        className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-200 hover:-translate-y-0.5"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download Video
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'compare' && originalImage && result.renderImages[currentRenderIndex] ? (
+              <div className="w-full h-full p-6 flex flex-col">
+                <div className="flex-1">
+                  <BeforeAfterSlider
+                    beforeImage={result.renderImages[currentRenderIndex]}
+                    afterImage={originalImage}
+                    beforeLabel="Redesigned"
+                    afterLabel="Original"
+                  />
+                </div>
+                {/* Generate Video Button on Compare Tab */}
+                {!videoUrl && !isGeneratingVideo && (
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={handleGenerateVideo}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-purple-200 transition-all transform hover:-translate-y-1 flex items-center gap-3"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
-                      Download Video
-                    </a>
+                      Generate Transformation Video
+                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'compare' && originalImage && result.renderImages[currentRenderIndex] ? (
-            <div className="w-full h-full p-6">
-              <BeforeAfterSlider
-                beforeImage={result.renderImages[currentRenderIndex]}
-                afterImage={originalImage}
-                beforeLabel="Redesigned"
-                afterLabel="Original"
-              />
-            </div>
-          ) : activeTab === 'plan' && !result.planImage ? (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50">
-              <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mb-4"></div>
-              <p className="text-slate-600 font-medium">Drafting 2D Architectural Plan...</p>
-              <p className="text-slate-400 text-sm mt-2">This usually takes about 10-15 seconds</p>
-            </div>
-          ) : activeTab !== 'video' && activeImage ? (
-            <img src={activeImage} alt={activeTab} className="w-full h-full object-cover transition-opacity duration-300" />
-          ) : activeTab !== 'video' && !activeImage ? (
-            <div className="text-slate-400 italic">Image generation failed or is unavailable.</div>
-          ) : null}
-
-          {/* Carousel Controls (only for renders with > 1 image) */}
-          {activeTab === 'render' && result.renderImages.length > 1 && (
-            <>
-              <button
-                onClick={prevRender}
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg transition-all hover:scale-105"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-              </button>
-              <button
-                onClick={nextRender}
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg transition-all hover:scale-105"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </button>
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                {result.renderImages.map((_, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setCurrentRenderIndex(idx)}
-                    className={`w-2 h-2 rounded-full shadow-sm transition-all cursor-pointer ${idx === currentRenderIndex ? 'bg-emerald-500 scale-125' : 'bg-white/80 hover:bg-white'}`}
-                  />
-                ))}
+                )}
+                {videoUrl && (
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={() => setActiveTab('video')}
+                      className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transition-all flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      View Video
+                    </button>
+                  </div>
+                )}
               </div>
-            </>
-          )}
+            ) : activeTab === 'plan' && !result.planImage ? (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50">
+                <div className="animate-spin w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full mb-4"></div>
+                <p className="text-slate-600 font-medium">Drafting 2D Architectural Plan...</p>
+                <p className="text-slate-400 text-sm mt-2">This usually takes about 10-15 seconds</p>
+              </div>
+            ) : activeTab !== 'video' && activeImage ? (
+              <img src={activeImage} alt={activeTab} className="w-full h-full object-cover transition-opacity duration-300" />
+            ) : activeTab !== 'video' && !activeImage ? (
+              <div className="text-slate-400 italic">Image generation failed or is unavailable.</div>
+            ) : null}
 
-          {activeImage && !isImageEditMode && (
-            <div className="absolute top-4 right-4 flex gap-2 transition-all transform -translate-y-2 group-hover:translate-y-0">
-              {activeTab === 'render' && (
-                <button
-                  onClick={() => setIsImageEditMode(true)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2"
-                  title="Edit this render - You can make multiple iterative edits, each building on the previous"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Edit Mode
-                </button>
-              )}
-              <button
-                onClick={() => downloadImage(activeImage, `autoscape-${activeTab}${activeTab === 'render' ? '-' + (currentRenderIndex + 1) : ''}.png`)}
-                className="bg-white/90 hover:bg-white text-slate-800 px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                Download
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="p-6 bg-slate-50/50">
-          <h3 className="text-lg font-semibold text-slate-800 mb-2">{result.analysis.designConcept}</h3>
-          <div className="flex gap-4 text-sm text-slate-500">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              Layout: {result.analysis.currentLayout}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              Maintenance: {result.analysis.maintenanceLevel}
-            </span>
+            {/* Carousel Controls (only for renders with > 1 image) */}
             {activeTab === 'render' && result.renderImages.length > 1 && (
-              <span className="ml-auto text-slate-400 font-medium">
-                View {currentRenderIndex + 1} of {result.renderImages.length}
-              </span>
+              <>
+                <button
+                  onClick={prevRender}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg transition-all hover:scale-105"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <button
+                  onClick={nextRender}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg transition-all hover:scale-105"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </button>
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                  {result.renderImages.map((_, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setCurrentRenderIndex(idx)}
+                      className={`w-2 h-2 rounded-full shadow-sm transition-all cursor-pointer ${idx === currentRenderIndex ? 'bg-emerald-500 scale-125' : 'bg-white/80 hover:bg-white'}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {activeImage && !isImageEditMode && (
+              <div className="absolute top-4 right-4 flex gap-2 transition-all transform -translate-y-2 group-hover:translate-y-0">
+                {activeTab === 'render' && (
+                  <button
+                    onClick={() => setIsImageEditMode(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2"
+                    title="Edit this render - You can make multiple iterative edits, each building on the previous"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    Edit Mode
+                  </button>
+                )}
+                <button
+                  onClick={() => downloadImage(activeImage, `autoscape-${activeTab}${activeTab === 'render' ? '-' + (currentRenderIndex + 1) : ''}.png`)}
+                  className="bg-white/90 hover:bg-white text-slate-800 px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Download
+                </button>
+              </div>
             )}
           </div>
+
+          <div className="p-6 bg-slate-50/50">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">{result.analysis.designConcept}</h3>
+            <div className="flex gap-4 text-sm text-slate-500">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Layout: {result.analysis.currentLayout}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                Maintenance: {result.analysis.maintenanceLevel}
+              </span>
+              {activeTab === 'render' && result.renderImages.length > 1 && (
+                <span className="ml-auto text-slate-400 font-medium">
+                  View {currentRenderIndex + 1} of {result.renderImages.length}
+                </span>
+              )}
+            </div>
+          </div>
+        </div >
+      </div>
+
+      {/* Video Generation Progress */}
+      {isGeneratingVideo && (
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl shadow-sm border border-purple-200 p-6 animate-pulse">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+              <svg className="w-6 h-6 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-purple-900 mb-1">Creating Your Transformation Video...</h3>
+              <p className="text-sm text-purple-600">This usually takes about 30-60 seconds. We're creating a cinematic before-and-after animation.</p>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-purple-500">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span className="text-sm font-medium">AI Video Generation</span>
+            </div>
+          </div>
         </div>
-      </div >
+      )}
+
+      {/* Video Error Display */}
+      {videoError && !isGeneratingVideo && (
+        <div className="bg-red-50 rounded-2xl shadow-sm border border-red-200 p-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-red-900 mb-1">Video Generation Failed</h3>
+              <p className="text-sm text-red-600">{videoError}</p>
+            </div>
+            <button
+              onClick={handleGenerateVideo}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Analysis & Costs Grid */}
       {result.estimates.totalCost === 0 ? (
@@ -854,7 +998,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                                 title={`Find similar ${item.name} on Amazon`}
                               >
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M23.27 13.73L22 12.5l-1.27-1.23L19.5 12l1.23 1.27L22 14.5l1.27-1.23L24.5 12l-1.23-1.27zM6.32 2.72c-.35-.35-.92-.35-1.27 0L2.72 5.05c-.35.35-.35.92 0 1.27l2.33 2.33c.35.35.92.35 1.27 0l2.33-2.33c.35-.35.35-.92 0-1.27L6.32 2.72zM12 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                  <path d="M23.27 13.73L22 12.5l-1.27-1.23L19.5 12l1.23 1.27L22 14.5l1.27-1.23L24.5 12l-1.23-1.27zM6.32 2.72c-.35-.35-.92-.35-1.27 0L2.72 5.05c-.35.35-.35.92 0 1.27l2.33 2.33c.35.35.92.35 1.27 0l2.33-2.33c.35-.35.35-.92 0-1.27L6.32 2.72zM12 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                                 </svg>
                                 Find Similar on Amazon
                               </a>

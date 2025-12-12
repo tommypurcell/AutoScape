@@ -493,7 +493,7 @@ export interface Annotation {
 }
 
 export const analyzeAndRegenerateDesign = async (
-  originalRenderImage: string, // Base64 data URI
+  originalRenderImage: string, // Base64 data URI or URL
   annotatedImage: string, // Base64 data URI with user annotations
   annotations: Annotation[],
   originalYardImage?: File | null
@@ -504,10 +504,65 @@ export const analyzeAndRegenerateDesign = async (
 
   const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
+  // Helper to convert any image source to base64
+  const imageToBase64 = async (imageSource: string): Promise<string> => {
+    // If it's already a data URI, extract the base64 part
+    if (imageSource.startsWith('data:')) {
+      const base64 = imageSource.split(',')[1];
+      if (!base64) {
+        throw new Error('Invalid data URI format');
+      }
+      return base64;
+    }
+
+    // If it's a URL (http/https or blob), fetch and convert
+    if (imageSource.startsWith('http') || imageSource.startsWith('blob:')) {
+      try {
+        const response = await fetch(imageSource);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const base64 = result.split(',')[1];
+            if (!base64) {
+              reject(new Error('Failed to extract base64 from blob'));
+              return;
+            }
+            resolve(base64);
+          };
+          reader.onerror = () => reject(new Error('Failed to read blob'));
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.error('Error fetching image from URL:', error);
+        throw new Error(`Failed to fetch image from URL: ${imageSource.substring(0, 50)}...`);
+      }
+    }
+
+    // Assume it's raw base64
+    return imageSource;
+  };
+
   try {
-    // Extract base64 from data URIs
-    const originalBase64 = originalRenderImage.split(',')[1];
-    const annotatedBase64 = annotatedImage.split(',')[1];
+    // Convert images to base64, handling different formats
+    console.log("Converting images to base64...");
+    console.log("  Original render source type:", originalRenderImage.substring(0, 30));
+    console.log("  Annotated image source type:", annotatedImage.substring(0, 30));
+
+    const originalBase64 = await imageToBase64(originalRenderImage);
+    const annotatedBase64 = await imageToBase64(annotatedImage);
+
+    console.log("  Original base64 length:", originalBase64.length);
+    console.log("  Annotated base64 length:", annotatedBase64.length);
+
+    // Validate the base64 strings
+    if (originalBase64.length < 1000) {
+      throw new Error('Original render image appears to be too small or corrupted');
+    }
+    if (annotatedBase64.length < 1000) {
+      throw new Error('Annotated image appears to be too small or corrupted');
+    }
 
     // Prepare annotations description
     const annotationsText = annotations.map((ann, idx) => {
@@ -583,7 +638,7 @@ export const analyzeAndRegenerateDesign = async (
     // If we have the original yard image, include it for context
     if (originalYardImage) {
       const yardBase64 = await fileToGenericBase64(originalYardImage);
-      analysisParts.splice(2, 0, 
+      analysisParts.splice(2, 0,
         { inlineData: { mimeType: originalYardImage.type, data: yardBase64 } },
         { text: `[Original Yard Photo - For reference]` }
       );
