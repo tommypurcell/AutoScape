@@ -12,6 +12,7 @@ import { HelpTip } from './HelpTip';
 import { EditModeCanvas, Annotation } from './EditModeCanvas';
 import { analyzeAndRegenerateDesign } from '../services/geminiService';
 import { generateAffiliateLinks, VerifiedMaterialItem } from '../services/affiliateService';
+import { ContactDesignerModal } from './ContactDesignerModal';
 
 interface ResultsViewProps {
     result?: GeneratedDesign;
@@ -75,6 +76,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const [currentShortId, setCurrentShortId] = useState<string | null>(designShortId || null);
     const [costViewTab, setCostViewTab] = useState<'materials' | 'distribution'>('materials');
     const [selectedPlant, setSelectedPlant] = useState<any | null>(null);
+    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
     // Update local result when prop or context changes
     useEffect(() => {
@@ -297,7 +299,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                         </button>
                         {/* Contact Designer Button */}
                         <button
-                            onClick={() => window.open('mailto:design@autoscape.ai?subject=Design Consultation Request', '_blank')}
+                            onClick={() => setIsContactModalOpen(true)}
                             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-all flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -312,7 +314,12 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                     <div className="flex border-b border-slate-100">
                         {/* Compare Tab with sub-tabs */}
                         <div className="flex-1 border-r border-slate-100">
-                            <div className="text-sm text-slate-600 text-center py-1 bg-slate-50 border-b border-slate-100">Compare</div>
+                            <button
+                                onClick={() => setActiveTab('compare')}
+                                className={`w-full text-sm text-center py-1 border-b border-slate-100 font-medium transition-colors ${activeTab === 'compare' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 bg-slate-50 hover:text-slate-700 hover:bg-slate-100'}`}
+                            >
+                                Compare (Slider)
+                            </button>
                             <div className="flex">
                                 <button onClick={() => setActiveTab('original')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${activeTab === 'original' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
                                     original
@@ -453,7 +460,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                 <div className="h-[300px]">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
-                                            <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="cost" nameKey="name" label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`} labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}>
+                                            <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="cost" nameKey="name" label={({ name, value, percent }) => `${name}: ${formatCurrency(value)} (${(percent * 100).toFixed(0)}%)`} labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}>
                                                 {chartData.map((_, index) => {
                                                     const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
                                                     return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
@@ -480,32 +487,43 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                             Plant Palette
                         </h3>
                         <div className="space-y-4">
-                            {result.estimates.plantPalette.map((plant, index) => (
-                                <div key={index} className="group">
-                                    {/* Shop in Amazon Button */}
-                                    <button
-                                        onClick={() => window.open(`https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' plant')}`, '_blank')}
-                                        className="w-full mb-2 px-2 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 rounded text-xs font-medium transition-colors"
-                                    >
-                                        Shop in Amazon
-                                    </button>
-                                    {/* Plant Image */}
-                                    <div
-                                        className="w-[100px] h-[100px] mx-auto rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-emerald-400 group-hover:shadow-md transition-all cursor-pointer"
-                                        onClick={() => setSelectedPlant(plant)}
-                                    >
-                                        {plant.image_url ? (
-                                            <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                            </div>
-                                        )}
+                            {result.estimates.plantPalette.map((plant, index) => {
+                                // Generate Amazon search image URL using their image search
+                                const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' live plant')}&i=lawngarden`;
+                                const amazonImageSearchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(plant.common_name + ' plant')}`;
+
+                                return (
+                                    <div key={index} className="group">
+                                        {/* Plant Image - Links to Google Image search */}
+                                        <a
+                                            href={amazonImageSearchUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block w-[100px] h-[100px] mx-auto rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-emerald-400 group-hover:shadow-md transition-all cursor-pointer"
+                                        >
+                                            {plant.image_url ? (
+                                                <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-300 bg-gradient-to-br from-emerald-50 to-green-100">
+                                                    <svg className="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                                                </div>
+                                            )}
+                                        </a>
+                                        <p className="text-sm text-slate-700 font-medium text-center mt-2 truncate" title={plant.common_name}>{plant.common_name}</p>
+                                        <p className="text-sm text-slate-600 text-center">{plant.unit_price}</p>
+                                        {/* Shop in Amazon Button */}
+                                        <a
+                                            href={amazonSearchUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-center gap-1 w-full mt-2 px-2 py-1.5 bg-amber-400 hover:bg-amber-500 text-amber-900 border border-amber-500 rounded text-xs font-bold transition-colors"
+                                        >
+                                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595.427-.16.726-.053.897.32.096.19.086.378-.058.535-.39.426-.94.74-1.65.946-2.618.76-5.287 1.14-8.008 1.14-4.45 0-8.506-1.127-12.168-3.378-.24-.147-.316-.337-.226-.58l.21-.532zm5.18-6.378c0-.32.096-.6.29-.838.192-.24.448-.36.762-.36.56 0 .896.28 1.01.84l1.93 8.406c.116.492.44.738.974.738h4.08c.54 0 .87-.246.986-.738l1.93-8.406c.116-.56.45-.84 1.01-.84.32 0 .576.12.768.36.192.24.288.52.288.838 0 .11-.014.238-.043.385l-2.064 9.15c-.26 1.168-.963 1.752-2.108 1.752H9.544c-1.145 0-1.85-.584-2.11-1.752l-2.064-9.15c-.03-.148-.044-.275-.044-.385z" /></svg>
+                                            Shop Amazon
+                                        </a>
                                     </div>
-                                    <p className="text-xs text-slate-700 font-medium text-center mt-1 truncate" title={plant.common_name}>{plant.common_name}</p>
-                                    <p className="text-sm text-slate-600 text-center">{plant.unit_price}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -539,6 +557,13 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Contact Designer Modal */}
+            <ContactDesignerModal
+                isOpen={isContactModalOpen}
+                onClose={() => setIsContactModalOpen(false)}
+                designLink={currentShortId ? `${window.location.origin}/result/${currentShortId}` : window.location.href}
+            />
         </div>
     );
 };
