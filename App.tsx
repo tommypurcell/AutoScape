@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { UploadArea } from './components/UploadArea';
 import { LoadingScreen } from './components/LoadingScreen';
-import { ResultsView } from './components/ResultsView';
+import { ResultsViewV2 as ResultsView } from './components/ResultsViewV2';
 import { StyleGallery } from './components/StyleGallery';
 import { generateLandscapeDesign } from './services/geminiService';
 import { AppState, DesignStyle, LocationType, SpaceSize } from './types';
@@ -256,28 +256,9 @@ const AppContent: React.FC = () => {
 
       // Save to Firestore for ALL users (authenticated or anonymous) to generate a unique URL
       try {
-        // Upload the yard image to get a permanent URL for comparison
-        let yardImageUrl = state.yardImagePreview;
-        if (state.yardImage) {
-          try {
-            // Convert the file to base64 for upload
-            const reader = new FileReader();
-            const base64Promise = new Promise<string>((resolve, reject) => {
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(state.yardImage!);
-            });
-            const base64 = await base64Promise;
-
-            // Use user ID or 'anonymous' for storage path
-            const storageUserId = user ? user.uid : 'anonymous';
-            const timestamp = Date.now();
-            yardImageUrl = await uploadBase64Image(base64, `yards/${storageUserId}/${timestamp}_yard.jpg`);
-          } catch (uploadError) {
-            console.error('Failed to upload yard image:', uploadError);
-            // Continue without the yard image URL (using the blob URL which won't persist across sessions, but better than nothing)
-          }
-        }
+        // Use the local yard image preview URL (skip Firebase Storage upload to avoid CORS issues in development)
+        // TODO: For production, enable Firebase Storage upload after configuring CORS on the storage bucket
+        const yardImageUrl = state.yardImagePreview;
 
         // Use user ID or 'anonymous' for Firestore document
         const ownerId = user ? user.uid : 'anonymous';

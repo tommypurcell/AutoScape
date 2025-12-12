@@ -31,17 +31,17 @@ export const LoadingScreen: React.FC = () => {
             </svg>
           </div>
         </div>
-        
+
         <div>
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Designing Your AutoScape</h2>
-          <p className="text-slate-500 h-6 transition-all duration-500 font-medium">{MESSAGES[msgIndex]}</p>
+          <p className="text-slate-600 h-6 transition-all duration-500 font-medium">{MESSAGES[msgIndex]}</p>
         </div>
 
         <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-          <div className="h-full bg-emerald-500 rounded-full animate-[loading_30s_ease-in-out_infinite]" style={{width: '85%'}}></div>
+          <div className="h-full bg-emerald-500 rounded-full animate-[loading_30s_ease-in-out_infinite]" style={{ width: '85%' }}></div>
         </div>
-        
-        <p className="text-xs text-slate-400">Using Gemini 3 Pro reasoning. This process ensures geometric accuracy.</p>
+
+        <p className="text-sm text-slate-600">Using Gemini 3 Pro reasoning. This process ensures geometric accuracy.</p>
       </div>
     </div>
   );

@@ -72,6 +72,9 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   const [isLoadingAffiliateLinks, setIsLoadingAffiliateLinks] = useState(false);
   const [showAffiliateLinks, setShowAffiliateLinks] = useState(false);
   const [isExpandedView, setIsExpandedView] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentShortId, setCurrentShortId] = useState<string | null>(designShortId || null);
+  const [costViewTab, setCostViewTab] = useState<'materials' | 'distribution'>('materials');
 
   // Update local result when prop or context changes
   useEffect(() => {

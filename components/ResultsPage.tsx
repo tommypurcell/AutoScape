@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ResultsView } from './ResultsView';
+import { ResultsViewV2 as ResultsView } from './ResultsViewV2';
 import { getDesignByShortId, getDesignById, SavedDesign } from '../services/firestoreService';
 import { LoadingScreen } from './LoadingScreen';
 import { GeneratedDesign } from '../types';
