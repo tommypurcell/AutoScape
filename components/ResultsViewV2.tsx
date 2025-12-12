@@ -513,43 +513,54 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
                     <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
                         <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
-                        Palette
+                        Palette {isLoadingBudget && <span className="text-xs text-slate-400">(loading...)</span>}
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                        {/* Materials with Pictures */}
-                        {result.estimates.breakdown && result.estimates.breakdown.slice(0, 6).map((item, index) => {
-                            const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(item.name)}`;
+                    <div className="space-y-4">
+                        {/* RAG Items with Pictures (from RAG API) */}
+                        {ragBudget?.line_items && ragBudget.line_items.map((item, index) => {
+                            const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(item.match || item.item)}`;
+                            const isPlant = item.item.toLowerCase().includes('plant') ||
+                                item.item.toLowerCase().includes('tree') ||
+                                item.item.toLowerCase().includes('shrub') ||
+                                item.item.toLowerCase().includes('flower');
 
                             return (
-                                <div key={`material-${index}`} className="group">
-                                    <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-blue-400 group-hover:shadow-md transition-all">
-                                        {/* Material placeholder with icon based on type */}
-                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100">
-                                            <svg className="w-10 h-10 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                                        </div>
+                                <div key={`rag-${index}`} className="group">
+                                    <div className={`relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 ${isPlant ? 'group-hover:border-emerald-400' : 'group-hover:border-blue-400'} group-hover:shadow-md transition-all`}>
+                                        {item.image_url ? (
+                                            <img src={item.image_url} alt={item.match || item.item} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                        ) : (
+                                            <div className={`w-full h-full flex items-center justify-center ${isPlant ? 'bg-gradient-to-br from-emerald-50 to-green-100' : 'bg-gradient-to-br from-blue-50 to-slate-100'}`}>
+                                                {isPlant ? (
+                                                    <svg className="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                                                ) : (
+                                                    <svg className="w-10 h-10 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                                )}
+                                            </div>
+                                        )}
                                         {/* Shop Button Inside */}
                                         <a
                                             href={amazonSearchUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-blue-400/90 hover:bg-blue-500 text-white rounded text-[10px] font-bold transition-colors shadow-sm"
+                                            className={`absolute bottom-1 right-1 px-1.5 py-0.5 ${isPlant ? 'bg-amber-400/90 hover:bg-amber-500 text-amber-900' : 'bg-blue-400/90 hover:bg-blue-500 text-white'} rounded text-[10px] font-bold transition-colors shadow-sm`}
                                             onClick={e => e.stopPropagation()}
                                         >
                                             Shop
                                         </a>
-                                        {/* Material type badge */}
-                                        <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-blue-500/80 text-white rounded text-[8px] font-medium">
-                                            Material
+                                        {/* Type badge */}
+                                        <span className={`absolute top-1 left-1 px-1.5 py-0.5 ${isPlant ? 'bg-emerald-500/80' : 'bg-blue-500/80'} text-white rounded text-[8px] font-medium`}>
+                                            {isPlant ? 'Plant' : 'Material'}
                                         </span>
                                     </div>
-                                    <p className="text-xs text-slate-700 font-medium text-center mt-1.5 truncate" title={item.name}>{item.name}</p>
-                                    <p className="text-xs text-slate-500 text-center">{item.totalCost}</p>
+                                    <p className="text-xs text-slate-700 font-medium text-center mt-1.5 truncate" title={item.match || item.item}>{item.match || item.item}</p>
+                                    <p className="text-xs text-slate-500 text-center">{item.price_estimate}</p>
                                 </div>
                             );
                         })}
 
-                        {/* Plants with Pictures */}
-                        {result.estimates.plantPalette && result.estimates.plantPalette.map((plant, index) => {
+                        {/* Fallback: Plants from plantPalette if ragBudget not available */}
+                        {(!ragBudget?.line_items || ragBudget.line_items.length === 0) && result.estimates.plantPalette && result.estimates.plantPalette.map((plant, index) => {
                             const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' live plant')}&i=lawngarden`;
 
                             return (

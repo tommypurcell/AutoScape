@@ -5,7 +5,7 @@ import { MessageModal } from './MessageModal';
 import { ProfessionalProfileModal } from './ProfessionalProfileModal';
 
 export const BusinessPage: React.FC = () => {
-    const [selectedState, setSelectedState] = useState<string>('');
+    const [selectedState, setSelectedState] = useState<string>('California');
     const [filterRole, setFilterRole] = useState<'All' | 'Designer' | 'Landscaper'>('All');
     const [filteredPros, setFilteredPros] = useState<Professional[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -141,8 +141,8 @@ export const BusinessPage: React.FC = () => {
                                         key={role}
                                         onClick={() => setFilterRole(role as any)}
                                         className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${filterRole === role
-                                                ? 'bg-white text-gray-900 shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700'
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700'
                                             }`}
                                     >
                                         {role}
