@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { professionals, states, Professional } from '../data/professionals';
 import { MapPin, Star, Search, Filter, Phone, Mail } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { MessageModal } from './MessageModal';
 import { ProfessionalProfileModal } from './ProfessionalProfileModal';
 
 export const BusinessPage: React.FC = () => {
+    const navigate = useNavigate();
     const [selectedState, setSelectedState] = useState<string>('California');
     const [filterRole, setFilterRole] = useState<'All' | 'Designer' | 'Landscaper'>('All');
     const [filteredPros, setFilteredPros] = useState<Professional[]>([]);
@@ -91,9 +93,15 @@ export const BusinessPage: React.FC = () => {
                     <h1 className="text-4xl font-extrabold text-gray-900 mb-4">
                         Find Local Professionals
                     </h1>
-                    <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                    <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
                         Connect with top-rated landscape architects, garden designers, and contractors in your area to bring your vision to life.
                     </p>
+                    <button
+                        onClick={() => navigate('/designer-signup')}
+                        className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    >
+                        Join as a Business Partner
+                    </button>
                 </div>
 
                 {/* Search & Filter Section */}
@@ -176,7 +184,7 @@ export const BusinessPage: React.FC = () => {
                                         alt={`${pro.name}'s best work`}
                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                     />
-                                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
+                                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-bold text-gray-800 shadow-sm">
                                         {pro.role}
                                     </div>
                                 </div>
@@ -197,7 +205,7 @@ export const BusinessPage: React.FC = () => {
                                             <div className="flex items-center gap-1 text-yellow-400 mt-1">
                                                 <Star className="w-4 h-4 fill-current" />
                                                 <span className="text-sm font-medium text-gray-700">{pro.rating.toFixed(1)}</span>
-                                                <span className="text-xs text-gray-400">({pro.reviewCount} reviews)</span>
+                                                <span className="text-sm text-gray-400">({pro.reviewCount} reviews)</span>
                                             </div>
                                         </div>
                                     </div>

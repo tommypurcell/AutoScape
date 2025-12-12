@@ -826,13 +826,13 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                             href={shopUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className={`absolute bottom-1 right-1 px-1.5 py-0.5 ${isPlant ? 'bg-amber-400/90 hover:bg-amber-500 text-amber-900' : 'bg-blue-400/90 hover:bg-blue-500 text-white'} rounded text-[10px] font-bold transition-colors shadow-sm`}
+                                            className={`absolute bottom-1 right-1 px-1.5 py-0.5 ${isPlant ? 'bg-amber-400/90 hover:bg-amber-500 text-amber-900' : 'bg-blue-400/90 hover:bg-blue-500 text-white'} rounded text-[14px] font-bold transition-colors shadow-sm`}
                                             onClick={e => e.stopPropagation()}
                                         >
                                             Shop
                                         </a>
                                         {/* Type badge */}
-                                        <span className={`absolute top-1 left-1 px-1.5 py-0.5 ${isPlant ? 'bg-emerald-500/80' : 'bg-blue-500/80'} text-white rounded text-[8px] font-medium`}>
+                                        <span className={`absolute top-1 left-1 px-1.5 py-0.5 ${isPlant ? 'bg-emerald-500/80' : 'bg-blue-500/80'} text-white rounded text-[14px] font-medium`}>
                                             {isPlant ? 'Plant' : 'Material'}
                                         </span>
                                     </div>
@@ -863,18 +863,18 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                             href={shopUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-amber-400/90 hover:bg-amber-500 text-amber-900 rounded text-[10px] font-bold transition-colors shadow-sm"
+                                            className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-amber-400/90 hover:bg-amber-500 text-amber-900 rounded text-[14px] font-bold transition-colors shadow-sm"
                                             onClick={e => e.stopPropagation()}
                                         >
                                             Shop
                                         </a>
                                         {/* Plant type badge */}
-                                        <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-emerald-500/80 text-white rounded text-[8px] font-medium">
+                                        <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-emerald-500/80 text-white rounded text-[14px] font-medium">
                                             Plant
                                         </span>
                                     </div>
-                                    <p className="text-xs text-slate-700 font-medium text-center mt-1.5 truncate" title={plant.common_name}>{plant.common_name}</p>
-                                    <p className="text-xs text-slate-500 text-center">{plant.unit_price}</p>
+                                    <p className="text-sm text-slate-700 font-medium text-center mt-1.5 truncate" title={plant.common_name}>{plant.common_name}</p>
+                                    <p className="text-sm text-slate-500 text-center">{plant.unit_price}</p>
                                 </div>
                             );
                         })}

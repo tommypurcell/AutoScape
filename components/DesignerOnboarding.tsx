@@ -19,6 +19,7 @@ export interface DesignerFormData {
     bio: string;
     portfolioImages: string[];
     role: 'designer';
+    agreedToTerms: boolean;
 }
 
 const specialtyOptions = [
@@ -44,7 +45,8 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
     const [formData, setFormData] = useState<Partial<DesignerFormData>>({
         specialties: [],
         portfolioImages: [],
-        role: 'designer'
+        role: 'designer',
+        agreedToTerms: false
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -83,7 +85,7 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
             case 3:
                 return (formData.specialties?.length || 0) > 0 && formData.yearsExperience;
             case 4:
-                return formData.bio && formData.bio.length >= 50;
+                return formData.bio && formData.bio.length >= 50 && formData.agreedToTerms;
             default:
                 return true;
         }
@@ -92,12 +94,12 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
     return (
         <div className="max-w-3xl mx-auto px-4 py-8 animate-fade-in">
             <div className="bg-white rounded-2xl w-full shadow-xl border border-gray-100 overflow-hidden">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-8">
+                {/* Header - Serious Business */}
+                <div className="bg-slate-900 text-white p-8">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-amber-100 text-sm font-medium mb-1">Designer Registration</p>
-                            <h2 className="text-3xl font-bold">Join AutoScape Pro</h2>
+                            <p className="text-slate-400 text-sm font-medium mb-1 uppercase tracking-widest">Partner Application</p>
+                            <h2 className="text-3xl font-light">Join <span className="font-semibold">AutoScape Pro</span></h2>
                         </div>
                     </div>
 
@@ -111,7 +113,7 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
                             />
                         ))}
                     </div>
-                    <div className="flex justify-between text-xs text-amber-100 mt-2">
+                    <div className="flex justify-between text-xs text-slate-400 mt-2">
                         <span>Account</span>
                         <span>Business</span>
                         <span>Expertise</span>
@@ -243,7 +245,7 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
                                             key={specialty}
                                             onClick={() => toggleSpecialty(specialty)}
                                             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${formData.specialties?.includes(specialty)
-                                                ? 'bg-amber-500 text-white'
+                                                ? 'bg-indigo-600 text-white shadow-md'
                                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                         >
@@ -291,16 +293,24 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
                                 </p>
                             </div>
 
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <div className="flex items-start gap-3">
-                                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-medium text-green-900">You're almost done!</p>
-                                        <p className="text-xs text-green-700 mt-1">
-                                            After signup, you can add portfolio images and designs to showcase your work.
+                            <div className="mt-8 pt-6 border-t border-gray-100">
+                                <label className="flex items-start gap-4 cursor-pointer group">
+                                    <div className="relative flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.agreedToTerms || false}
+                                            onChange={e => updateField('agreedToTerms', e.target.checked)}
+                                            className="w-6 h-6 border-2 border-gray-300 rounded text-slate-900 focus:ring-slate-900 transition-colors cursor-pointer"
+                                        />
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                        <span className="font-medium text-gray-900">Contract Agreement</span>
+                                        <p className="mt-1">
+                                            I agree to the <a href="/terms" target="_blank" className="text-indigo-600 hover:text-indigo-800 underline font-medium">Designer Partnership Agreement</a> and <a href="/terms" target="_blank" className="text-indigo-600 hover:text-indigo-800 underline font-medium">Terms of Service</a>.
+                                            I verify that all provided information is accurate and I am authorized to represent this business.
                                         </p>
                                     </div>
-                                </div>
+                                </label>
                             </div>
                         </div>
                     )}
@@ -324,7 +334,7 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
                             onClick={() => setStep(step + 1)}
                             disabled={!canProceed()}
                             className={`px-8 py-3 rounded-lg font-semibold transition-all ${canProceed()
-                                ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-lg'
                                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                 }`}
                         >
@@ -335,7 +345,7 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
                             onClick={handleSubmit}
                             disabled={!canProceed() || isSubmitting}
                             className={`px-8 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${canProceed() && !isSubmitting
-                                ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg'
                                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                 }`}
                         >

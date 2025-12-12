@@ -83,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                             </div>
-                            <span className="font-bold text-xl text-slate-800">AutoScape</span>
+                            <span className="font-bold text-2xl text-slate-800">AutoScape</span>
                         </div>
                         <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,8 +103,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 </div>
                             )}
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-slate-800 truncate">{user.displayName || 'User'}</p>
-                                <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                                <p className="text-base font-semibold text-slate-800 truncate">{user.displayName || 'User'}</p>
+                                <p className="text-sm text-slate-500 truncate">{user.email}</p>
                             </div>
                             <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -128,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex border-b border-slate-100">
                     <button
                         onClick={() => setActiveTab('menu')}
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'menu'
+                        className={`flex-1 py-3 text-base font-medium transition-colors ${activeTab === 'menu'
                             ? 'text-emerald-600 border-b-2 border-emerald-600'
                             : 'text-slate-500 hover:text-slate-700'
                             }`}
@@ -137,7 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                     <button
                         onClick={() => setActiveTab('history')}
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'history'
+                        className={`flex-1 py-3 text-base font-medium transition-colors ${activeTab === 'history'
                             ? 'text-emerald-600 border-b-2 border-emerald-600'
                             : 'text-slate-500 hover:text-slate-700'
                             }`}
@@ -161,8 +161,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     <Plus className="w-5 h-5" />
                                 </div>
                                 <div className="text-left">
-                                    <div className="font-semibold">New Design</div>
-                                    <div className="text-xs text-slate-400">Start from scratch</div>
+                                    <div className="font-semibold text-base">New Design</div>
+                                    <div className="text-sm text-slate-400">Start from scratch</div>
                                 </div>
                             </button>
 
@@ -177,8 +177,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     <Globe className="w-5 h-5" />
                                 </div>
                                 <div className="text-left">
-                                    <div className="font-semibold">Community Gallery</div>
-                                    <div className="text-xs text-slate-400">Explore other designs</div>
+                                    <div className="font-semibold text-base">Community Gallery</div>
+                                    <div className="text-sm text-slate-400">Explore other designs</div>
                                 </div>
                             </button>
 
@@ -226,8 +226,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         </svg>
                                     </div>
                                     <div className="text-left">
-                                        <div className="font-semibold">Admin Dashboard</div>
-                                        <div className="text-xs text-slate-400">System overview</div>
+                                        <div className="font-semibold text-base">Admin Dashboard</div>
+                                        <div className="text-sm text-slate-400">System overview</div>
                                     </div>
                                 </button>
                             )}
@@ -302,10 +302,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                         )}
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <p className="font-medium text-slate-800 text-sm">
+                                                <p className="font-medium text-slate-800 text-base">
                                                     {design.analysis?.designConcept || 'Landscape Design'}
                                                 </p>
-                                                <p className="text-xs text-slate-500">
+                                                <p className="text-sm text-slate-500">
                                                     {new Date(design.createdAt).toLocaleDateString()}
                                                 </p>
                                             </div>
