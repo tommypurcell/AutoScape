@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { GeneratedDesign } from '../types';
-import { uploadBase64Image } from './storageService';
+import { uploadBase64Image, uploadImage } from './storageService';
 
 export interface SavedDesign {
     id: string;
@@ -47,9 +47,17 @@ const uploadDesignImages = async (
     // Upload yard image if present and is a blob/data URL
     let uploadedYardImageUrl: string | undefined = undefined;
     if (yardImageUrl) {
-        if (yardImageUrl.startsWith('blob:') || yardImageUrl.startsWith('data:')) {
+        if (yardImageUrl.startsWith('blob:')) {
             const path = `designs/${userId}/${timestamp}/yard_original.png`;
-            console.log('Uploading yard image to Storage...');
+            console.log('Uploading yard image (blob) to Storage...');
+            const response = await fetch(yardImageUrl);
+            const blob = await response.blob();
+            // Need to import uploadImage if not already imported, or use it from storageService
+            uploadedYardImageUrl = await uploadImage(blob, path);
+            console.log(`  ✓ Uploaded yard image: ${uploadedYardImageUrl.substring(0, 60)}...`);
+        } else if (yardImageUrl.startsWith('data:')) {
+            const path = `designs/${userId}/${timestamp}/yard_original.png`;
+            console.log('Uploading yard image (base64) to Storage...');
             uploadedYardImageUrl = await uploadBase64Image(yardImageUrl, path);
             console.log(`  ✓ Uploaded yard image: ${uploadedYardImageUrl.substring(0, 60)}...`);
         } else if (yardImageUrl.startsWith('http')) {
