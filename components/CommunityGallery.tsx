@@ -129,22 +129,6 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                             </div>
                                         </div>
 
-                                        {/* ShortId Link Badge */}
-                                        {design.shortId && (
-                                            <div
-                                                className="flex items-center gap-1.5 bg-purple-50 text-purple-600 px-2 py-1 rounded-full text-xs font-mono cursor-pointer hover:bg-purple-100 transition-colors"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    navigator.clipboard.writeText(`${window.location.origin}/result/${design.shortId}`);
-                                                    alert(`Link copied: ${window.location.origin}/result/${design.shortId}`);
-                                                }}
-                                                title="Click to copy share link"
-                                            >
-                                                <Link2 className="w-3 h-3" />
-                                                {design.shortId}
-                                            </div>
-                                        )}
-
                                         <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center">
                                             <span className="text-emerald-600 font-medium text-sm bg-emerald-50 px-3 py-1 rounded-full">
                                                 {design.analysis?.style || "Modern"}
