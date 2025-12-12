@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { X, Send, Image as ImageIcon, Loader } from 'lucide-react';
-import { SavedDesign, getPublicDesigns, getUserDesigns } from '../services/firestoreService';
+import { SavedDesign, getPublicDesigns, getUserDesigns, sendMessage } from '../services/firestoreService';
 import { useDesign } from '../contexts/DesignContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface MessageModalProps {
     isOpen: boolean;
     onClose: () => void;
     professionalName: string;
+    recipientUserId: string;
 }
 
-export const MessageModal: React.FC<MessageModalProps> = ({ isOpen, onClose, professionalName }) => {
+export const MessageModal: React.FC<MessageModalProps> = ({ isOpen, onClose, professionalName, recipientUserId }) => {
+    const { user } = useAuth();
     const [note, setNote] = useState('');
     const [selectedDesign, setSelectedDesign] = useState<SavedDesign | null>(null);
     const [activeTab, setActiveTab] = useState<'my-designs' | 'gallery'>('my-designs');
@@ -55,16 +58,29 @@ export const MessageModal: React.FC<MessageModalProps> = ({ isOpen, onClose, pro
         if (!note && !selectedDesign) return;
 
         setIsSending(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+            await sendMessage({
+                recipientUserId,
+                content: note,
+                senderId: user?.uid,
+                senderName: user?.displayName || 'Guest',
+                senderEmail: user?.email || 'guest@example.com',
+                designId: selectedDesign?.id,
+                designImageUrl: selectedDesign?.renderImages?.[0]
+            });
 
-        setIsSending(false);
-        setSentSuccess(true);
+            setIsSending(false);
+            setSentSuccess(true);
 
-        // Close after success message
-        setTimeout(() => {
-            onClose();
-        }, 2000);
+            // Close after success message
+            setTimeout(() => {
+                onClose();
+            }, 2000);
+        } catch (error) {
+            console.error("Failed to send message:", error);
+            setIsSending(false);
+            alert("Failed to send message. Please try again.");
+        }
     };
 
     if (!isOpen) return null;
@@ -179,8 +195,8 @@ export const MessageModal: React.FC<MessageModalProps> = ({ isOpen, onClose, pro
                             onClick={handleSend}
                             disabled={isSending || (!note && !selectedDesign)}
                             className={`px-8 py-3 bg-green-700 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 transition-all ${isSending || (!note && !selectedDesign)
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5'
+                                ? 'opacity-50 cursor-not-allowed'
+                                : 'hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5'
                                 }`}
                         >
                             {isSending ? (

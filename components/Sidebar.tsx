@@ -198,6 +198,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 </div>
                             </button>
 
+                            {/* Partner Dashboard */}
+                            {user && (
+                                <button
+                                    onClick={() => {
+                                        navigate('/business/dashboard');
+                                        onClose();
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-orange-50 hover:text-orange-600 rounded-xl transition-colors group"
+                                >
+                                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 group-hover:bg-orange-200 transition-colors">
+                                        <Briefcase className="w-5 h-5" />
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="font-semibold text-base">Partner Dashboard</div>
+                                        <div className="text-sm text-slate-400">Manage your business</div>
+                                    </div>
+                                </button>
+                            )}
+
                             <button
                                 onClick={() => {
                                     setActiveTab('history');

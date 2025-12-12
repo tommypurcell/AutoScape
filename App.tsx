@@ -22,6 +22,7 @@ import { AboutPage } from './components/AboutPage';
 import { LandingPage } from './components/LandingPage';
 import { Menu } from 'lucide-react';
 import { DesignWizard } from './components/DesignWizard';
+import { BusinessDashboard } from './components/BusinessDashboard';
 import { ResultsPage } from './components/ResultsPage';
 import { BusinessPage } from './components/BusinessPage';
 import { DesignerOnboarding, DesignerFormData } from './components/DesignerOnboarding';
@@ -326,31 +327,28 @@ const AppContent: React.FC = () => {
             <div className="hidden md:flex items-center gap-6">
               <button
                 onClick={() => navigate('/business')}
-                className={`transition-colors font-normal pb-1 border-b-2 ${
-                  location.pathname === '/business'
-                    ? 'text-green-700 border-green-700 font-semibold'
-                    : 'text-gray-700 hover:text-green-700 border-transparent'
-                }`}
+                className={`transition-colors font-normal pb-1 border-b-2 ${location.pathname === '/business'
+                  ? 'text-green-700 border-green-700 font-semibold'
+                  : 'text-gray-700 hover:text-green-700 border-transparent'
+                  }`}
               >
                 Business
               </button>
               <button
                 onClick={() => navigate('/gallery')}
-                className={`transition-colors font-normal pb-1 border-b-2 ${
-                  location.pathname === '/gallery'
-                    ? 'text-green-700 border-green-700 font-semibold'
-                    : 'text-gray-700 hover:text-green-700 border-transparent'
-                }`}
+                className={`transition-colors font-normal pb-1 border-b-2 ${location.pathname === '/gallery'
+                  ? 'text-green-700 border-green-700 font-semibold'
+                  : 'text-gray-700 hover:text-green-700 border-transparent'
+                  }`}
               >
                 Gallery
               </button>
               <button
                 onClick={() => navigate('/create')}
-                className={`transition-colors font-medium pb-1 border-b-2 ${
-                  location.pathname === '/create'
-                    ? 'text-green-700 border-green-700 font-semibold'
-                    : 'text-gray-700 hover:text-green-700 border-transparent'
-                }`}
+                className={`transition-colors font-medium pb-1 border-b-2 ${location.pathname === '/create'
+                  ? 'text-green-700 border-green-700 font-semibold'
+                  : 'text-gray-700 hover:text-green-700 border-transparent'
+                  }`}
               >
                 Create
               </button>
@@ -462,6 +460,7 @@ const AppContent: React.FC = () => {
         <Route path="/about" element={<AboutPage onClose={() => navigate('/')} />} />
 
         <Route path="/business" element={<BusinessPage />} />
+        <Route path="/business/dashboard" element={<BusinessDashboard />} />
 
         <Route path="/designer/:designerId" element={<DesignerGallery />} />
 
@@ -470,25 +469,31 @@ const AppContent: React.FC = () => {
             <DesignerOnboarding
               onComplete={async (designerData: DesignerFormData) => {
                 try {
-                  await signUpWithEmail(designerData.email, designerData.password);
+                  let uid = user?.uid;
 
-                  // Wait for auth state to update or use current user
-                  const currentUser = auth.currentUser;
-                  if (currentUser) {
+                  // Only sign up if not already logged in
+                  if (!uid) {
+                    await signUpWithEmail(designerData.email, designerData.password);
+                    uid = auth.currentUser?.uid;
+                  }
+
+                  if (uid) {
                     // Remove password from data before saving to profile
                     const { password, role, ...profileData } = designerData;
-                    await saveDesignerProfile(currentUser.uid, {
+                    await saveDesignerProfile(uid, {
                       ...profileData,
                       rating: 0,
                       reviewCount: 0,
                       isVerified: false,
                     });
-                    console.log('Designer profile saved for:', currentUser.email);
+                    console.log('Designer profile saved for:', designerData.email);
+
+                    alert('Welcome to AutoScape Pro! Your partner account has been created.');
+                    navigate('/business');
+                  } else {
+                    throw new Error('Failed to identify user. Please try again.');
                   }
 
-                  console.log('Designer account created:', designerData.email);
-                  alert('Welcome to AutoScape Pro! Your partner account has been created.');
-                  navigate('/business');
                 } catch (error: any) {
                   console.error('Error creating designer account:', error);
                   alert(error.message || 'Failed to create account. Please try again.');

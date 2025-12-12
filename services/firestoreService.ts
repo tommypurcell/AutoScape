@@ -12,6 +12,7 @@ import {
     startAfter,
     Timestamp,
     QueryDocumentSnapshot,
+    updateDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { GeneratedDesign } from '../types';
@@ -475,6 +476,37 @@ export const saveDesignerProfile = async (
 };
 
 /**
+ * Update an existing designer profile
+ */
+export const updateDesignerProfile = async (
+    userId: string,
+    data: Partial<DesignerProfile>
+): Promise<void> => {
+    try {
+        // First find the profile document
+        const q = query(
+            collection(db, 'designers'),
+            where('userId', '==', userId)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            throw new Error('Designer profile not found');
+        }
+
+        const docRef = querySnapshot.docs[0].ref;
+        await updateDoc(docRef, {
+            ...data,
+            updatedAt: Timestamp.now()
+        });
+        console.log('Designer profile updated for user:', userId);
+    } catch (error) {
+        console.error('Error updating designer profile:', error);
+        throw error;
+    }
+};
+
+/**
  * Get designer profile by user ID
  */
 export const getDesignerProfileByUserId = async (userId: string): Promise<DesignerProfile | null> => {
@@ -557,6 +589,64 @@ export const getDesignerDesigns = async (userId: string): Promise<SavedDesign[]>
         })) as SavedDesign[];
     } catch (error) {
         console.error('Error fetching designer designs:', error);
+        return [];
+    }
+};
+
+// ==================== MESSAGING ====================
+
+export interface Message {
+    id: string;
+    senderId?: string; // Optional if guest
+    senderName?: string;
+    senderEmail?: string;
+    recipientUserId: string;
+    content: string;
+    designId?: string; // Optional attachment
+    designImageUrl?: string;
+    createdAt: Date;
+    read: boolean;
+}
+
+/**
+ * Send a message to a designer
+ */
+export const sendMessage = async (
+    messageData: Omit<Message, 'id' | 'createdAt' | 'read'>
+): Promise<string> => {
+    try {
+        const docRef = await addDoc(collection(db, 'messages'), {
+            ...messageData,
+            read: false,
+            createdAt: Timestamp.now(),
+        });
+        console.log('Message sent with ID:', docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error('Error sending message:', error);
+        throw error;
+    }
+};
+
+/**
+ * Get messages for a designer
+ */
+export const getMessagesForDesigner = async (recipientUserId: string): Promise<Message[]> => {
+    try {
+        const q = query(
+            collection(db, 'messages'),
+            where('recipientUserId', '==', recipientUserId),
+            orderBy('createdAt', 'desc')
+        );
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+        })) as Message[];
+    } catch (error) {
+        console.error('Error fetching messages:', error);
         return [];
     }
 };

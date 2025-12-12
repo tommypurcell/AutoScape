@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Upload, MapPin, Briefcase, Star, CheckCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DesignerOnboardingProps {
     onComplete: (designerData: DesignerFormData) => void;
@@ -41,6 +42,7 @@ const states = [
 ];
 
 export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComplete }) => {
+    const { user } = useAuth();
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<Partial<DesignerFormData>>({
         specialties: [],
@@ -48,6 +50,17 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
         role: 'designer',
         agreedToTerms: false
     });
+
+    // Auto-fill for logged in users
+    useEffect(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                email: user.email || '',
+                fullName: user.displayName || prev.fullName || ''
+            }));
+        }
+    }, [user]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const updateField = (field: keyof DesignerFormData, value: any) => {
@@ -79,7 +92,8 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
     const canProceed = () => {
         switch (step) {
             case 1:
-                return formData.fullName && formData.email && formData.password;
+            case 1:
+                return formData.fullName && formData.email && (user ? true : formData.password);
             case 2:
                 return formData.businessName && formData.city && formData.state;
             case 3:
@@ -126,7 +140,21 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
                     {/* Step 1: Account Info */}
                     {step === 1 && (
                         <div className="space-y-4 animate-fade-in">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Your Account</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                {user ? 'Confirm Your Details' : 'Create Your Account'}
+                            </h3>
+
+                            {user && (
+                                <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 mb-4 flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <CheckCircle className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-emerald-900">You are logged in</p>
+                                        <p className="text-xs text-emerald-700">We've pre-filled your information below.</p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
@@ -145,21 +173,26 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
                                     type="email"
                                     value={formData.email || ''}
                                     onChange={e => updateField('email', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                    // Disable email editing if logged in to prevent mismatch
+                                    disabled={!!user}
+                                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${user ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                                     placeholder="john@landscapedesign.com"
                                 />
+                                {user && <p className="text-xs text-gray-400 mt-1">Signed in as {user.email}</p>}
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                                <input
-                                    type="password"
-                                    value={formData.password || ''}
-                                    onChange={e => updateField('password', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                                    placeholder="Create a secure password"
-                                />
-                            </div>
+                            {!user && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                                    <input
+                                        type="password"
+                                        value={formData.password || ''}
+                                        onChange={e => updateField('password', e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        placeholder="Create a secure password"
+                                    />
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>

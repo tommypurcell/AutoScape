@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { professionals, states, Professional } from '../data/professionals';
-import { MapPin, Star, Search, Filter, Phone, Mail } from 'lucide-react';
+import { professionals as mockProfessionals, states, Professional as MockProfessional } from '../data/professionals';
+import { getAllDesigners, DesignerProfile } from '../services/firestoreService';
+import { MapPin, Star, Search, Filter, Phone, Mail, LayoutDashboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MessageModal } from './MessageModal';
 import { ProfessionalProfileModal } from './ProfessionalProfileModal';
+import { useAuth } from '../contexts/AuthContext';
+
+// Extend MockProfessional to include optional Firestore fields
+interface Professional extends MockProfessional {
+    userId?: string;
+}
 
 export const BusinessPage: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [selectedState, setSelectedState] = useState<string>('California');
     const [filterRole, setFilterRole] = useState<'All' | 'Designer' | 'Landscaper'>('All');
     const [filteredPros, setFilteredPros] = useState<Professional[]>([]);
+    const [allPros, setAllPros] = useState<Professional[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     // Messaging State
@@ -20,10 +29,52 @@ export const BusinessPage: React.FC = () => {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
     useEffect(() => {
+        const fetchAndMergeDesigners = async () => {
+            setIsLoading(true);
+            try {
+                // Fetch real designers from Firestore
+                const realDesigners = await getAllDesigners();
+
+                // Map Firestore designers to Professional interface
+                const mappedRealPros: Professional[] = realDesigners.map(d => ({
+                    id: d.id,
+                    userId: d.userId,
+                    name: d.businessName || d.fullName,
+                    role: 'Garden Designer', // Default role if not specified, or map from d.specialties
+                    state: d.state,
+                    city: d.city,
+                    rating: d.rating || 5.0, // New profiles have 0 rating, give them a boost for display? Or 0.
+                    reviewCount: d.reviewCount || 0,
+                    introduction: d.bio,
+                    imageUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200", // Default avatar
+                    portfolioImages: d.portfolioImages && d.portfolioImages.length > 0
+                        ? d.portfolioImages
+                        : ["https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&q=80&w=800"],
+                    contactEmail: d.email,
+                    contactPhone: d.phone || '',
+                    feeRange: 'Contact for pricing'
+                }));
+
+                // Combine with mock professionals
+                // You might want to filter out mock pros if you have enough real ones, or keep them for demo
+                setAllPros([...mappedRealPros, ...mockProfessionals]);
+            } catch (error) {
+                console.error("Error fetching designers:", error);
+                setAllPros(mockProfessionals);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchAndMergeDesigners();
+    }, []);
+
+    useEffect(() => {
         // Filter professionals based on state and role
         if (selectedState) {
-            const filtered = professionals.filter(p => {
-                const stateMatch = p.state === selectedState;
+            const filtered = allPros.filter(p => {
+                // Normalize state comparison
+                const stateMatch = p.state.toLowerCase() === selectedState.toLowerCase();
                 const roleMatch = filterRole === 'All'
                     ? true
                     : filterRole === 'Designer'
@@ -35,7 +86,7 @@ export const BusinessPage: React.FC = () => {
         } else {
             setFilteredPros([]);
         }
-    }, [selectedState, filterRole]);
+    }, [selectedState, filterRole, allPros]); // Depend on allPros too
 
     const handleUseLocation = () => {
         setIsLoading(true);
@@ -96,12 +147,23 @@ export const BusinessPage: React.FC = () => {
                     <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
                         Connect with top-rated landscape architects, garden designers, and contractors in your area to bring your vision to life.
                     </p>
-                    <button
-                        onClick={() => navigate('/designer-signup')}
-                        className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                    >
-                        Join as a Business Partner
-                    </button>
+
+                    {user ? (
+                        <button
+                            onClick={() => navigate('/business/dashboard')}
+                            className="px-8 py-3 bg-green-700 hover:bg-green-800 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2 mx-auto"
+                        >
+                            <LayoutDashboard className="w-5 h-5" />
+                            Go to Partner Dashboard
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => navigate('/designer-signup')}
+                            className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                        >
+                            Join as a Business Partner
+                        </button>
+                    )}
                 </div>
 
                 {/* Search & Filter Section */}
@@ -246,6 +308,7 @@ export const BusinessPage: React.FC = () => {
                     isOpen={isMessageModalOpen}
                     onClose={() => setIsMessageModalOpen(false)}
                     professionalName={selectedPro.name}
+                    recipientUserId={selectedPro.userId || ''}
                 />
             )}
 
