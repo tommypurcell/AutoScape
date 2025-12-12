@@ -516,9 +516,11 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                         Palette {isLoadingBudget && <span className="text-xs text-slate-400">(loading...)</span>}
                     </h3>
                     <div className="space-y-4">
-                        {/* RAG Items with Pictures (from RAG API) */}
                         {ragBudget?.line_items && ragBudget.line_items.map((item, index) => {
-                            const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(item.match || item.item)}`;
+                            // Use Google Shopping image search if image available, otherwise fall back to Amazon text search
+                            const shopUrl = item.image_url
+                                ? `https://www.google.com/searchbyimage?sbisrc=tg&image_url=${encodeURIComponent(item.image_url)}&tbm=shop`
+                                : `https://www.amazon.com/s?k=${encodeURIComponent(item.match || item.item)}`;
                             const isPlant = item.item.toLowerCase().includes('plant') ||
                                 item.item.toLowerCase().includes('tree') ||
                                 item.item.toLowerCase().includes('shrub') ||
@@ -538,9 +540,9 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                                 )}
                                             </div>
                                         )}
-                                        {/* Shop Button Inside */}
+                                        {/* Shop Button Inside - Uses Google Lens for image search */}
                                         <a
-                                            href={amazonSearchUrl}
+                                            href={shopUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className={`absolute bottom-1 right-1 px-1.5 py-0.5 ${isPlant ? 'bg-amber-400/90 hover:bg-amber-500 text-amber-900' : 'bg-blue-400/90 hover:bg-blue-500 text-white'} rounded text-[10px] font-bold transition-colors shadow-sm`}
@@ -559,9 +561,11 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                             );
                         })}
 
-                        {/* Fallback: Plants from plantPalette if ragBudget not available */}
                         {(!ragBudget?.line_items || ragBudget.line_items.length === 0) && result.estimates.plantPalette && result.estimates.plantPalette.map((plant, index) => {
-                            const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' live plant')}&i=lawngarden`;
+                            // Use Google Shopping image search if image available, otherwise fall back to Amazon text search
+                            const shopUrl = plant.image_url
+                                ? `https://www.google.com/searchbyimage?sbisrc=tg&image_url=${encodeURIComponent(plant.image_url)}&tbm=shop`
+                                : `https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' live plant')}&i=lawngarden`;
 
                             return (
                                 <div key={`plant-${index}`} className="group">
@@ -573,9 +577,9 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                                 <svg className="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
                                             </div>
                                         )}
-                                        {/* Shop Button Inside */}
+                                        {/* Shop Button Inside - Uses Google Lens for image search */}
                                         <a
-                                            href={amazonSearchUrl}
+                                            href={shopUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-amber-400/90 hover:bg-amber-500 text-amber-900 rounded text-[10px] font-bold transition-colors shadow-sm"
