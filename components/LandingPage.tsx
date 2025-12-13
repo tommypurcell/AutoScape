@@ -123,7 +123,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     {/* "Before" Image (Base) */}
                     <div className="absolute inset-0">
                         <img
-                            src="/demo_clips/scene_1_problem.jpg"
+                            src="/demo_clips/before-yard.jpg"
                             onError={(e) => e.currentTarget.src = getStyleImage(DesignStyle.MODERN)}
                             className="w-full h-full object-cover grayscale-[30%]"
                             alt="Original Yard"
@@ -132,9 +132,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     </div>
 
                     {/* "After" Image (Revealed) */}
-                    <div className="absolute inset-0 animate-scan border-r-4 border-emerald-400 overflow-hidden shadow-[0_0_20px_rgba(52,211,153,0.5)] z-0">
+                    <div
+                        className="absolute inset-0 animate-scan-once border-r-4 border-emerald-400 overflow-hidden shadow-[0_0_20px_rgba(52,211,153,0.5)] z-0"
+                        style={{ animationIterationCount: '1' }}
+                    >
                         <img
-                            src="/demo_clips/scene_3_design.jpg"
+                            src="/demo_clips/after-yard.webp"
                             onError={(e) => e.currentTarget.src = getStyleImage(DesignStyle.TROPICAL)}
                             className="absolute inset-0 w-screen max-w-none h-full object-cover"
                             alt="Designed Yard"
