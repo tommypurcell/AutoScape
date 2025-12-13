@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { styleReferences } from '../data/styleReferences';
+import { getStyleImage } from '../data/styleReferences';
+import { DesignStyle } from '../types';
 import { ChevronDown, ArrowRight, Sun, Droplets, Wind } from 'lucide-react';
 
 interface LandingPageProps {
@@ -123,7 +124,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     <div className="absolute inset-0">
                         <img
                             src="/demo_clips/scene_1_problem.jpg"
-                            onError={(e) => e.currentTarget.src = styleReferences[0].imageUrl}
+                            onError={(e) => e.currentTarget.src = getStyleImage(DesignStyle.MODERN)}
                             className="w-full h-full object-cover grayscale-[30%]"
                             alt="Original Yard"
                         />
@@ -134,7 +135,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     <div className="absolute inset-0 animate-scan border-r-4 border-emerald-400 overflow-hidden shadow-[0_0_20px_rgba(52,211,153,0.5)] z-0">
                         <img
                             src="/demo_clips/scene_3_design.jpg"
-                            onError={(e) => e.currentTarget.src = styleReferences[4].imageUrl}
+                            onError={(e) => e.currentTarget.src = getStyleImage(DesignStyle.TROPICAL)}
                             className="absolute inset-0 w-screen max-w-none h-full object-cover"
                             alt="Designed Yard"
                         />
@@ -277,7 +278,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                 <div className="grid grid-cols-1 md:grid-cols-2 min-h-[600px]">
                     <div className="relative h-full min-h-[400px]">
                         <img
-                            src={styleReferences[2].imageUrl}
+                            src={getStyleImage(DesignStyle.JAPANESE)}
                             alt="Modern Japanese Garden"
                             className="absolute inset-0 w-full h-full object-cover"
                         />
@@ -319,7 +320,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     </div>
                     <div className="relative h-full min-h-[400px] order-1 md:order-2">
                         <img
-                            src={styleReferences[6].imageUrl}
+                            src={getStyleImage(DesignStyle.MODERN)}
                             alt="Detailed Plan"
                             className="absolute inset-0 w-full h-full object-cover"
                         />
@@ -413,7 +414,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
             {/* Text-Heavy Editorial "Note" */}
             <section className="py-32 relative bg-emerald-950 overflow-hidden text-white">
                 <div className="absolute inset-0 opacity-20 mix-blend-soft-light">
-                    <img src={styleReferences[3]?.imageUrl} className="w-full h-full object-cover" alt="" />
+                    <img src={getStyleImage(DesignStyle.COTTAGE)} className="w-full h-full object-cover" alt="" />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-900/80 to-slate-900/90" />
 

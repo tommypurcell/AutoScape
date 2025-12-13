@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GeneratedDesign, MaterialItem } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { Share2, Download, Facebook, Twitter, Instagram, Mail, MessageCircle, Link, Copy, Check, Loader } from 'lucide-react';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { PlantPalette } from './PlantPalette';
 import { saveDesign } from '../services/firestoreService';
@@ -77,6 +78,8 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const [costViewTab, setCostViewTab] = useState<'materials' | 'distribution'>('materials');
     const [selectedPlant, setSelectedPlant] = useState<any | null>(null);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
 
     // Update local result when prop or context changes
     useEffect(() => {
@@ -310,30 +313,97 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const nextRender = (e: React.MouseEvent) => { e.stopPropagation(); setCurrentRenderIndex((prev) => (prev + 1) % result.renderImages.length); };
     const prevRender = (e: React.MouseEvent) => { e.stopPropagation(); setCurrentRenderIndex((prev) => (prev - 1 + result.renderImages.length) % result.renderImages.length); };
 
-    // Share link handler with auto-save
-    const handleShareLink = async () => {
-        if (currentShortId) {
-            const url = `${window.location.origin}/result/${currentShortId}`;
-            navigator.clipboard.writeText(url);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-            return;
-        }
+    // Share logic
+    const ensureDesignSaved = async (): Promise<string | null> => {
+        if (currentShortId) return currentShortId;
+
         setIsSaving(true);
         try {
             const ownerId = user?.uid || 'anonymous';
             const { shortId } = await saveDesign(ownerId, { ...result, yardImageUrl: originalImage }, false);
             setCurrentShortId(shortId);
-            const newUrl = `${window.location.origin}/result/${shortId}`;
-            navigator.clipboard.writeText(newUrl);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
             window.history.replaceState({}, '', `/result/${shortId}`);
+            return shortId;
         } catch (error) {
             console.error('Failed to save design:', error);
-            alert('Failed to generate shareable link. Please try again.');
+            alert('Failed to generate shareable link.');
+            return null;
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    // Convert Data URL/URL to Blob/File for sharing
+    const getShareableFile = async (imageUrl: string): Promise<File | null> => {
+        try {
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            return new File([blob], 'autoscape-design.png', { type: 'image/png' });
+        } catch (error) {
+            console.error('Error creating file for share:', error);
+            return null;
+        }
+    };
+
+    const handleShareClick = async () => {
+        if (isShareMenuOpen) {
+            setIsShareMenuOpen(false);
+            return;
+        }
+
+        const shortId = await ensureDesignSaved();
+        if (shortId) {
+            setShareUrl(`${window.location.origin}/result/${shortId}`);
+            setIsShareMenuOpen(true);
+        }
+    };
+
+    // Original handleShareLink modified to use new logic if separate button kept
+    const handleShareLink = async () => {
+        const shortId = await ensureDesignSaved();
+        if (shortId) {
+            const url = `${window.location.origin}/result/${shortId}`;
+            navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const handleSocialShare = async (platform: 'facebook' | 'twitter' | 'email' | 'text' | 'copy' | 'download') => {
+        if (!shareUrl && platform !== 'download') return;
+
+        const text = `Just redesigned my yard with AutoScape! Check it out:`;
+        const url = shareUrl || window.location.href;
+
+        switch (platform) {
+            case 'facebook':
+                // Facebook web share only takes a URL
+                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+                break;
+            case 'twitter':
+                window.open(`https://www.twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}&hashtags=autoscape,landscapedesign`, '_blank');
+                break;
+            case 'email':
+                window.open(`mailto:?subject=${encodeURIComponent("Check out my AutoScape Garden Design")}&body=${encodeURIComponent(text + "\n\n" + url)}`);
+                break;
+            case 'text':
+                window.open(`sms:?body=${encodeURIComponent(text + " " + url)}`);
+                break;
+            case 'copy':
+                navigator.clipboard.writeText(url);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+                break;
+            case 'download':
+                if (result.renderImages[currentRenderIndex]) {
+                    const link = document.createElement('a');
+                    link.href = result.renderImages[currentRenderIndex];
+                    link.download = `autoscape-design-${currentRenderIndex + 1}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+                break;
         }
     };
 
@@ -628,6 +698,46 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                             </svg>
                                             Edit / Annotate
                                         </button>
+
+                                        {/* SHARE BUTTON (Bottom Right of Render) */}
+                                        <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 z-10">
+                                            {isShareMenuOpen && (
+                                                <div className="bg-white rounded-xl shadow-2xl p-2 flex flex-col gap-1 mb-2 animate-fade-in border border-slate-100 min-w-[160px]">
+                                                    <button onClick={() => handleSocialShare('facebook')} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 text-sm transition-colors text-left w-full">
+                                                        <Facebook className="w-4 h-4 text-blue-600" /> Facebook
+                                                    </button>
+                                                    <button onClick={() => handleSocialShare('twitter')} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 text-sm transition-colors text-left w-full">
+                                                        <Twitter className="w-4 h-4 text-sky-500" /> Twitter
+                                                    </button>
+                                                    <button onClick={() => handleSocialShare('email')} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 text-sm transition-colors text-left w-full">
+                                                        <Mail className="w-4 h-4 text-slate-500" /> Email
+                                                    </button>
+                                                    <button onClick={() => handleSocialShare('text')} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 text-sm transition-colors text-left w-full">
+                                                        <MessageCircle className="w-4 h-4 text-green-500" /> Text Message
+                                                    </button>
+                                                    <div className="h-px bg-slate-100 my-1"></div>
+                                                    <button onClick={() => handleSocialShare('copy')} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 text-sm transition-colors text-left w-full">
+                                                        {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-slate-500" />}
+                                                        {copied ? 'Copied Link' : 'Copy Link'}
+                                                    </button>
+                                                    <button onClick={() => handleSocialShare('download')} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 rounded-lg text-slate-700 text-sm transition-colors text-left w-full">
+                                                        <Download className="w-4 h-4 text-slate-500" /> Download Image
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            <button
+                                                onClick={handleShareClick}
+                                                className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2 font-bold transform hover:-translate-y-0.5"
+                                            >
+                                                {isSaving ? (
+                                                    <Loader className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <Share2 className="w-5 h-5" />
+                                                )}
+                                                Share Render
+                                            </button>
+                                        </div>
 
                                         {result.renderImages.length > 1 && (
                                             <>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { professionals as mockProfessionals, states, Professional as MockProfessional } from '../data/professionals';
-import { getAllDesigners, DesignerProfile } from '../services/firestoreService';
+import { states, Professional as MockProfessional, setPortfolioImagesFromStorage, regenerateProfessionals } from '../data/professionals';
+import { getAllDesigners, DesignerProfile, getPublicDesigns } from '../services/firestoreService';
 import { MapPin, Star, Search, Filter, Phone, Mail, LayoutDashboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MessageModal } from './MessageModal';
@@ -32,10 +32,25 @@ export const BusinessPage: React.FC = () => {
         const fetchAndMergeDesigners = async () => {
             setIsLoading(true);
             try {
+                // Fetch real design images from storage to use for mock professionals
+                const publicDesigns = await getPublicDesigns(20);
+                const storageImages = publicDesigns
+                    .flatMap(d => d.renderImages)
+                    .filter(img => img && img.length > 0);
+
+                // Update mock professionals with real images from storage
+                let mockProfessionals: Professional[] = [];
+                if (storageImages.length > 0) {
+                    setPortfolioImagesFromStorage(storageImages);
+                    mockProfessionals = regenerateProfessionals(); // Regenerate with new images
+                } else {
+                    mockProfessionals = regenerateProfessionals();
+                }
+
                 // Fetch real designers from Firestore
                 const realDesigners = await getAllDesigners();
 
-                // Map Firestore designers to Professional interface
+                // Map Firestore designers to Professional interface (keep their actual portfolio images)
                 const mappedRealPros: Professional[] = realDesigners.map(d => ({
                     id: d.id,
                     userId: d.userId,
@@ -55,12 +70,12 @@ export const BusinessPage: React.FC = () => {
                     feeRange: 'Contact for pricing'
                 }));
 
-                // Combine with mock professionals
-                // You might want to filter out mock pros if you have enough real ones, or keep them for demo
+                // Combine real designers with mock professionals
+                // Real designers keep their actual portfolio, mocks use random storage images
                 setAllPros([...mappedRealPros, ...mockProfessionals]);
             } catch (error) {
                 console.error("Error fetching designers:", error);
-                setAllPros(mockProfessionals);
+                setAllPros(regenerateProfessionals());
             } finally {
                 setIsLoading(false);
             }

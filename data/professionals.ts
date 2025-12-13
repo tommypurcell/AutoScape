@@ -38,16 +38,13 @@ const INTROS = [
     "Luxury landscape architecture for discerning clients."
 ];
 
-// Placeholder images from Unsplash/Freepik style
-const PORTFOLIO_IMAGES = [
-    "https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1600596542815-3ad19c6f9805?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1598902168898-9a792f212807?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1557429287-b2e26467fc2b?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1584479898061-15742e14f50d?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1592595896551-12b371d546d5?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&q=80&w=800"
+import { DesignStyle } from '../types';
+import { getStyleImage } from './styleReferences';
+
+// Portfolio images will be populated from real designs in storage
+// This is a fallback set in case we can't fetch real designs
+let PORTFOLIO_IMAGES: string[] = [
+    "https://images.unsplash.com/photo-1558904541-01470460287c?auto=format&fit=crop&w=800&q=80", // Fallback
 ];
 
 const PROFILE_IMAGES = [
@@ -58,6 +55,13 @@ const PROFILE_IMAGES = [
     "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200",
     "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200"
 ];
+
+// Function to set portfolio images from real designs
+export const setPortfolioImagesFromStorage = (imageUrls: string[]) => {
+    if (imageUrls.length > 0) {
+        PORTFOLIO_IMAGES = imageUrls;
+    }
+};
 
 const generateProfessionals = (): Professional[] => {
     const professionals: Professional[] = [];
@@ -114,6 +118,22 @@ const generateProfessionals = (): Professional[] => {
     });
 
     return professionals;
+};
+
+// Generate initial professionals
+let cachedProfessionals: Professional[] = [];
+
+export const getProfessionals = (): Professional[] => {
+    if (cachedProfessionals.length === 0) {
+        cachedProfessionals = generateProfessionals();
+    }
+    return cachedProfessionals;
+};
+
+// Regenerate professionals with new portfolio images
+export const regenerateProfessionals = () => {
+    cachedProfessionals = generateProfessionals();
+    return cachedProfessionals;
 };
 
 export const professionals = generateProfessionals();
