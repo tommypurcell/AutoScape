@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { UploadArea } from './UploadArea';
 import { DesignStyle, LocationType, SpaceSize, DesignStyleGroups } from '../types';
-import { styleReferences } from '../data/styleReferences';
-import { Check, ChevronRight, ChevronLeft } from 'lucide-react';
+import { getStyleImage, styleDescriptions } from '../data/styleReferences';
+import { Check, ChevronRight, ChevronLeft, Info, X } from 'lucide-react';
 import { HelpTip } from './HelpTip';
 
 interface DesignWizardProps {
@@ -59,6 +59,8 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
     initialStep = 1,
 }) => {
     const [currentStep, setCurrentStep] = useState(initialStep);
+    const [infoModalOpen, setInfoModalOpen] = useState(false);
+    const [selectedInfoStyle, setSelectedInfoStyle] = useState<string | null>(null);
 
     const steps = [
         { number: 1, title: 'Upload Photo', description: 'Add your yard image' },
@@ -282,11 +284,7 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                                 </h3>
                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                                     {styles.map((style) => {
-                                                        // Deterministic image selection
-                                                        const hash = style.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                                                        const imageIndex = hash % styleReferences.length;
-                                                        const imageUrl = styleReferences[imageIndex].imageUrl;
-
+                                                        const imageUrl = getStyleImage(style);
                                                         const isSelected = selectedStyle === style;
 
                                                         return (
@@ -303,6 +301,20 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                                                     alt={style}
                                                                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                                                 />
+
+                                                                {/* Info Button */}
+                                                                <div
+                                                                    className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedInfoStyle(style);
+                                                                        setInfoModalOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <div className="bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-sm transition-colors">
+                                                                        <Info size={16} />
+                                                                    </div>
+                                                                </div>
 
                                                                 {/* Gradient overlay for text readability */}
                                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -453,6 +465,58 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Style Info Modal */}
+            {infoModalOpen && selectedInfoStyle && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setInfoModalOpen(false)}>
+                    <div
+                        className="bg-white rounded-2xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col relative shadow-2xl animate-scale-in"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setInfoModalOpen(false)}
+                            className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-sm transition-colors"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        {/* Image */}
+                        <div className="relative h-64 md:h-80 w-full flex-shrink-0">
+                            <img
+                                src={getStyleImage(selectedInfoStyle)}
+                                alt={selectedInfoStyle}
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                            <div className="absolute bottom-6 left-6 right-6">
+                                <h3 className="text-3xl font-bold text-white drop-shadow-md">{selectedInfoStyle}</h3>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-8 overflow-y-auto">
+                            <h4 className="text-sm font-bold text-green-600 uppercase tracking-wider mb-3">Style Description</h4>
+                            <p className="text-gray-700 text-lg leading-relaxed">
+                                {styleDescriptions[selectedInfoStyle] || "No description available for this style."}
+                            </p>
+
+                            <div className="mt-8 flex justify-end">
+                                <button
+                                    onClick={() => {
+                                        onStyleChange(selectedInfoStyle);
+                                        setInfoModalOpen(false);
+                                    }}
+                                    className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl flex items-center gap-2 transition-colors shadow-lg"
+                                >
+                                    <Check size={18} />
+                                    Select This Style
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
