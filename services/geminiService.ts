@@ -262,11 +262,16 @@ export const generateLandscapeDesign = async (
       
       TASK: 
       1. VISUAL IDENTIFICATION: Scan the image and list every distinct material and plant group.
-      2. ESTIMATION: Estimate the area (sq ft) or count (qty) for each item based on a standard residential yard size.
-      3. PRICING: Apply realistic US market rates (materials + installation). Include unit costs and calculate total costs.
-      ${budget ? `4. BUDGET CHECK: The user's target budget is \"${budget}\". If the total exceeds this, suggest cost-saving alternatives.` : ''}
-      5. LABOR: You MUST include a separate line item for \"Labor & Installation\" (typically 30-50% of material costs).
-      6. TOTAL COST: Calculate and include the totalCost as the sum of all line items.
+      2. SCOPE VERIFICATION: Compare the DESIGN image against the ORIGINAL image context.
+         - Identify elements that are EXISTING (e.g., original fences, retaining walls, mature trees, house siding).
+         - Identify elements that are NEW or MODIFIED (e.g., new pavers, new planting beds, renovated structures).
+      3. ESTIMATION: Estimate the area (sq ft) or count (qty) ONLY for NEW or MODIFIED scope. 
+         - DO NOT price existing elements unless they were explicitly flagged for removal/replacement. 
+         - Explicitly exclude cost for existing fences, slabs, or structures.
+      4. PRICING: Apply realistic US market rates (materials + installation) for the new scope.
+      ${budget ? `5. BUDGET CHECK: The user's target budget is \"${budget}\". If the total exceeds this, suggest cost-saving alternatives.` : ''}
+      6. LABOR: You MUST include a separate line item for \"Labor & Installation\" (typically 30-50% of material costs).
+      7. TOTAL COST: Calculate and include the totalCost as the sum of all line items.
       
       RETURN JSON ONLY. NO TEXT.
 
@@ -304,6 +309,8 @@ export const generateLandscapeDesign = async (
       }
 
       CRITICAL RULES:
+      - EXCLUDE EXISTING: Do not price items that clearly existed in the original yard (e.g. existing fences, concrete slabs) unless modified.
+      - EXISTING ≠ SCOPE: Just because it's in the picture doesn't mean it's being built. Only price the DELTA (changes).
       - Every item in "materials" array MUST have realistic pricing (unitCost and totalCost).
       - totalCost at the root MUST be the sum of all materials[].totalCost (parse the numeric values).
       - Be precise with plant names (e.g., "Agave attenuata" instead of just "Agave").
