@@ -39,3 +39,4 @@ google-cloud-sdk/
 lib/
 googlecloudsdk/
 google-cloud-sdk/lib/googlecloudsdk/api_lib/...
+Autoscape_public/
