@@ -70,11 +70,22 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const [styleSelectionMode, setStyleSelectionMode] = useState<'gallery' | 'upload'>('gallery');
 
     const setYardImage = (file: File | null) => {
-        if (yardImagePreview) URL.revokeObjectURL(yardImagePreview);
+        // No need to revoke blob URLs anymore since we use data URLs
+        // Blob URLs would expire, causing "Failed to fetch" errors when saving
 
         if (file) {
             setYardImageState(file);
-            setYardImagePreview(URL.createObjectURL(file));
+            // Convert file to base64 data URL for persistence (blob URLs expire)
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target?.result as string;
+                setYardImagePreview(dataUrl);
+            };
+            reader.onerror = () => {
+                console.error('Failed to read file as data URL');
+                setYardImagePreview(null);
+            };
+            reader.readAsDataURL(file);
         } else {
             setYardImageState(null);
             setYardImagePreview(null);
@@ -114,8 +125,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     const resetDesign = () => {
-        if (yardImagePreview) URL.revokeObjectURL(yardImagePreview);
-        styleImagePreviews.forEach(url => URL.revokeObjectURL(url));
+        // No need to revoke URLs - we now use data URLs which don't need cleanup
+        // Style images still use blob URLs so revoke those
+        styleImagePreviews.forEach(url => {
+            if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+        });
 
         setYardImageState(null);
         setYardImagePreview(null);

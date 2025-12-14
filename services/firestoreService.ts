@@ -50,13 +50,22 @@ const uploadDesignImages = async (
     let uploadedYardImageUrl: string | undefined = undefined;
     if (yardImageUrl) {
         if (yardImageUrl.startsWith('blob:')) {
-            const path = `designs/${userId}/${timestamp}/yard_original.png`;
-            console.log('Uploading yard image (blob) to Storage...');
-            const response = await fetch(yardImageUrl);
-            const blob = await response.blob();
-            // Need to import uploadImage if not already imported, or use it from storageService
-            uploadedYardImageUrl = await uploadImage(blob, path);
-            console.log(`  ✓ Uploaded yard image: ${uploadedYardImageUrl.substring(0, 60)}...`);
+            try {
+                const path = `designs/${userId}/${timestamp}/yard_original.png`;
+                console.log('Uploading yard image (blob) to Storage...');
+                const response = await fetch(yardImageUrl);
+                if (!response.ok) {
+                    throw new Error(`Blob fetch failed: ${response.status}`);
+                }
+                const blob = await response.blob();
+                uploadedYardImageUrl = await uploadImage(blob, path);
+                console.log(`  ✓ Uploaded yard image: ${uploadedYardImageUrl.substring(0, 60)}...`);
+            } catch (blobError) {
+                console.warn('⚠️ Could not fetch blob URL (it may have expired). Skipping yard image upload.');
+                console.warn('   Error:', blobError);
+                // Don't throw - continue without the yard image
+                uploadedYardImageUrl = undefined;
+            }
         } else if (yardImageUrl.startsWith('data:')) {
             const path = `designs/${userId}/${timestamp}/yard_original.png`;
             console.log('Uploading yard image (base64) to Storage...');

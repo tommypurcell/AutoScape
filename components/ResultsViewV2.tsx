@@ -537,9 +537,13 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         } catch (err) {
             console.error('Video generation error:', err);
             const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-            // Provide more helpful error message for CORS issues
+            // Provide more helpful error messages
             if (errorMessage.includes('CORS') || errorMessage.includes('cross-origin')) {
                 setVideoError('Unable to access images due to CORS policy. Please ask the developer to configure Firebase Storage CORS settings.');
+            } else if (errorMessage.includes('Invalid') && errorMessage.includes('video URL')) {
+                setVideoError('Video generation service is temporarily unavailable. This may be due to API rate limits - please try again later.');
+            } else if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('daily limit')) {
+                setVideoError('Video generation daily limit reached. Please try again tomorrow or upgrade your plan.');
             } else {
                 setVideoError(errorMessage);
             }
