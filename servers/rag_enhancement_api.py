@@ -1,55 +1,52 @@
 """
-RAG Enhancement API for Landscaping Design.
-Enriches material lists with RAG plant data, images, and pricing.
+Cloud-compatible RAG Enhancement API for Landscaping Design.
+Uses Qdrant's scroll/filter instead of fastembed embeddings for cloud deployment.
 """
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Union
 import os
 from dotenv import load_dotenv
+import logging
+import traceback
 
 load_dotenv()
 
-import sys
-import os
-import traceback
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Ensure parent directory (project root) is in path for importing modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Import our RAG modules
+# Try fastembed first, fall back to keyword search
+USE_EMBEDDINGS = False
 try:
-    from plant_catalog import PlantCatalog
-    from budget_calculator_rag import calculate_budget_with_rag
-    print("✅ Successfully imported RAG modules")
+    from fastembed import TextEmbedding
+    text_model = TextEmbedding(model_name="Qdrant/clip-ViT-B-32-text")
+    USE_EMBEDDINGS = True
+    logger.info("✅ Fastembed loaded - using semantic search")
 except Exception as e:
-    print(f"❌ Import failed: {e}")
-    traceback.print_exc()
-    PlantCatalog = None
-    calculate_budget_with_rag = None
+    logger.warning(f"⚠️ Fastembed not available ({e}) - using keyword search fallback")
+    text_model = None
 
-print(f"DEBUG: PlantCatalog = {PlantCatalog}")
-print(f"DEBUG: calculate_budget_with_rag = {calculate_budget_with_rag}")
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
 
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
+# Initialize Qdrant
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "freepik_landscaping")
 
-class CatchUnicodeErrorMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        try:
-            return await call_next(request)
-        except UnicodeDecodeError:
-            print("❌ UnicodeDecodeError caught! The client likely sent binary data (e.g. an image) to an endpoint expecting JSON.")
-            print("   Please refresh the frontend to ensure you are using the latest code.")
-            return Response("Invalid request body encoding. Expected JSON.", status_code=400)
+qdrant_client = None
+if QDRANT_URL and QDRANT_API_KEY:
+    try:
+        qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+        logger.info(f"✅ Connected to Qdrant collection: {COLLECTION_NAME}")
+    except Exception as e:
+        logger.error(f"❌ Qdrant connection failed: {e}")
 
-app = FastAPI(title="RAG Enhancement API")
+app = FastAPI(title="RAG Enhancement API (Cloud)")
 
-app.add_middleware(CatchUnicodeErrorMiddleware)
-
-# CORS for frontend
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -58,19 +55,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from typing import List, Dict, Any, Optional, Union
 
 class DesignItem(BaseModel):
     name: str
     quantity: Union[int, float, str] = 1
     description: Optional[str] = None
 
-class Quantities(BaseModel):
-    sod_sqft: Optional[float] = 0
-    mulch_sqft: Optional[float] = 0
-    gravel_sqft: Optional[float] = 0
-    pavers_sqft: Optional[float] = 0
-    deck_sqft: Optional[float] = 0
 
 class EnhancementRequest(BaseModel):
     plants: List[DesignItem] = []
@@ -78,42 +68,124 @@ class EnhancementRequest(BaseModel):
     features: List[DesignItem] = []
     structures: List[DesignItem] = []
     furniture: List[DesignItem] = []
-    quantities: Optional[Quantities] = None
+
+
+def search_by_keyword(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    """Search Qdrant using keyword matching on payload fields."""
+    if not qdrant_client:
+        return []
+    
+    try:
+        # Use scroll with keyword filter on specific_name or title
+        keywords = query.lower().split()
+        
+        # Search using scroll and filter results locally
+        all_points, _ = qdrant_client.scroll(
+            collection_name=COLLECTION_NAME,
+            limit=500,  # Get a batch
+            with_payload=True,
+            with_vectors=False
+        )
+        
+        # Score each point based on keyword matches
+        scored_results = []
+        for point in all_points:
+            payload = point.payload or {}
+            searchable_text = f"{payload.get('specific_name', '')} {payload.get('title', '')} {payload.get('description', '')}".lower()
+            
+            # Count keyword matches
+            matches = sum(1 for kw in keywords if kw in searchable_text)
+            if matches > 0:
+                scored_results.append({
+                    "score": matches / len(keywords),
+                    "specific_name": payload.get("specific_name"),
+                    "title": payload.get("title"),
+                    "image_url": payload.get("image_url"),
+                    "price_estimate": payload.get("price_estimate"),
+                    "description": payload.get("description"),
+                    **payload
+                })
+        
+        # Sort by score and return top_k
+        scored_results.sort(key=lambda x: x["score"], reverse=True)
+        return scored_results[:top_k]
+        
+    except Exception as e:
+        logger.error(f"Keyword search failed: {e}")
+        return []
+
+
+def search_by_embedding(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    """Search Qdrant using fastembed embeddings."""
+    if not qdrant_client or not text_model:
+        return []
+    
+    try:
+        # Generate query embedding
+        embeddings = list(text_model.embed([query]))
+        query_vector = embeddings[0].tolist()
+        
+        # Search
+        search_results = qdrant_client.query_points(
+            collection_name=COLLECTION_NAME,
+            query=query_vector,
+            limit=top_k
+        ).points
+        
+        results = []
+        for hit in search_results:
+            results.append({
+                "score": hit.score,
+                "specific_name": hit.payload.get("specific_name"),
+                "title": hit.payload.get("title"),
+                "image_url": hit.payload.get("image_url"),
+                "price_estimate": hit.payload.get("price_estimate"),
+                "description": hit.payload.get("description"),
+                **hit.payload
+            })
+        
+        return results
+        
+    except Exception as e:
+        logger.error(f"Embedding search failed: {e}")
+        return []
+
+
+def search_plants(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    """Search for plants using best available method."""
+    if USE_EMBEDDINGS:
+        return search_by_embedding(query, top_k)
+    return search_by_keyword(query, top_k)
+
 
 @app.post("/api/enhance-with-rag")
 async def enhance_with_rag(request: EnhancementRequest):
-    """
-    Enhance a design with RAG data.
-    Focuses on identifying plants and providing accurate pricing.
-    """
-    if not PlantCatalog or not calculate_budget_with_rag:
-        raise HTTPException(status_code=500, detail="RAG modules not available")
+    """Enhance a design with RAG data."""
+    if not qdrant_client:
+        raise HTTPException(status_code=500, detail="Qdrant not connected")
     
     try:
-        catalog = PlantCatalog()
         plant_palette = []
         
-        # Process Plants
         for plant_item in request.plants:
-            # Query RAG for this item
-            rag_results = catalog.find_plant(plant_item.name, top_k=1)
+            results = search_plants(plant_item.name, top_k=1)
             
-            if rag_results and len(rag_results) > 0:
-                plant = rag_results[0]
+            if results:
+                plant = results[0]
                 
-                # Handle quantity (it might be int, float, or string)
+                # Handle quantity
                 quantity = 1
                 if isinstance(plant_item.quantity, (int, float)):
                     quantity = int(plant_item.quantity)
                 elif isinstance(plant_item.quantity, str) and plant_item.quantity.isdigit():
                     quantity = int(plant_item.quantity)
                 
-                # Get price from RAG or use default
+                # Get price
                 unit_price = plant.get('price_estimate', '$25')
                 if not unit_price:
-                    unit_price = '$25'  # Default fallback
+                    unit_price = '$25'
                 
-                # Calculate total estimate
+                # Calculate total
                 try:
                     price_num = float(unit_price.replace('$', '').replace(',', '').split()[0])
                     total = price_num * quantity
@@ -122,9 +194,9 @@ async def enhance_with_rag(request: EnhancementRequest):
                     total_estimate = f'{unit_price} x{quantity}'
                 
                 plant_palette.append({
-                    "common_name": plant.get('common_name', plant.get('specific_name', '')),
-                    "botanical_name": plant.get('botanical_name', ''),
-                    "image_url": plant['image_url'],
+                    "common_name": plant.get('specific_name') or plant.get('title', ''),
+                    "botanical_name": "",
+                    "image_url": plant.get('image_url', ''),
                     "quantity": quantity,
                     "size": "5-gallon",
                     "unit_price": unit_price,
@@ -134,56 +206,31 @@ async def enhance_with_rag(request: EnhancementRequest):
                     "description": plant.get('description', '')
                 })
         
-        # TODO: Process hardscape/features for budget if needed
-        
         return {
             "success": True,
             "plantPalette": plant_palette,
-            "rag_enhanced": True
+            "rag_enhanced": True,
+            "search_method": "semantic" if USE_EMBEDDINGS else "keyword"
         }
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-class VideoRequest(BaseModel):
-    original_image: str  # Base64 encoded
-    redesign_image: str  # Base64 encoded
-    duration: int = 5
-    provider: str = "gemini"
-
-@app.post("/api/generate-video")
-async def generate_video(request: VideoRequest):
-    """Generate transformation video with angle rotation"""
-    try:
-        print(f"📥 Received video request - original: {len(request.original_image)} chars, redesign: {len(request.redesign_image)} chars, provider: {request.provider}")
-        # Import inside function to avoid circular imports or startup errors if module issues
-        from video_generator import generate_transformation_video
-        
-        result = generate_transformation_video(
-            request.original_image,
-            request.redesign_image,
-            request.duration,
-            request.provider
-        )
-        
-        if result.get("status") == "completed":
-            return {"success": True, "video_url": result["video_url"]}
-        else:
-            raise HTTPException(
-                status_code=500, 
-                detail=result.get("error", "Video generation failed")
-            )
-    except Exception as e:
-        print(f"❌ Video generation error: {e}")
+        logger.error(f"Enhancement failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "rag_available": PlantCatalog is not None}
+    return {
+        "status": "healthy",
+        "rag_available": qdrant_client is not None,
+        "search_method": "semantic" if USE_EMBEDDINGS else "keyword",
+        "collection": COLLECTION_NAME
+    }
+
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("RAG_API_PORT", "8002"))
-    print(f"🚀 Starting RAG Enhancement API on port {port}")
+    port = int(os.getenv("PORT", 8080))
+    logger.info(f"🚀 Starting RAG Enhancement API on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
