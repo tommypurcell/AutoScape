@@ -1217,6 +1217,129 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             )}
 
             {/* Contact Designer Modal */}
+
+            {/* RAG Item Detail Modal */}
+            {selectedPlant && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedPlant(null)}>
+                    <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
+                            <h2 className="text-2xl font-bold text-slate-800">
+                                {selectedPlant.common_name || selectedPlant.match || selectedPlant.item || 'Item Details'}
+                            </h2>
+                            <button
+                                onClick={() => setSelectedPlant(null)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors p-2"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-6">
+                            {/* Image */}
+                            {selectedPlant.image_url && (
+                                <div className="w-full aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                                    <img
+                                        src={selectedPlant.image_url}
+                                        alt={selectedPlant.common_name || selectedPlant.item}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Details Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                {selectedPlant.botanical_name && (
+                                    <div>
+                                        <p className="text-sm text-slate-500 mb-1">Botanical Name</p>
+                                        <p className="text-base font-medium text-slate-800 italic">{selectedPlant.botanical_name}</p>
+                                    </div>
+                                )}
+                                {selectedPlant.specific_name && selectedPlant.specific_name !== selectedPlant.common_name && (
+                                    <div>
+                                        <p className="text-sm text-slate-500 mb-1">Specific Name</p>
+                                        <p className="text-base font-medium text-slate-800">{selectedPlant.specific_name}</p>
+                                    </div>
+                                )}
+                                {selectedPlant.quantity && (
+                                    <div>
+                                        <p className="text-sm text-slate-500 mb-1">Quantity</p>
+                                        <p className="text-base font-medium text-slate-800">{selectedPlant.quantity}</p>
+                                    </div>
+                                )}
+                                {selectedPlant.size && (
+                                    <div>
+                                        <p className="text-sm text-slate-500 mb-1">Size</p>
+                                        <p className="text-base font-medium text-slate-800">{selectedPlant.size}</p>
+                                    </div>
+                                )}
+                                {(selectedPlant.unit_price || selectedPlant.price_estimate) && (
+                                    <div>
+                                        <p className="text-sm text-slate-500 mb-1">Unit Price</p>
+                                        <p className="text-base font-semibold text-emerald-700">{selectedPlant.unit_price || selectedPlant.price_estimate}</p>
+                                    </div>
+                                )}
+                                {selectedPlant.total_estimate && (
+                                    <div>
+                                        <p className="text-sm text-slate-500 mb-1">Total Estimate</p>
+                                        <p className="text-lg font-bold text-emerald-700">{selectedPlant.total_estimate}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Description */}
+                            {selectedPlant.description && (
+                                <div>
+                                    <p className="text-sm text-slate-500 mb-2">Description</p>
+                                    <p className="text-base text-slate-700 leading-relaxed">{selectedPlant.description}</p>
+                                </div>
+                            )}
+
+                            {/* Source Badge */}
+                            {selectedPlant.rag_verified && (
+                                <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                    <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-sm font-medium text-emerald-700">Verified from RAG Database</span>
+                                </div>
+                            )}
+
+                            {/* Shop Button */}
+                            <div className="flex gap-3">
+                                {selectedPlant.image_url && (
+                                    <a
+                                        href={`https://www.google.com/searchbyimage?sbisrc=tg&image_url=${encodeURIComponent(selectedPlant.image_url)}&tbm=shop`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-center transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        Search with Image
+                                    </a>
+                                )}
+                                <a
+                                    href={`https://www.amazon.com/s?k=${encodeURIComponent((selectedPlant.common_name || selectedPlant.item) + ' plant')}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium text-center transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595l.315-.14c.138-.06.234-.1.293-.13.226-.088.39-.046.525.13.12.174.09.336-.12.48-.256.19-.6.41-1.006.654-1.244.73-2.594 1.273-4.047 1.628-1.458.354-2.95.532-4.478.532-2.948 0-5.852-.62-8.71-1.86-1.7-.74-3.328-1.7-4.884-2.88-.226-.16-.28-.314-.16-.465zm22.903-5.84c0-.416-.132-.64-.398-.67-.418-.044-.62.16-.62.61v4.226c0 .448.202.67.61.67.418 0 .627-.222.627-.67v-4.166zm-2.91 0c0-.416-.132-.64-.398-.67-.418-.044-.62.16-.62.61v4.226c0 .448.202.67.61.67.418 0 .627-.222.627-.67v-4.166z" />
+                                    </svg>
+                                    Find on Amazon
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <ContactDesignerModal
                 isOpen={isContactModalOpen}
                 onClose={() => setIsContactModalOpen(false)}
