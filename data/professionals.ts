@@ -47,14 +47,11 @@ let PORTFOLIO_IMAGES: string[] = [
     "https://images.unsplash.com/photo-1558904541-01470460287c?auto=format&fit=crop&w=800&q=80", // Fallback
 ];
 
-const PROFILE_IMAGES = [
-    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200",
-    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200",
-    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200",
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200",
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200",
-    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200"
-];
+// Generate random avatar URL with number between 1-180
+const getRandomAvatarUrl = (): string => {
+    const randomNum = Math.floor(Math.random() * 180) + 1;
+    return `https://mockmind-api.uifaces.co/content/human/${randomNum}.jpg`;
+};
 
 // Function to set portfolio images from real designs
 export const setPortfolioImagesFromStorage = (imageUrls: string[]) => {
@@ -81,7 +78,7 @@ const generateProfessionals = (): Professional[] => {
                 rating: 4 + Math.random(),
                 reviewCount: Math.floor(Math.random() * 50) + 10,
                 introduction: INTROS[Math.floor(Math.random() * INTROS.length)],
-                imageUrl: PROFILE_IMAGES[Math.floor(Math.random() * PROFILE_IMAGES.length)],
+                imageUrl: getRandomAvatarUrl(),
                 portfolioImages: [
                     PORTFOLIO_IMAGES[Math.floor(Math.random() * PORTFOLIO_IMAGES.length)],
                     PORTFOLIO_IMAGES[Math.floor(Math.random() * PORTFOLIO_IMAGES.length)]
@@ -105,7 +102,7 @@ const generateProfessionals = (): Professional[] => {
                 rating: 4 + Math.random(),
                 reviewCount: Math.floor(Math.random() * 50) + 10,
                 introduction: "Professional landscaping services including installation, maintenance, and hardscaping.",
-                imageUrl: PROFILE_IMAGES[Math.floor(Math.random() * PROFILE_IMAGES.length)],
+                imageUrl: getRandomAvatarUrl(),
                 portfolioImages: [
                     PORTFOLIO_IMAGES[Math.floor(Math.random() * PORTFOLIO_IMAGES.length)],
                     PORTFOLIO_IMAGES[Math.floor(Math.random() * PORTFOLIO_IMAGES.length)]

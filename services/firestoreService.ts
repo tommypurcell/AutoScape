@@ -472,6 +472,7 @@ export interface DesignerProfile {
     yearsExperience: string;
     website?: string;
     bio: string;
+    avatarUrl?: string;
     portfolioImages: string[];
     rating?: number;
     reviewCount?: number;

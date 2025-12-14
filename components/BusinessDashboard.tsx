@@ -108,6 +108,12 @@ export const BusinessDashboard: React.FC = () => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    const generateRandomAvatar = () => {
+        const randomNum = Math.floor(Math.random() * 180) + 1;
+        const avatarUrl = `https://mockmind-api.uifaces.co/content/human/${randomNum}.jpg`;
+        updateField('avatarUrl', avatarUrl);
+    };
+
     const handlePortfolioUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
         if (!files || files.length === 0 || !user) return;
@@ -321,6 +327,44 @@ export const BusinessDashboard: React.FC = () => {
                                         onChange={e => updateField('website', e.target.value)}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
                                     />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Profile Avatar URL</label>
+                                <div className="flex gap-4 items-start">
+                                    <div className="flex-1">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={formData.avatarUrl || ''}
+                                                onChange={e => updateField('avatarUrl', e.target.value)}
+                                                placeholder="https://example.com/your-avatar.jpg"
+                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={generateRandomAvatar}
+                                                className="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 whitespace-nowrap"
+                                            >
+                                                <User className="w-4 h-4" />
+                                                Random Avatar
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Enter a direct URL to your profile photo or click "Random Avatar" for a generated one</p>
+                                    </div>
+                                    {formData.avatarUrl && (
+                                        <div className="flex-shrink-0">
+                                            <img
+                                                src={formData.avatarUrl}
+                                                alt="Avatar preview"
+                                                className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=Invalid';
+                                                }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
