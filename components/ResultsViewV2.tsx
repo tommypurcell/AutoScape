@@ -5,7 +5,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 import { Share2, Download, Facebook, Twitter, Instagram, Mail, MessageCircle, Link, Copy, Check, Loader } from 'lucide-react';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { PlantPalette } from './PlantPalette';
-import { saveDesign } from '../services/firestoreService';
+import { saveDesign, updateDesignVideoUrl } from '../services/firestoreService';
+import { uploadVideo } from '../services/storageService';
 import { useAuth } from '../contexts/AuthContext';
 import { useDesign } from '../contexts/DesignContext';
 import { ProductSwapModal } from './ProductSwapModal';
@@ -20,6 +21,8 @@ interface ResultsViewProps {
     originalImage?: string | null;
     onReset?: () => void;
     designShortId?: string;
+    designId?: string; // Firebase document ID for video storage
+    existingVideoUrl?: string | null; // Pre-loaded video URL from saved design
 }
 
 interface RAGItem {
@@ -39,7 +42,9 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     result: propResult,
     originalImage: propOriginalImage,
     onReset: propOnReset,
-    designShortId
+    designShortId,
+    designId: propDesignId,
+    existingVideoUrl
 }) => {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -58,7 +63,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare' | 'video'>('compare');
     const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
     const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [videoUrl, setVideoUrl] = useState<string | null>(existingVideoUrl || null);
     const [videoError, setVideoError] = useState<string | null>(null);
     const [ragBudget, setRagBudget] = useState<RAGBudget | null>(null);
     const [copied, setCopied] = useState(false);
@@ -75,11 +80,13 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     // New state for V2 features
     const [isSaving, setIsSaving] = useState(false);
     const [currentShortId, setCurrentShortId] = useState<string | null>(designShortId || null);
+    const [currentDesignId, setCurrentDesignId] = useState<string | null>(propDesignId || null);
     const [costViewTab, setCostViewTab] = useState<'materials' | 'distribution'>('materials');
     const [selectedPlant, setSelectedPlant] = useState<any | null>(null);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
     const [shareUrl, setShareUrl] = useState<string | null>(null);
+    const [isSavingVideo, setIsSavingVideo] = useState(false);
 
     // Update local result when prop or context changes
     useEffect(() => {
@@ -320,8 +327,9 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         setIsSaving(true);
         try {
             const ownerId = user?.uid || 'anonymous';
-            const { shortId } = await saveDesign(ownerId, { ...result, yardImageUrl: originalImage }, false);
+            const { id, shortId } = await saveDesign(ownerId, { ...result, yardImageUrl: originalImage }, false);
             setCurrentShortId(shortId);
+            setCurrentDesignId(id); // Store the Firebase document ID for video storage
             window.history.replaceState({}, '', `/result/${shortId}`);
             return shortId;
         } catch (error) {
@@ -432,18 +440,66 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         setIsGeneratingVideo(true);
         setVideoError(null);
         try {
-            const getBase64 = async (url: string): Promise<string> => {
+            // Helper function to convert URL to base64
+            const getBase64 = async (url: string, imageName: string): Promise<string> => {
+                // If already a data URL, extract the base64 part
                 if (url.startsWith('data:')) return url.split(',')[1];
-                const response = await fetch(url);
-                const blob = await response.blob();
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve((reader.result as string).split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
+
+                try {
+                    // Try direct fetch first
+                    const response = await fetch(url, { mode: 'cors' });
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch ${imageName}: ${response.status}`);
+                    }
+                    const blob = await response.blob();
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                        reader.onerror = () => reject(new Error(`Failed to read ${imageName}`));
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (fetchError) {
+                    // If CORS error, try using an Image element approach
+                    console.warn(`CORS issue with ${imageName}, trying canvas approach...`);
+                    return new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => {
+                            try {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.naturalWidth;
+                                canvas.height = img.naturalHeight;
+                                const ctx = canvas.getContext('2d');
+                                if (!ctx) {
+                                    reject(new Error('Failed to create canvas context'));
+                                    return;
+                                }
+                                ctx.drawImage(img, 0, 0);
+                                const dataUrl = canvas.toDataURL('image/png');
+                                resolve(dataUrl.split(',')[1]);
+                            } catch (canvasError) {
+                                reject(new Error(`CORS policy prevents accessing ${imageName}. Please configure Firebase Storage CORS settings.`));
+                            }
+                        };
+                        img.onerror = () => {
+                            reject(new Error(`CORS policy prevents accessing ${imageName}. Please configure Firebase Storage CORS settings.`));
+                        };
+                        img.src = url;
+                    });
+                }
             };
-            const [originalBase64, redesignBase64] = await Promise.all([getBase64(originalImage), getBase64(result.renderImages[currentRenderIndex])]);
+
+            console.log('Starting video generation...');
+            console.log('Original image URL:', originalImage?.substring(0, 100));
+            console.log('Render image URL:', result.renderImages[currentRenderIndex]?.substring(0, 100));
+
+            const [originalBase64, redesignBase64] = await Promise.all([
+                getBase64(originalImage, 'original image'),
+                getBase64(result.renderImages[currentRenderIndex], 'rendered image')
+            ]);
+
+            console.log('Base64 conversion complete. Original:', originalBase64?.length, 'chars, Render:', redesignBase64?.length, 'chars');
+
             const response = await fetch('http://localhost:8002/api/generate-video', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -451,11 +507,44 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail || 'Failed to generate video');
+
+            // Set the video URL immediately so user can view it
             setVideoUrl(data.video_url);
             setActiveTab('video');
+
+            // Try to save the video to Firebase Storage if we have a design ID
+            if (currentDesignId && user) {
+                setIsSavingVideo(true);
+                try {
+                    console.log('📹 Saving video to Firebase Storage...');
+                    const videoPath = `designs/${user.uid}/videos/${currentDesignId}_${Date.now()}.mp4`;
+                    const persistentVideoUrl = await uploadVideo(data.video_url, videoPath);
+
+                    // Update the design document with the video URL
+                    await updateDesignVideoUrl(currentDesignId, persistentVideoUrl);
+
+                    // Update local state with persistent URL
+                    setVideoUrl(persistentVideoUrl);
+                    console.log('✅ Video saved to Firebase Storage');
+                } catch (saveError) {
+                    console.error('Failed to save video to Firebase (video still available locally):', saveError);
+                    // Don't show error to user since video is still available locally
+                }
+                setIsSavingVideo(false);
+            } else if (!currentDesignId) {
+                console.log('ℹ️ Video generated but not saved (no design ID - save design first to persist video)');
+            }
         } catch (err) {
-            setVideoError(err instanceof Error ? err.message : 'An error occurred');
+            console.error('Video generation error:', err);
+            const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+            // Provide more helpful error message for CORS issues
+            if (errorMessage.includes('CORS') || errorMessage.includes('cross-origin')) {
+                setVideoError('Unable to access images due to CORS policy. Please ask the developer to configure Firebase Storage CORS settings.');
+            } else {
+                setVideoError(errorMessage);
+            }
         } finally {
+            setIsGeneratingVideo(false);
         }
     };
 
@@ -764,7 +853,25 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                         {activeTab === 'video' && (
                             <div className="w-full h-full flex flex-col items-center justify-center p-8">
                                 {videoUrl ? (
-                                    <video src={videoUrl} controls autoPlay loop className="max-w-full max-h-full rounded-lg shadow-lg" />
+                                    <div className="relative w-full h-full flex flex-col items-center justify-center">
+                                        <video src={videoUrl} controls autoPlay loop className="max-w-full max-h-full rounded-lg shadow-lg" />
+                                        {isSavingVideo && (
+                                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-sm font-medium animate-pulse">
+                                                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                Saving to cloud...
+                                            </div>
+                                        )}
+                                        {!isSavingVideo && videoUrl.startsWith('http') && (
+                                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-medium">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                Saved
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <div className="text-center">
                                         <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -914,7 +1021,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                         {costViewTab === 'distribution' && (
                             <div className="p-6">
                                 <div className="h-[300px]">
-                                    <ResponsiveContainer width="100%" height="100%">
+                                    <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                                         <PieChart>
                                             <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="cost" nameKey="name" label={({ name, value, percent }) => `${name}: ${formatCurrency(value)} (${(percent * 100).toFixed(0)}%)`} labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}>
                                                 {chartData.map((_, index) => {

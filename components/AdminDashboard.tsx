@@ -238,7 +238,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                     <div className="bg-white rounded-xl border border-slate-200 p-6">
                                         <h3 className="text-lg font-bold text-slate-900 mb-6">Design Styles Distribution</h3>
                                         <div className="h-80">
-                                            <ResponsiveContainer width="100%" height="100%">
+                                            <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                                                 <PieChart>
                                                     <Pie
                                                         data={styleData}
@@ -263,7 +263,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                     <div className="bg-white rounded-xl border border-slate-200 p-6">
                                         <h3 className="text-lg font-bold text-slate-900 mb-6">Popular Styles</h3>
                                         <div className="h-64">
-                                            <ResponsiveContainer width="100%" height="100%">
+                                            <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                                                 <BarChart data={styleData.slice(0, 8)} layout="vertical">
                                                     <XAxis type="number" />
                                                     <YAxis type="category" dataKey="style" width={100} />

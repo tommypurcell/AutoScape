@@ -12,6 +12,8 @@ export const ResultsPage: React.FC = () => {
     const [design, setDesign] = useState<GeneratedDesign | null>(null);
     const [yardImageUrl, setYardImageUrl] = useState<string | null>(null);
     const [designShortId, setDesignShortId] = useState<string | null>(null);
+    const [designId, setDesignId] = useState<string | null>(null);
+    const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +61,8 @@ export const ResultsPage: React.FC = () => {
                     });
                     setYardImageUrl(savedDesign.yardImageUrl || null);
                     setDesignShortId(savedDesign.shortId);
+                    setDesignId(savedDesign.id); // Store the Firebase document ID
+                    setExistingVideoUrl(savedDesign.videoUrl || null); // Load existing video
                 } else {
                     setError('Design not found');
                 }
@@ -99,6 +103,8 @@ export const ResultsPage: React.FC = () => {
                     onReset={() => navigate('/create')}
                     originalImage={yardImageUrl}
                     designShortId={designShortId || undefined}
+                    designId={designId || undefined}
+                    existingVideoUrl={existingVideoUrl}
                 />
             </div>
         </div>

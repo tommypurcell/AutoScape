@@ -23,6 +23,7 @@ export interface SavedDesign {
     shortId: string; // 6-character shareable ID
     userId: string;
     yardImageUrl?: string; // Original yard image for comparison
+    videoUrl?: string; // Generated transformation video
     isPublic?: boolean;
     createdAt: Date;
     renderImages: string[];
@@ -215,6 +216,25 @@ export const getUserDesigns = async (userId: string): Promise<SavedDesign[]> => 
 
 export const deleteDesign = async (designId: string): Promise<void> => {
     await deleteDoc(doc(db, 'designs', designId));
+};
+
+/**
+ * Update a design with the generated video URL
+ */
+export const updateDesignVideoUrl = async (
+    designId: string,
+    videoUrl: string
+): Promise<void> => {
+    try {
+        const docRef = doc(db, 'designs', designId);
+        await updateDoc(docRef, {
+            videoUrl: videoUrl
+        });
+        console.log('✅ Design updated with video URL');
+    } catch (error) {
+        console.error('Error updating design with video URL:', error);
+        throw error;
+    }
 };
 
 export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedDesign[]> => {

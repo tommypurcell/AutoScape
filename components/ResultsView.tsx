@@ -1034,7 +1034,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               <HelpTip content="Visual breakdown of costs by category (Hardscape, Softscape, Plants, Labor, etc.)." />
             </h3>
             <div className="flex-1 min-h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                 <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11, fill: '#64748b' }} />

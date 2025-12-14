@@ -217,7 +217,7 @@ def generate_single_video(image_base64: str, video_type: str, duration: int) -> 
     }
     
     payload = {
-        "prompt": f"Subtle cinematic camera movement, smooth pan across the yard, high quality, photorealistic, 4k",
+        "prompt": f"Gentle slow camera push forward into the scene, steady and smooth motion, gradual reveal, cinematic, photorealistic, 4k, no sudden movements",
         "image": image_base64,
         "duration": str(duration),
         "cfg_scale": 0.5
@@ -397,36 +397,42 @@ def download_videos(original_url: str, redesign_url: str) -> tuple:
 
 def merge_videos_ffmpeg(original_path: str, redesign_path: str) -> str:
     """
-    Merge two videos with a crossfade transition using ffmpeg.
+    Merge two videos with a smooth wipe transition using ffmpeg.
+    
+    Creates a one-directional "before to after" reveal effect.
     
     Handles videos with different resolutions by scaling both to match.
     
     Transition:
-    - 0-4s: Original video
-    - 4-5s: 1-second crossfade
-    - 5-10s: Redesign video
+    - 0-3s: Original video (the "before" state)
+    - 3-5s: 2-second smooth wipe from left to right (transformation reveal)
+    - 5-10s: Redesign video (the "after" state)
     
     Returns:
         Path to merged video
     """
-    logger.info("🎬 Merging videos with ffmpeg crossfade...")
+    logger.info("🎬 Merging videos with smooth wipe transition (before → after)...")
     
     output_file = tempfile.NamedTemporaryFile(delete=False, suffix="_merged.mp4")
     output_path = output_file.name
     output_file.close()
     
     # ffmpeg command with scaling to handle different resolutions
-    # Scale both videos to 1920x1080 (common resolution) before crossfade
+    # Scale both videos to 1920x1080 (common resolution) before transition
+    # Use wipeleft for a smooth directional reveal from before to after
     cmd = [
         "ffmpeg",
         "-y",  # Overwrite output file
         "-i", original_path,
         "-i", redesign_path,
         "-filter_complex",
-        # Scale both inputs to 1920x1080, then apply crossfade
+        # Scale both inputs to 1920x1080, then apply smooth wipe left transition
+        # wipeleft: the "after" video wipes over the "before" from right to left
+        # duration=2 gives a longer, smoother transition
+        # offset=3 means the transition starts at 3 seconds
         "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1[v0];"
         "[1:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1[v1];"
-        "[v0][v1]xfade=transition=fade:duration=1:offset=4[outv]",
+        "[v0][v1]xfade=transition=wipeleft:duration=2:offset=3[outv]",
         "-map", "[outv]",
         "-c:v", "libx264",
         "-preset", "fast",

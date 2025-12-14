@@ -214,26 +214,42 @@ export const generateLandscapeDesign = async (
     console.log("Phase 3: Generating Plan");
 
     const planPrompt = `
-      Act as a Landscape Architect Drafter.
+      Act as a Professional Landscape Architect Drafter specializing in 2D site plans.
       INPUT: The provided 3D RENDER of a designed yard.
       CONTEXT: ${sceneContext}
       
-      TASK: Generate a single, accurate, top-down orthographic raster plan based ONLY on the input render.
+      TASK: Generate a PROFESSIONAL 2D LANDSCAPE SITE PLAN / BLUEPRINT in true top-down orthographic view.
       
-      INSTRUCTIONS:
-      1. Analyze the render to identify fixed geometry (house edges, fences) and new design elements (hardscape, plants).
-      2. Transform this into a strictly orthographic 90° overhead view.
+      STYLE REQUIREMENTS - THIS MUST LOOK LIKE A REAL LANDSCAPE ARCHITECTURE DRAWING:
+      - True bird's-eye view (90° straight down, no perspective)
+      - Clean, professional blueprint/site plan aesthetic
+      - White or light cream background
+      - Use standard landscape plan symbols and conventions
+      - Show property boundaries as dashed lines
+      - Show the house footprint as solid outlined rectangle
+      - Show all hardscape (patios, paths, driveways) with hatching patterns
+      - Show planting beds with organic curved shapes
+      - Represent plants as circles/ovals from above (use different sizes for trees vs shrubs)
+      - Use subtle color coding: greens for plants, grays/browns for hardscape, blue for water features
+      - Include a simple compass/north arrow symbol
+      - Include a simple scale bar
       
       CRITICAL RULES:
-      - NO LABELS: Do not add any text, labels, or callouts to the image.
-      - NO HALLUCINATIONS: Do not invent objects not visible in the render.
-      - GEOMETRY: Must match the render exactly.
+      - NO TEXT LABELS or annotations on the drawing
+      - NO 3D effects, shadows, or perspective - pure 2D flat view
+      - NO photorealistic rendering - this is a TECHNICAL DRAWING
+      - Must accurately represent the spatial layout from the 3D render
+      - Show the ENTIRE property from boundary to boundary
+      - The house should be clearly visible as an outlined footprint
+      - All landscape elements must be clearly distinguishable
       
-      STYLING:
-      - Flat architectural style.
-      - Clean lines.
-      - White background.
-      - Simple colors: Green (plants), Gray/Beige (hardscape), Brown (wood).
+      COLOR PALETTE:
+      - Plants/Trees: Various greens (dark for evergreens, light for deciduous)
+      - Lawn/Grass areas: Light green
+      - Hardscape/Pavers: Light gray with subtle patterns
+      - Wood features: Tan/beige
+      - Water features: Light blue
+      - Buildings: White with black outlines
     `;
 
     const planPromise = ai.models.generateContent({
