@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { getStyleImage } from '../data/styleReferences';
 import { DesignStyle } from '../types';
 import { ChevronDown, ArrowRight, Sun, Droplets, Wind } from 'lucide-react';
+import { BeforeAfterSlider } from './BeforeAfterSlider';
+import { getDesignById, SavedDesign } from '../services/firestoreService';
 
 interface LandingPageProps {
     onGetStarted: () => void;
@@ -99,11 +101,48 @@ const DemoSection: React.FC = () => {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout, onStartTutorial, onDesignerSignup }) => {
     const [scrolled, setScrolled] = useState(false);
+    const [featuredDesign, setFeaturedDesign] = useState<SavedDesign | null>(null);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 50);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    // Fetch featured design for gallery
+    useEffect(() => {
+        const fetchFeaturedDesign = async () => {
+            try {
+                const design = await getDesignById('l33e1w');
+                if (design) {
+                    setFeaturedDesign(design);
+                }
+            } catch (error) {
+                console.error('Error fetching featured design:', error);
+            }
+        };
+        fetchFeaturedDesign();
+    }, []);
+
+    // Scroll animation observer
+    useEffect(() => {
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-in');
+                }
+            });
+        }, observerOptions);
+
+        const animatedElements = document.querySelectorAll('.scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-rotate, .scroll-animate-rotate-reverse');
+        animatedElements.forEach(el => observer.observe(el));
+
+        return () => observer.disconnect();
     }, []);
 
     const scrollToContent = () => {
@@ -190,9 +229,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                 </div>
             </div>
 
-            {/* Before/After Examples Section */}
+
+
+
+
+
+
+            {/* Video Generation Showcase */}
+            {/* Real Transformations Gallery */}
             <section className="py-20 bg-gradient-to-b from-slate-50 to-white">
-                <div className="max-w-6xl mx-auto px-6">
+                <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-12">
                         <span className="inline-block px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium mb-4">
                             Real Transformations
@@ -206,33 +252,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-8">
-                        {/* Example 1 */}
-                        <div className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow">
-                            <img
-                                src="/examples/example_1.png"
-                                alt="Before and after landscape transformation"
-                                className="w-full aspect-video object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
-                                <div className="text-white">
-                                    <p className="font-semibold text-lg">Backyard Makeover</p>
-                                    <p className="text-white/80 text-sm">From bare lawn to blooming paradise</p>
-                                </div>
+                        {/* Gallery Item 1 */}
+                        <div className="group">
+                            <div className="relative h-[400px] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow">
+                                <BeforeAfterSlider
+                                    beforeImage="/demo_clips/autoscape_hero_original.png"
+                                    afterImage="/demo_clips/autoscape_hero_gen.png"
+                                    beforeLabel="Before"
+                                    afterLabel="After"
+                                />
+                            </div>
+                            <div className="mt-4 text-center">
+                                <h3 className="text-lg font-semibold text-gray-900">Park Makeover</h3>
+                                <p className="text-sm text-gray-600">From bare lawn to blooming paradise</p>
                             </div>
                         </div>
 
-                        {/* Example 2 */}
-                        <div className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow">
-                            <img
-                                src="/examples/example_2.jpg"
-                                alt="Before and after garden transformation"
-                                className="w-full aspect-video object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
-                                <div className="text-white">
-                                    <p className="font-semibold text-lg">Garden Retreat</p>
-                                    <p className="text-white/80 text-sm">Creating a serene fountain garden</p>
-                                </div>
+                        {/* Gallery Item 2 */}
+                        <div className="group">
+                            <div className="relative h-[400px] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow">
+                                {featuredDesign ? (
+                                    <BeforeAfterSlider
+                                        beforeImage='/demo_clips/before-pad.JPG'
+                                        afterImage='/demo_clips/after-pad.png'
+                                        beforeLabel="Before"
+                                        afterLabel="After"
+                                    />
+                                ) : (
+                                    <BeforeAfterSlider
+                                        beforeImage='/demo_clips/before-pad.JPG'
+                                        afterImage='/demo_clips/after-pad.png'
+                                        beforeLabel="Before"
+                                        afterLabel="After"
+                                    />
+                                )}
+                            </div>
+                            <div className="mt-4 text-center">
+                                <h3 className="text-lg font-semibold text-gray-900">Garden Retreat</h3>
+                                <p className="text-sm text-gray-600">Creating a serene fountain garden</p>
                             </div>
                         </div>
                     </div>
@@ -248,6 +305,164 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     </div>
                 </div>
             </section>
+
+            {/* Cost Estimation Section */}
+            <section className="py-20 bg-white">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center mb-12 scroll-animate">
+                        <h2 className="text-3xl md:text-4xl font-light text-gray-900 mb-4">
+                            Know Your <span className="font-semibold">Investment</span>
+                        </h2>
+                        <p className="text-gray-600 max-w-2xl mx-auto">
+                            Get detailed cost breakdowns and material estimates instantly with AI-powered analysis
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-12 items-center">
+                        {/* Pie Chart Image */}
+                        <div className="order-2 md:order-1 scroll-animate-rotate">
+                            <img
+                                src="/demo_clips/pie-chart.png"
+                                alt="Cost breakdown pie chart"
+                                className="w-full rounded-2xl shadow-xl hover:shadow-2xl transition-shadow duration-300"
+                            />
+                            <p className="text-center text-sm text-gray-500 mt-4">
+                                Visual cost breakdown by category
+                            </p>
+                        </div>
+
+                        {/* Estimate Details Image */}
+                        <div className="order-1 md:order-2 scroll-animate-rotate-reverse">
+                            <img
+                                src="/demo_clips/estimate.png"
+                                alt="Detailed material estimates"
+                                className="w-full rounded-2xl shadow-xl hover:shadow-2xl transition-shadow duration-300"
+                            />
+                            <p className="text-center text-sm text-gray-500 mt-4">
+                                Itemized material list with quantities and pricing
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-12 text-center scroll-animate">
+                        <div className="inline-flex flex-col md:flex-row gap-4 items-center justify-center">
+                            <div className="flex items-center gap-2 text-gray-700 scroll-animate stagger-1">
+                                <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-medium">Instant cost analysis</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-700 scroll-animate stagger-2">
+                                <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-medium">Export to Excel or Sheets</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-700 scroll-animate stagger-3">
+                                <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-medium">RAG-verified plant pricing</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="py-24 md:py-32 bg-gradient-to-b from-slate-900 to-black text-white relative overflow-hidden">
+                {/* Subtle background pattern */}
+                <div className="absolute inset-0 opacity-5">
+                    <div className="absolute inset-0" style={{
+                        backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+                        backgroundSize: '40px 40px'
+                    }} />
+                </div>
+
+                <div className="max-w-6xl mx-auto px-6 relative z-10">
+                    {/* Header */}
+                    <div className="text-center mb-16">
+                        <span className="inline-block px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-full text-sm font-bold uppercase tracking-wider mb-6 border border-emerald-500/30">
+                            Powered by AI
+                        </span>
+                        <h2 className="text-4xl md:text-5xl font-light text-white mb-6">
+                            Cinematic <span className="font-semibold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Video Generation</span>
+                        </h2>
+                        <p className="text-xl text-gray-300 max-w-2xl mx-auto font-light leading-relaxed">
+                            Watch your transformation come to life with AI-generated videos that smoothly morph your yard from before to after.
+                        </p>
+                    </div>
+
+                    {/* Video Container */}
+                    <div className="relative max-w-4xl mx-auto">
+                        {/* Glow effect */}
+                        <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-2xl blur-2xl opacity-20" />
+
+                        {/* Video */}
+                        <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
+                            <video
+                                src="https://firebasestorage.googleapis.com/v0/b/autoscape-dfc00.firebasestorage.app/o/designs%2FOMZtAXa0X1YByXLuzce6rKYP4rC2%2Fvideos%2FxTBZ0Wpd2hHzGzxu9TJs_gemini_1765711470264.mp4?alt=media&token=0806160b-f71f-4233-a983-03e7d88d6e10"
+                                controls
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="w-full aspect-video"
+                            />
+                        </div>
+
+                        {/* Feature highlights below video */}
+                        <div className="grid md:grid-cols-3 gap-6 mt-12">
+                            <div className="text-center p-6 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
+                                <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">Smooth Transitions</h3>
+                                <p className="text-gray-400 text-sm">AI-powered morphing creates seamless before-to-after transformations</p>
+                            </div>
+
+                            <div className="text-center p-6 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
+                                <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">Instant Generation</h3>
+                                <p className="text-gray-400 text-sm">Create shareable videos in seconds, perfect for social media</p>
+                            </div>
+
+                            <div className="text-center p-6 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
+                                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">Cinematic Quality</h3>
+                                <p className="text-gray-400 text-sm">Professional-grade output that showcases your design vision</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="text-center mt-16">
+                        <button
+                            onClick={onGetStarted}
+                            className="px-10 py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-bold uppercase tracking-widest rounded-lg transition-all transform hover:scale-105 shadow-lg"
+                        >
+                            Generate Your Video
+                        </button>
+                        <p className="mt-4 text-gray-400 text-sm">
+                            Available with every design • No extra cost
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+
+
+
+            {/* Our Philosophy */}
 
             {/* Philosophy Section - Editorial Style */}
             <section className="py-24 md:py-32 max-w-5xl mx-auto px-6 md:px-12">
@@ -338,7 +553,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
 
             {/* Designer Section - "Are you a Designer?" */}
             {/* Designer Section - "Are you a Designer?" - Bright & Professional */}
-            <section className="py-24 relative overflow-hidden bg-gradient-to-br from-white via-blue-50 to-indigo-50">
+            <section className="py-24 relative overflow-hidden bg-white">
                 {/* Background Decorative Elements */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-amber-100/50 to-transparent rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />

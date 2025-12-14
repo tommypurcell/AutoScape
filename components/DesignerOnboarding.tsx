@@ -92,7 +92,7 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
     const canProceed = () => {
         switch (step) {
             case 1:
-            case 1:
+
                 return formData.fullName && formData.email && (user ? true : formData.password);
             case 2:
                 return formData.businessName && formData.city && formData.state;
