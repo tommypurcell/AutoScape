@@ -500,7 +500,12 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
             console.log('Base64 conversion complete. Original:', originalBase64?.length, 'chars, Render:', redesignBase64?.length, 'chars');
 
-            const response = await fetch('http://localhost:8002/api/generate-video', {
+            // Use relative URL - works with both local dev (proxy) and Firebase Hosting (functions rewrite)
+            const videoApiUrl = import.meta.env.DEV
+                ? 'http://localhost:8002/api/generate-video'
+                : '/api/generate-video';
+
+            const response = await fetch(videoApiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ original_image: originalBase64, redesign_image: redesignBase64, duration: 5 }),

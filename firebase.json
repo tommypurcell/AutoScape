@@ -8,9 +8,20 @@
         ],
         "rewrites": [
             {
+                "source": "/api/generate-video",
+                "function": "generate_video"
+            },
+            {
                 "source": "**",
                 "destination": "/index.html"
             }
         ]
-    }
+    },
+    "functions": [
+        {
+            "source": "functions",
+            "codebase": "default",
+            "runtime": "python312"
+        }
+    ]
 }
