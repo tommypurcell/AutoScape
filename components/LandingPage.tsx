@@ -150,7 +150,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10 bg-gradient-to-t from-black/60 via-black/20 to-black/40">
                     <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-black/60 backdrop-blur-xl rounded-full border border-white/10 mb-10 animate-fade-in-up hover:bg-black/70 transition-colors cursor-default select-none shadow-lg">
                         <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
-                        <span className="text-emerald-300 text-xs font-semibold tracking-[0.2em] uppercase">AI Design Engine</span>
+                        <span className="text-emerald-300 text-sm font-semibold tracking-[0.2em] uppercase">AI Design Engine</span>
                     </div>
 
                     <h1 className="text-white text-5xl md:text-7xl lg:text-8xl font-light tracking-tight mb-8 drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
@@ -368,7 +368,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                                 </svg>
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-3">AI-Powered Insights</h3>
-                            <p className="text-slate-500 leading-relaxed text-sm">
+                            <p className="text-slate-600 leading-relaxed text-sm">
                                 Get instant design analysis, material estimates, and plant recommendations to speed up your workflow.
                             </p>
                         </div>
@@ -381,7 +381,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                                 </svg>
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-3">Find New Clients</h3>
-                            <p className="text-slate-500 leading-relaxed text-sm">
+                            <p className="text-slate-600 leading-relaxed text-sm">
                                 Showcase your portfolio to homeowners actively looking for professional landscape designers.
                             </p>
                         </div>
@@ -394,7 +394,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                                 </svg>
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-3">Match Expectations</h3>
-                            <p className="text-slate-500 leading-relaxed text-sm">
+                            <p className="text-slate-600 leading-relaxed text-sm">
                                 Create vivid visualizations that match client expectations before breaking ground.
                             </p>
                         </div>
@@ -408,7 +408,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                         >
                             Join as a Designer
                         </button>
-                        <p className="mt-6 text-slate-500 text-xs uppercase tracking-widest">
+                        <p className="mt-6 text-slate-600 text-sm uppercase tracking-widest">
                             Free to join • Build your portfolio • Connect with clients
                         </p>
                     </div>
@@ -416,18 +416,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
             </section>
 
             {/* Text-Heavy Editorial "Note" */}
-            <section className="py-32 relative bg-emerald-950 overflow-hidden text-white">
-                <div className="absolute inset-0 opacity-20 mix-blend-soft-light">
-                    <img src={getStyleImage(DesignStyle.COTTAGE)} className="w-full h-full object-cover" alt="" />
+            <section className="py-32 relative bg-black overflow-hidden text-white">
+                <div className="absolute inset-0">
+                    <img src={getStyleImage(DesignStyle.COTTAGE)} className="w-full h-full object-cover opacity-90" alt="Beautiful Landscape" />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-900/80 to-slate-900/90" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/70" />
 
                 <div className="max-w-3xl mx-auto px-6 text-center relative z-10">
-                    <Wind className="mx-auto mb-8 text-gray-400" size={32} />
-                    <h2 className="text-3xl md:text-5xl font-serif italic mb-12">
+                    <Wind className="mx-auto mb-8 text-white/80" size={32} />
+                    <h2 className="text-3xl md:text-5xl font-serif italic mb-12 drop-shadow-lg">
                         "The goal of life is living in agreement with nature."
                     </h2>
-                    <p className="text-gray-400 font-light text-lg mb-16 leading-relaxed">
+                    <p className="text-white/90 font-light text-lg mb-16 leading-relaxed drop-shadow-md">
                         In a world of concrete and noise, your personal landscape is a refuge. <br />
                         It is where you reconnect, recharge, and remember what matters. <br />
                         Let us help you build that sanctuary.
@@ -438,32 +438,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     >
                         Begin Your Journey
                     </button>
-                    <p className="mt-6 text-xs text-gray-500 uppercase tracking-widest">
+                    <p className="mt-6 text-sm text-white/60 uppercase tracking-widest">
                         Free for Early Access Users
                     </p>
                 </div>
             </section>
 
-            {/* Minimal Footer */}
-            <footer className="bg-black text-white py-12 border-t border-gray-900">
-                <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-8">
-                    <div className="text-center md:text-left">
-                        <span className="text-xl font-bold tracking-tight">AutoScape</span>
-                        <p className="text-xs text-gray-500 mt-2 font-light max-w-xs">
-                            Architectural Artificial Intelligence for the Modern Era.
-                        </p>
-                    </div>
-                    <div className="flex gap-8 text-sm font-light text-gray-400">
-                        <button onClick={onAbout} className="hover:text-white transition-colors">Studio</button>
-                        <button onClick={onGetStarted} className="hover:text-white transition-colors">Start Project</button>
-                        <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
-                        <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-                    </div>
-                    <div className="text-xs text-gray-600 font-mono">
-                        © 2025 AutoScape Inc.
-                    </div>
-                </div>
-            </footer>
+
         </div>
     );
 };

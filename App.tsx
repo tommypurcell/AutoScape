@@ -30,6 +30,7 @@ import { DesignerGallery } from './components/DesignerGallery';
 import { TermsOfService } from './components/TermsOfService';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { saveDesignerProfile } from './services/firestoreService';
+import { Footer } from './components/Footer';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -549,6 +550,7 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Designer Onboarding Modal Removed */}
+      <Footer />
     </div>
   );
 };
