@@ -220,8 +220,8 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-slate-600">Total Estimated Cost</span>
-                                            <span className="text-xl font-bold text-slate-900">
-                                                {selectedDesign.estimates?.total_cost || "N/A"}
+                                            <span className="text-xl font-bold text-emerald-700">
+                                                ${selectedDesign.estimates?.totalCost?.toLocaleString() || "N/A"}
                                             </span>
                                         </div>
                                         <p className="text-xs text-slate-400">Based on RAG-retrieved item prices.</p>

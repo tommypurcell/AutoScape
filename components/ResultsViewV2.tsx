@@ -539,7 +539,8 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             setActiveTab('video');
 
             // Try to save the video to Firebase Storage if we have a design ID
-            if (currentDesignId && user) {
+            // Only upload if it's a real base64 video (not external URL from mock)
+            if (currentDesignId && user && data.video_url.startsWith('data:')) {
                 setIsSavingVideo(true);
                 try {
                     console.log(`📹 Saving ${provider} video to Firebase Storage...`);
@@ -560,6 +561,13 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                     console.error('Failed to save video to Firebase (video still available locally):', saveError);
                 }
                 setIsSavingVideo(false);
+            } else if (data.video_url.startsWith('http')) {
+                // External URL (mock video) - just use it directly, optionally save to Firestore
+                console.log(`📹 Using external video URL (${provider}): ${data.video_url.substring(0, 50)}...`);
+                if (currentDesignId && provider === 'gemini') {
+                    // Save external URL to Firestore for Gemini videos
+                    await updateDesignVideoUrl(currentDesignId, data.video_url);
+                }
             }
         } catch (err) {
             console.error('Video generation error:', err);

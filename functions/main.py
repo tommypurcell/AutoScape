@@ -145,14 +145,14 @@ def generate_gemini_video(original_base64: str, redesign_base64: str, api_key: s
         )
         
         # Prompt for natural transition
-        prompt = """Simple video interpolation between two landscape images.
-        Natural, subtle transition from the first frame to the last frame.
-        No dramatic effects or exaggeration.
-        Keep everything realistic and grounded.
-        Slight slow camera pan from left to right.
-        Same scale, same framing, same perspective.
-        Photorealistic quality.
-        Silent."""
+        prompt = """Create a smooth 5-second video transition between two landscape images.
+        Very slow and gentle camera pan from left to right.
+        Natural, gradual transformation from the first frame to the last frame.
+        No dramatic effects, no exaggeration, no sudden changes.
+        Keep everything realistic and subtle.
+        Maintain the same scale, framing, and perspective throughout.
+        Photorealistic quality with natural lighting changes.
+        Silent video."""
         
         # Generate video
         operation = client.models.generate_videos(
@@ -161,6 +161,7 @@ def generate_gemini_video(original_base64: str, redesign_base64: str, api_key: s
             image=first_frame,
             config=types.GenerateVideosConfig(
                 last_frame=last_frame,
+                duration=5,  # 5 seconds
             ),
         )
         
