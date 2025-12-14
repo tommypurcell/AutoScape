@@ -45,6 +45,7 @@ const AppContent: React.FC = () => {
     styleImages: [],
     styleImagePreviews: [],
     userPrompt: '',
+    budget: '',
     selectedStyle: DesignStyle.MODERN,
     locationType: LocationType.BACKYARD,
     spaceSize: SpaceSize.MEDIUM,
@@ -152,6 +153,7 @@ const AppContent: React.FC = () => {
       styleImages: [],
       styleImagePreviews: [],
       userPrompt: '',
+      budget: '',
       selectedStyle: DesignStyle.MODERN,
       locationType: LocationType.BACKYARD,
       spaceSize: SpaceSize.MEDIUM,
@@ -249,7 +251,7 @@ const AppContent: React.FC = () => {
         allStyleImages,
         state.userPrompt,
         state.selectedStyle,
-        '', // budget parameter (empty for now)
+        state.budget,
         undefined, // onProgress callback
         state.useRag
       );
@@ -421,6 +423,7 @@ const AppContent: React.FC = () => {
                       selectedGalleryStyleIds={selectedGalleryStyleIds}
                       selectedStyle={state.selectedStyle}
                       userPrompt={state.userPrompt}
+                      budget={state.budget}
                       useRag={state.useRag}
                       onYardSelect={handleYardSelect}
                       onClearYard={handleClearYard}
@@ -435,6 +438,7 @@ const AppContent: React.FC = () => {
                       onLocationChange={(type) => setState(s => ({ ...s, locationType: type }))}
                       onSizeChange={(size) => setState(s => ({ ...s, spaceSize: size }))}
                       onPromptChange={(prompt) => setState(s => ({ ...s, userPrompt: prompt }))}
+                      onBudgetChange={(budget) => setState(s => ({ ...s, budget }))}
                       onUseRagChange={(useRag) => setState(s => ({ ...s, useRag }))}
                       onGenerate={handleGenerate}
                       initialStep={state.error ? 3 : 1}

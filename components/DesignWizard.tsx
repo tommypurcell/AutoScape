@@ -15,6 +15,7 @@ interface DesignWizardProps {
     locationType: LocationType;
     spaceSize: SpaceSize;
     userPrompt: string;
+    budget: string;
     useRag: boolean;
     onYardSelect: (files: File[]) => void;
     onClearYard: () => void;
@@ -27,6 +28,7 @@ interface DesignWizardProps {
     onLocationChange: (type: LocationType) => void;
     onSizeChange: (size: SpaceSize) => void;
     onPromptChange: (prompt: string) => void;
+    onBudgetChange: (budget: string) => void;
     onUseRagChange: (useRag: boolean) => void;
     onGenerate: () => void;
     initialStep?: number;
@@ -42,6 +44,7 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
     locationType,
     spaceSize,
     userPrompt,
+    budget,
     useRag,
     onYardSelect,
     onClearYard,
@@ -54,6 +57,7 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
     onLocationChange,
     onSizeChange,
     onPromptChange,
+    onBudgetChange,
     onUseRagChange,
     onGenerate,
     initialStep = 1,
@@ -387,6 +391,35 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                             </button>
                                         </div>
 
+                                        {/* Budget Input */}
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-gray-800">
+                                                Budget (Optional)
+                                            </label>
+                                            <div className="relative">
+                                                <select
+                                                    value={budget}
+                                                    onChange={(e) => onBudgetChange(e.target.value)}
+                                                    className="w-full p-4 bg-white border-2 border-gray-200 rounded-lg focus:border-green-600 focus:ring-green-600 appearance-none text-sm"
+                                                >
+                                                    <option value="">Select a budget range...</option>
+                                                    <option value="$1,000 - $5,000">$1,000 - $5,000 (DIY/Small)</option>
+                                                    <option value="$5,000 - $15,000">$5,000 - $15,000 (Standard)</option>
+                                                    <option value="$15,000 - $30,000">$15,000 - $30,000 (Full Remodel)</option>
+                                                    <option value="$30,000 - $50,000">$30,000 - $50,000 (Premium)</option>
+                                                    <option value="$50,000+">$50,000+ (Luxury)</option>
+                                                </select>
+                                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-gray-500">
+                                                This helps us ensure the design materials and features are realistic for your project.
+                                            </p>
+                                        </div>
+
                                         <div className="grid md:grid-cols-2 gap-4 mt-6">
                                             <div className="p-4 bg-gray-50 rounded-lg">
                                                 <h4 className="font-semibold text-gray-800 mb-2 text-sm">💡 Suggestions:</h4>
@@ -467,56 +500,58 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
             </div>
 
             {/* Style Info Modal */}
-            {infoModalOpen && selectedInfoStyle && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setInfoModalOpen(false)}>
-                    <div
-                        className="bg-white rounded-2xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col relative shadow-2xl animate-scale-in"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Close Button */}
-                        <button
-                            onClick={() => setInfoModalOpen(false)}
-                            className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-sm transition-colors"
+            {
+                infoModalOpen && selectedInfoStyle && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setInfoModalOpen(false)}>
+                        <div
+                            className="bg-white rounded-2xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col relative shadow-2xl animate-scale-in"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <X size={20} />
-                        </button>
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setInfoModalOpen(false)}
+                                className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-sm transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
 
-                        {/* Image */}
-                        <div className="relative h-64 md:h-80 w-full flex-shrink-0">
-                            <img
-                                src={getStyleImage(selectedInfoStyle)}
-                                alt={selectedInfoStyle}
-                                className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                            <div className="absolute bottom-6 left-6 right-6">
-                                <h3 className="text-3xl font-bold text-white drop-shadow-md">{selectedInfoStyle}</h3>
+                            {/* Image */}
+                            <div className="relative h-64 md:h-80 w-full flex-shrink-0">
+                                <img
+                                    src={getStyleImage(selectedInfoStyle)}
+                                    alt={selectedInfoStyle}
+                                    className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                                <div className="absolute bottom-6 left-6 right-6">
+                                    <h3 className="text-3xl font-bold text-white drop-shadow-md">{selectedInfoStyle}</h3>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Content */}
-                        <div className="p-8 overflow-y-auto">
-                            <h4 className="text-sm font-bold text-green-600 uppercase tracking-wider mb-3">Style Description</h4>
-                            <p className="text-gray-700 text-lg leading-relaxed">
-                                {styleDescriptions[selectedInfoStyle] || "No description available for this style."}
-                            </p>
+                            {/* Content */}
+                            <div className="p-8 overflow-y-auto">
+                                <h4 className="text-sm font-bold text-green-600 uppercase tracking-wider mb-3">Style Description</h4>
+                                <p className="text-gray-700 text-lg leading-relaxed">
+                                    {styleDescriptions[selectedInfoStyle] || "No description available for this style."}
+                                </p>
 
-                            <div className="mt-8 flex justify-end">
-                                <button
-                                    onClick={() => {
-                                        onStyleChange(selectedInfoStyle);
-                                        setInfoModalOpen(false);
-                                    }}
-                                    className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl flex items-center gap-2 transition-colors shadow-lg"
-                                >
-                                    <Check size={18} />
-                                    Select This Style
-                                </button>
+                                <div className="mt-8 flex justify-end">
+                                    <button
+                                        onClick={() => {
+                                            onStyleChange(selectedInfoStyle);
+                                            setInfoModalOpen(false);
+                                        }}
+                                        className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl flex items-center gap-2 transition-colors shadow-lg"
+                                    >
+                                        <Check size={18} />
+                                        Select This Style
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

@@ -120,6 +120,7 @@ export interface AppState {
   styleImages: File[];
   styleImagePreviews: string[];
   userPrompt: string;
+  budget: string;
   selectedStyle: DesignStyle | string;
   locationType: LocationType;
   spaceSize: SpaceSize;
