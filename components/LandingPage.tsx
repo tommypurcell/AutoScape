@@ -147,34 +147,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                 </div>
 
                 {/* Content Overlay */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 mb-8 animate-fade-in-up">
-                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                        <span className="text-emerald-400 text-sm font-medium tracking-wide uppercase">AI-Powered Design Engine</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10 bg-gradient-to-t from-black/60 via-black/20 to-black/40">
+                    <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-black/60 backdrop-blur-xl rounded-full border border-white/10 mb-10 animate-fade-in-up hover:bg-black/70 transition-colors cursor-default select-none shadow-lg">
+                        <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+                        <span className="text-emerald-300 text-xs font-semibold tracking-[0.2em] uppercase">AI Design Engine</span>
                     </div>
 
-                    <h1 className="text-white text-5xl md:text-7xl lg:text-8xl font-light tracking-tight mb-8 drop-shadow-2xl">
+                    <h1 className="text-white text-5xl md:text-7xl lg:text-8xl font-light tracking-tight mb-8 drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
                         Reimagine Your <br />
-                        <span className="font-semibold bg-gradient-to-r from-white via-emerald-200 to-emerald-400 bg-clip-text text-transparent">
+                        <span className="font-semibold text-white mt-1 block drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
                             Outdoor World
                         </span>
                     </h1>
 
-                    <p className="text-white/90 text-lg md:text-xl font-light tracking-wide max-w-2xl leading-relaxed drop-shadow-lg mb-12">
+                    <p className="text-white/90 text-lg md:text-xl font-light tracking-wide max-w-2xl leading-relaxed drop-shadow-md mb-12">
                         Upload a photo and watch as advanced AI transforms your yard into a sustainable,
                         breathtaking landscape in seconds.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex flex-col sm:flex-row gap-5">
                         <button
                             onClick={onGetStarted}
-                            className="px-10 py-4 bg-emerald-500 hover:bg-emerald-400 text-black text-sm uppercase tracking-widest font-bold transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(16,185,129,0.4)] rounded-sm"
+                            className="group relative px-9 py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-sm uppercase tracking-[0.15em] font-semibold transition-all duration-300 shadow-[0_10px_30px_rgba(5,150,105,0.3)] hover:shadow-[0_20px_40px_rgba(5,150,105,0.4)] hover:-translate-y-1 rounded-full overflow-hidden border border-emerald-500/50"
                         >
-                            Design My Yard
+                            <span className="relative z-10">Design My Yard</span>
+                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </button>
                         <button
                             onClick={onDesignerSignup}
-                            className="px-10 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border border-white/30 text-sm uppercase tracking-widest font-semibold transition-all duration-300 rounded-sm"
+                            className="px-9 py-4 bg-white/5 hover:bg-white/10 backdrop-blur-md text-white border border-white/20 hover:border-white/40 text-sm uppercase tracking-[0.15em] font-medium transition-all duration-300 hover:-translate-y-1 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.1)]"
                         >
                             Are you a professional?
                         </button>
