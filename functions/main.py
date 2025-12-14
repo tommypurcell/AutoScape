@@ -108,14 +108,16 @@ def generate_transformation_video(original_base64: str, redesign_base64: str, ap
 
 def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
     """
-    Generate video using Freepik (Simulated).
+    Generate video using Freepik (Mock with reliable video source).
+    For demo purposes, returns a simple working video.
     """
-    time.sleep(3) # Simulate API latency
-    # Mock result for demo purposes - using a reliable CDN video
-    # This is a sample nature/garden video that's freely accessible
+    time.sleep(2)  # Simulate API latency
+    
+    # Use a simple test video that's publicly accessible (Internet Archive)
+    # This is a short nature clip that should work anywhere
     return {
         "status": "completed",
-        "video_url": "https://cdn.pixabay.com/video/2020/10/30/54458-476090704_large.mp4",  # Garden/nature video
+        "video_url": "https://ia800501.us.archive.org/10/items/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4",
         "provider": "freepik"
     }
 

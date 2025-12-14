@@ -64,7 +64,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
     // State variables
     const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare' | 'video'>('compare');
-    const [videoTab, setVideoTab] = useState<'gemini' | 'freepik'>('gemini');
+    const [videoTab, setVideoTab] = useState<'gemini' | 'freepik'>('freepik');
     const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
     const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
     const [videoUrl, setVideoUrl] = useState<string | null>(existingVideoUrl || null); // Keep for backward compat/primary display
@@ -714,21 +714,21 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                 <div className="flex">
                                     <button onClick={() => setActiveTab('original')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${activeTab === 'original' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
                                         original
-                                        {activeTab === 'original' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
+                                        {activeTab === 'original' && <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-500" />}
                                     </button>
                                     <button onClick={() => setActiveTab('render')} className={`flex-1 py-3 text-sm font-medium transition-colors relative border-l border-slate-100 ${activeTab === 'render' || activeTab === 'compare' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
                                         Render
-                                        {(activeTab === 'render' || activeTab === 'compare') && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
+                                        {(activeTab === 'render' || activeTab === 'compare') && <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-500" />}
                                     </button>
                                 </div>
                             </div>
                             <button onClick={() => setActiveTab('plan')} className={`flex-1 py-4 text-sm font-medium transition-colors relative border-r border-slate-100 ${activeTab === 'plan' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
                                 2D Plan
-                                {activeTab === 'plan' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
+                                {activeTab === 'plan' && <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-500" />}
                             </button>
                             <button onClick={() => setActiveTab('video')} className={`flex-1 py-4 text-sm font-medium transition-colors relative ${activeTab === 'video' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
                                 Video
-                                {activeTab === 'video' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
+                                {activeTab === 'video' && <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-500" />}
                             </button>
                         </div>
 
@@ -862,23 +862,23 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                         {/* Tabs Header */}
                                         <div className="flex border-b border-slate-200 mb-0">
                                             <button
-                                                onClick={() => setVideoTab('gemini')}
-                                                className={`flex-1 py-3 text-sm font-bold transition-colors relative rounded-t-lg flex items-center justify-center gap-2 ${videoTab === 'gemini' ? 'bg-green-50 text-green-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
-                                            >
-                                                {geminiVideoUrl ? 'Gemini Video Ready' : 'Gemini (High Quality)'}
-                                                {videoTab === 'gemini' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />}
-                                            </button>
-                                            <button
                                                 onClick={() => setVideoTab('freepik')}
                                                 className={`flex-1 py-3 text-sm font-bold transition-colors relative rounded-t-lg flex items-center justify-center gap-2 ${videoTab === 'freepik' ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
                                             >
                                                 {freepikVideoUrl ? 'Freepik Video Ready' : 'Freepik (Fast)'}
-                                                {videoTab === 'freepik' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
+                                                {videoTab === 'freepik' && <div className="absolute bottom-0 left-0 right-0 h-px bg-blue-500" />}
+                                            </button>
+                                            <button
+                                                onClick={() => setVideoTab('gemini')}
+                                                className={`flex-1 py-3 text-sm font-bold transition-colors relative rounded-t-lg flex items-center justify-center gap-2 ${videoTab === 'gemini' ? 'bg-green-50 text-green-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+                                            >
+                                                {geminiVideoUrl ? 'Gemini Video Ready' : 'Gemini (High Quality)'}
+                                                {videoTab === 'gemini' && <div className="absolute bottom-0 left-0 right-0 h-px bg-green-500" />}
                                             </button>
                                         </div>
 
                                         {/* Tab Content */}
-                                        <div className="bg-slate-50 rounded-b-xl border border-t-0 border-slate-200 p-1 min-h-[300px] flex flex-col justify-center">
+                                        <div className="bg-slate-50 rounded-b-xl border border-t-0 border-slate-200 py-px px-1 min-h-[300px] flex flex-col justify-center">
                                             {/* Error Message */}
                                             {videoError && <p className="text-red-500 text-center font-medium bg-red-50 p-2 rounded mb-2 mx-4">{videoError}</p>}
 
@@ -982,13 +982,13 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                     {result.estimates.totalCost > 0 && (
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                             <div className="flex border-b border-slate-100">
-                                <button onClick={() => setCostViewTab('materials')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${costViewTab === 'materials' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
+                                <button onClick={() => setCostViewTab('materials')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${costViewTab === 'materials' ? 'text-white bg-emerald-600' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'}`}>
                                     Material List & Estimates
-                                    {costViewTab === 'materials' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
+                                    {costViewTab === 'materials' && <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-700" />}
                                 </button>
-                                <button onClick={() => setCostViewTab('distribution')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${costViewTab === 'distribution' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
+                                <button onClick={() => setCostViewTab('distribution')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${costViewTab === 'distribution' ? 'text-white bg-emerald-600' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'}`}>
                                     Cost Distribution
-                                    {costViewTab === 'distribution' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
+                                    {costViewTab === 'distribution' && <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-700" />}
                                 </button>
                             </div>
 
@@ -1112,7 +1112,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                     item.item.toLowerCase().includes('flower');
 
                                 return (
-                                    <div key={`rag-${index}`} className="group">
+                                    <div key={`rag-${index}`} className="group cursor-pointer" onClick={() => setSelectedPlant(item)}>
                                         <div className={`relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 ${isPlant ? 'group-hover:border-emerald-400' : 'group-hover:border-blue-400'} group-hover:shadow-md transition-all`}>
                                             {item.image_url ? (
                                                 <img src={item.image_url} alt={item.match || item.item} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
@@ -1153,7 +1153,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                     : `https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' live plant')}&i=lawngarden`;
 
                                 return (
-                                    <div key={`plant-${index}`} className="group">
+                                    <div key={`plant-${index}`} className="group cursor-pointer" onClick={() => setSelectedPlant(plant)}>
                                         <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-emerald-400 group-hover:shadow-md transition-all">
                                             {plant.image_url ? (
                                                 <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />

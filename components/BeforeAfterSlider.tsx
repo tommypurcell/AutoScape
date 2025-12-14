@@ -20,26 +20,26 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
         itemOne={
           <div className="relative w-full h-full">
             <ReactCompareSliderImage
-              src={beforeImage}
-              alt={beforeLabel}
+              src={afterImage}
+              alt={afterLabel}
               style={{ objectFit: 'cover', width: '100%', height: '100%' }}
             />
-            {/* Before Label */}
-            <div className="absolute top-4 left-4 bg-slate-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-lg z-10">
-              {beforeLabel}
+            {/* After Label - now on left */}
+            <div className="absolute top-4 left-4 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-lg z-10">
+              {afterLabel}
             </div>
           </div>
         }
         itemTwo={
           <div className="relative w-full h-full">
             <ReactCompareSliderImage
-              src={afterImage}
-              alt={afterLabel}
+              src={beforeImage}
+              alt={beforeLabel}
               style={{ objectFit: 'cover', width: '100%', height: '100%' }}
             />
-            {/* After Label */}
-            <div className="absolute top-4 right-4 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-lg z-10">
-              {afterLabel}
+            {/* Before Label - now on right */}
+            <div className="absolute top-4 right-4 bg-slate-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-lg z-10">
+              {beforeLabel}
             </div>
           </div>
         }
