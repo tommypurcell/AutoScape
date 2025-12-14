@@ -76,16 +76,15 @@ def generate_transformation_video(
             mime_type="image/png"
         )
         
-        # Prompt for smooth before→after transformation with slow horizontal pan
-        prompt = """Cinematic landscape transformation video.
-        Camera slowly pans horizontally from left to right.
-        NO ZOOM - keep the exact same scale and framing throughout.
-        No change in camera height or distance, only horizontal panning movement.
-        The scene smoothly morphs and transitions from before state to after state.
-        Maintain consistent lighting throughout.
-        High quality, photorealistic, 4K resolution.
-        Smooth, gradual, elegant transition.
-        Silent video."""
+        # Prompt for natural, simple before→after transition
+        prompt = """Simple video interpolation between two landscape images.
+        Natural, subtle transition from the first frame to the last frame.
+        No dramatic effects or exaggeration.
+        Keep everything realistic and grounded.
+        Slight slow camera pan from left to right.
+        Same scale, same framing, same perspective.
+        Photorealistic quality.
+        Silent."""
         
         logger.info("🎬 Initiating video generation with Veo 3.1...")
         logger.info(f"   Prompt: {prompt[:100]}...")
