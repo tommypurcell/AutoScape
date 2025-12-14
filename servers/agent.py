@@ -75,7 +75,7 @@ class AdGenerationAgent:
         freepik_api_key: str,
         collection_name: str = "shopping-queries-images",
         text_model: str = "Qdrant/clip-ViT-B-32-text",
-        gemini_model: str = "gemini-2.0-flash-exp",
+        gemini_model: str = "gemini-3.0-flash-image",
         freepik_model: str = "text-to-image",
     ):
         """Initialize the agent with API credentials and model configurations."""
@@ -896,7 +896,7 @@ Be specific about what products, objects, or text you can see in the image."""
             
             # Call Gemini with vision
             response = self.gemini_client.models.generate_content(
-                model="gemini-2.0-flash-exp",
+                model="gemini-3.0-flash-image",
                 contents=[image_part, verification_prompt],
                 config={
                     "temperature": 0.1,

@@ -59,7 +59,7 @@ class FreepikLandscapingAgent:
         if gemini_key and genai:
             genai.configure(api_key=gemini_key)
             self.gemini_model = genai.GenerativeModel("gemini-2.0-flash")
-            self.image_gen_model = genai.GenerativeModel("gemini-2.0-flash-exp-image-generation")
+            self.image_gen_model = genai.GenerativeModel("gemini-3.0-flash-image")
             logger.info("✅ Gemini initialized")
         else:
             self.gemini_model = None
