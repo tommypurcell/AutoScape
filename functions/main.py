@@ -133,25 +133,29 @@ def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
             "x-freepik-api-key": api_key
         }
         
-        # Convert base64 to data URL for Freepik
-        redesign_data_url = f"data:image/png;base64,{redesign_base64}"
-        
+        # Freepik expects raw base64 string, not data URL
         # Create video generation request with slow, natural transition
         payload = {
-            "image": redesign_data_url,
+            "image": redesign_base64,  # Send raw base64 string
             "prompt": "Very slow and gentle camera pan from left to right. Natural, gradual transformation. No dramatic effects, no exaggeration. Realistic and subtle changes. Photorealistic quality. 5 seconds.",
-            "duration": 5,
+            "duration": "5",  # Must be string '5' or '10'
             "cfg_scale": 0.5,  # Lower value for more natural results
             "negative_prompt": "sudden changes, dramatic effects, exaggeration, unrealistic, artificial"
         }
         
         # Create generation task
         print(f"🎬 Creating Freepik video generation task...")
+        print(f"📤 Request payload: {payload}")
         response = requests.post(create_url, json=payload, headers=headers, timeout=30)
+        
+        # Log response for debugging
+        print(f"📥 Response status: {response.status_code}")
+        print(f"📥 Response body: {response.text[:500]}")
+        
         response.raise_for_status()
         task_data = response.json()
         
-        task_id = task_data.get('data', {}).get('id')
+        task_id = task_data.get('data', {}).get('task_id')  # Freepik returns 'task_id' not 'id'
         if not task_id:
             raise Exception(f"No task ID returned: {task_data}")
         
@@ -174,8 +178,15 @@ def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
             task_status = status_data.get('data', {}).get('status')
             print(f"⏳ Task status: {task_status} (elapsed: {elapsed}s)")
             
-            if task_status == 'completed':
-                video_url = status_data.get('data', {}).get('video_url')
+            if task_status and task_status.upper() == 'COMPLETED':
+                # Log full response to debug
+                print(f"📦 Full completed response: {status_data}")
+                
+                # Try different field names for video URL
+                video_url = (status_data.get('data', {}).get('video_url') or 
+                            status_data.get('data', {}).get('generated', [{}])[0].get('url') or
+                            status_data.get('data', {}).get('result', {}).get('url'))
+                
                 if video_url:
                     print(f"✅ Video generation completed: {video_url[:50]}...")
                     return {
@@ -184,9 +195,9 @@ def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
                         "provider": "freepik"
                     }
                 else:
-                    raise Exception("No video URL in completed task")
+                    raise Exception(f"No video URL in completed task. Response: {status_data}")
             
-            elif task_status == 'failed':
+            elif task_status and task_status.upper() == 'FAILED':
                 error_msg = status_data.get('data', {}).get('error', 'Unknown error')
                 raise Exception(f"Video generation failed: {error_msg}")
         
