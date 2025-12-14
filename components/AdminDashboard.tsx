@@ -18,7 +18,7 @@ const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
 
 export const AdminDashboard: React.FC = () => {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'gallery' | 'pros'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'gallery' | 'pros' | 'backlog'>('overview');
     const [users, setUsers] = useState<UserData[]>([]);
     const [designs, setDesigns] = useState<SavedDesign[]>([]);
     const [designers, setDesigners] = useState<DesignerProfile[]>([]);
@@ -207,6 +207,16 @@ export const AdminDashboard: React.FC = () => {
                             }`}
                     >
                         <Briefcase className="w-4 h-4" /> Professionals
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('backlog')}
+                        className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${activeTab === 'backlog' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                            }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        Features & Backlog
                     </button>
                 </div>
 
@@ -529,6 +539,175 @@ export const AdminDashboard: React.FC = () => {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                        )}
+
+                        {/* FEATURES & BACKLOG TAB */}
+                        {activeTab === 'backlog' && (
+                            <div className="space-y-6">
+                                {/* Current Features */}
+                                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                                        Current Active Features
+                                    </h3>
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
+                                            <h4 className="font-semibold text-emerald-900 mb-2">🎨 Design Generation</h4>
+                                            <ul className="space-y-1 text-sm text-emerald-700">
+                                                <li>• AI-powered landscape design using Gemini 2.0</li>
+                                                <li>• Style analysis and customization</li>
+                                                <li>• Before/after comparison slider</li>
+                                                <li>• Multiple design variations</li>
+                                            </ul>
+                                        </div>
+                                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                            <h4 className="font-semibold text-blue-900 mb-2">🎥 Video Generation</h4>
+                                            <ul className="space-y-1 text-sm text-blue-700">
+                                                <li>• Gemini Veo 3.1 (High Quality, 5s)</li>
+                                                <li>• Freepik Kling v2 (Fast, 5s)</li>
+                                                <li>• Before→After transition with camera pan</li>
+                                                <li>• Smooth, natural animations</li>
+                                            </ul>
+                                        </div>
+                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                                            <h4 className="font-semibold text-purple-900 mb-2">💰 Cost Estimation</h4>
+                                            <ul className="space-y-1 text-sm text-purple-700">
+                                                <li>• RAG-based material pricing</li>
+                                                <li>• Plant palette with detailed items</li>
+                                                <li>• Cost distribution breakdown</li>
+                                                <li>• Budget tracking and history</li>
+                                            </ul>
+                                        </div>
+                                        <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
+                                            <h4 className="font-semibold text-orange-900 mb-2">👤 User Management</h4>
+                                            <ul className="space-y-1 text-sm text-orange-700">
+                                                <li>• Firebase authentication (Google, Email)</li>
+                                                <li>• Design save and history</li>
+                                                <li>• Community gallery (public designs)</li>
+                                                <li>• Designer onboarding & profiles</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Recently Completed */}
+                                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        Recently Completed
+                                    </h3>
+                                    <div className="space-y-2">
+                                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                            <div className="text-green-600 mt-0.5">✓</div>
+                                            <div>
+                                                <div className="font-medium text-slate-900">Auth Modal X Button</div>
+                                                <div className="text-sm text-slate-600">Added cancel button to sign in/up modal</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                            <div className="text-green-600 mt-0.5">✓</div>
+                                            <div>
+                                                <div className="font-medium text-slate-900">Sign Out Button</div>
+                                                <div className="text-sm text-slate-600">Replaced settings icon with sign out in sidebar</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                            <div className="text-green-600 mt-0.5">✓</div>
+                                            <div>
+                                                <div className="font-medium text-slate-900">Video Before→After Transition</div>
+                                                <div className="text-sm text-slate-600">Composite image showing transformation from original to redesign</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                            <div className="text-green-600 mt-0.5">✓</div>
+                                            <div>
+                                                <div className="font-medium text-slate-900">Gallery Budget Display</div>
+                                                <div className="text-sm text-slate-600">Fixed budget extraction from design data</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                            <div className="text-green-600 mt-0.5">✓</div>
+                                            <div>
+                                                <div className="font-medium text-slate-900">AI Disclaimer Footer</div>
+                                                <div className="text-sm text-slate-600">Added Google Gemini usage disclaimer in footer</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Known Issues */}
+                                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                        Known Issues & Limitations
+                                    </h3>
+                                    <div className="space-y-2">
+                                        <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                                            <div className="text-yellow-600 mt-0.5">⚠️</div>
+                                            <div>
+                                                <div className="font-medium text-yellow-900">Freepik API Rate Limits</div>
+                                                <div className="text-sm text-yellow-700">Video generation may hit quota limits (429 error)</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                                            <div className="text-yellow-600 mt-0.5">⚠️</div>
+                                            <div>
+                                                <div className="font-medium text-yellow-900">DesignerOnboarding.tsx Warning</div>
+                                                <div className="text-sm text-yellow-700">Duplicate case 1: clause at line 95 (non-blocking)</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                                            <div className="text-yellow-600 mt-0.5">⚠️</div>
+                                            <div>
+                                                <div className="font-medium text-yellow-900">Large Bundle Size</div>
+                                                <div className="text-sm text-yellow-700">1.6MB bundle (420KB gzipped) - consider code splitting</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* API Keys Status */}
+                                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        API Integration Status
+                                    </h3>
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                <h4 className="font-semibold text-green-900">Gemini API</h4>
+                                            </div>
+                                            <p className="text-sm text-green-700">Status: <span className="font-medium">Active</span></p>
+                                            <p className="text-xs text-green-600 mt-1">Model: gemini-2.0-flash-exp & veo-3.1</p>
+                                        </div>
+                                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                <h4 className="font-semibold text-blue-900">Freepik API</h4>
+                                            </div>
+                                            <p className="text-sm text-blue-700">Status: <span className="font-medium">Active</span></p>
+                                            <p className="text-xs text-blue-600 mt-1">Model: kling-v2 (image-to-video)</p>
+                                        </div>
+                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                                <h4 className="font-semibold text-purple-900">Firebase</h4>
+                                            </div>
+                                            <p className="text-sm text-purple-700">Status: <span className="font-medium">Active</span></p>
+                                            <p className="text-xs text-purple-600 mt-1">Auth, Firestore, Storage, Hosting, Functions</p>
+                                        </div>
+                                        <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                                <h4 className="font-semibold text-orange-900">RAG API</h4>
+                                            </div>
+                                            <p className="text-sm text-orange-700">Status: <span className="font-medium">Active</span></p>
+                                            <p className="text-xs text-orange-600 mt-1">Plant catalog & budget estimation</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </>
