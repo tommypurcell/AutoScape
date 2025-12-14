@@ -161,7 +161,6 @@ def generate_gemini_video(original_base64: str, redesign_base64: str, api_key: s
             image=first_frame,
             config=types.GenerateVideosConfig(
                 last_frame=last_frame,
-                duration=5,  # 5 seconds
             ),
         )
         
