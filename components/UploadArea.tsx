@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
+import { validateImageContent } from '../services/geminiService';
 
 interface UploadAreaProps {
   label: string;
@@ -22,16 +23,43 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
   onClear
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleClick = () => {
     fileInputRef.current?.click();
   };
 
+  const validateAndProcessFiles = async (files: File[]) => {
+    setValidationError(null);
+    setIsValidating(true);
+
+    try {
+      // Validate the first/main image (for yard photos)
+      const mainFile = files[0];
+      if (mainFile && label.toLowerCase().includes('yard')) {
+        const validation = await validateImageContent(mainFile);
+
+        if (!validation.isValid) {
+          setValidationError(validation.message || "Please upload an image of your outdoor space, yard, or garden.");
+          setIsValidating(false);
+          return;
+        }
+      }
+
+      // All valid, proceed with upload
+      onFileSelect(files);
+    } catch (error) {
+      console.warn("Validation error, proceeding anyway:", error);
+      onFileSelect(files);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      // For multiple, we might append in parent, but here we just emit the new selection
-      onFileSelect(Array.from(e.target.files));
-      // Reset input so same file can be selected again if needed
+      validateAndProcessFiles(Array.from(e.target.files));
       e.target.value = '';
     }
   };
@@ -40,7 +68,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
     e.preventDefault();
     e.stopPropagation();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      onFileSelect(Array.from(e.dataTransfer.files));
+      validateAndProcessFiles(Array.from(e.dataTransfer.files));
     }
   };
 
@@ -53,9 +81,30 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
 
   return (
     <div className="space-y-3">
+      {/* Validation Error Alert */}
+      {validationError && (
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          <div>
+            <p className="font-medium">Invalid Image</p>
+            <p className="text-sm mt-1">{validationError}</p>
+          </div>
+          <button
+            onClick={() => setValidationError(null)}
+            className="ml-auto text-red-500 hover:text-red-700"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       <div
         className={`relative group cursor-pointer border-2 border-dashed rounded-xl transition-all duration-200 ease-in-out overflow-hidden h-64
-          ${hasPreviews ? 'border-emerald-500/50 bg-slate-50' : 'border-slate-300 hover:border-emerald-400 hover:bg-slate-50'}
+          ${isValidating ? 'border-blue-400 bg-blue-50' : hasPreviews ? 'border-emerald-500/50 bg-slate-50' : 'border-slate-300 hover:border-emerald-400 hover:bg-slate-50'}
         `}
         onClick={handleClick}
         onDrop={handleDrop}
@@ -70,14 +119,23 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
           className="hidden"
         />
 
+        {/* Validating Overlay */}
+        {isValidating && (
+          <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-10">
+            <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+            <p className="text-blue-600 font-medium">Checking image...</p>
+            <p className="text-sm text-blue-500 mt-1">Verifying this is an outdoor space</p>
+          </div>
+        )}
+
         {hasPreviews ? (
           <div className="w-full h-full p-4 overflow-y-auto custom-scrollbar">
-            <div className={`grid gap-2 ${previewUrls.length === 1 ? 'grid-cols-1 h-full' : 'grid-cols-2'}`}>
+            <div className={`grid gap-2 ${previewUrls.length === 1 ? 'grid-cols-1 h-full' : 'grid-cols-2'} `}>
               {previewUrls.map((url, idx) => (
-                <div key={idx} className={`relative rounded-lg overflow-hidden border border-slate-200 shadow-sm ${previewUrls.length === 1 ? 'h-full' : 'aspect-square'}`}>
+                <div key={idx} className={`relative rounded-lg overflow-hidden border border-slate-200 shadow-sm ${previewUrls.length === 1 ? 'h-full' : 'aspect-square'} `}>
                   <img
                     src={url}
-                    alt={`Preview ${idx + 1}`}
+                    alt={`Preview ${idx + 1} `}
                     className="w-full h-full object-cover"
                   />
                   {multiple && (

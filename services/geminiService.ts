@@ -69,6 +69,88 @@ const retryOperation = async <T>(
   throw lastError;
 };
 
+// Validate if uploaded image is appropriate for landscape design
+export interface ImageValidationResult {
+  isValid: boolean;
+  message: string;
+  imageType?: string;
+}
+
+export const validateImageContent = async (
+  file: File
+): Promise<ImageValidationResult> => {
+  if (!GEMINI_API_KEY) {
+    // If no API key, skip validation
+    return { isValid: true, message: "Validation skipped" };
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const base64 = await fileToGenericBase64(file);
+
+    const validationPrompt = `Analyze this image and determine if it's appropriate for landscape design.
+
+VALID images include:
+- Outdoor yards, gardens, lawns
+- Patios, decks, outdoor living spaces
+- Front or back yards
+- Driveways, pathways
+- Empty outdoor spaces
+- Landscapes, outdoor areas
+
+INVALID images include:
+- Human faces or portraits
+- Selfies
+- Indoor rooms (living rooms, bedrooms, kitchens)
+- Screenshots, documents, text
+- Animals close-ups
+- Food
+- Completely unrelated content
+
+Respond with ONLY a JSON object in this exact format:
+{"isValid": true/false, "imageType": "brief description of what the image shows", "message": "explanation if invalid"}
+
+If valid, message should be empty string. If invalid, message should politely explain what's wrong.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: file.type || "image/jpeg", data: base64 } },
+            { text: validationPrompt }
+          ]
+        }
+      ],
+      config: {
+        temperature: 0.1,
+        maxOutputTokens: 200
+      }
+    });
+
+    const text = response.text || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+    if (jsonMatch) {
+      const result = JSON.parse(jsonMatch[0]);
+      return {
+        isValid: result.isValid === true,
+        message: result.message || "",
+        imageType: result.imageType
+      };
+    }
+
+    // Default to valid if parsing fails
+    return { isValid: true, message: "" };
+  } catch (error) {
+    console.warn("Image validation failed, allowing upload:", error);
+    // On error, allow the upload
+    return { isValid: true, message: "" };
+  }
+};
+
+
 export const generateLandscapeDesign = async (
   yardFile: File,
   styleFiles: File[],
