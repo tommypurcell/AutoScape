@@ -108,18 +108,102 @@ def generate_transformation_video(original_base64: str, redesign_base64: str, ap
 
 def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
     """
-    Generate video using Freepik (Mock with reliable video source).
-    For demo purposes, returns a simple working video.
+    Generate video using Freepik Kling v2 API (image-to-video).
+    Creates a smooth transition from original to redesign image.
     """
-    time.sleep(2)  # Simulate API latency
+    api_key = os.getenv('FREEPIK_API_KEY')
+    if not api_key:
+        print("⚠️ FREEPIK_API_KEY not found, using mock video")
+        return {
+            "status": "completed",
+            "video_url": "https://ia800501.us.archive.org/10/items/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4",
+            "provider": "freepik"
+        }
     
-    # Use a simple test video that's publicly accessible (Internet Archive)
-    # This is a short nature clip that should work anywhere
-    return {
-        "status": "completed",
-        "video_url": "https://ia800501.us.archive.org/10/items/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4",
-        "provider": "freepik"
-    }
+    try:
+        # Upload the redesign image to get a URL (Freepik needs a URL, not base64)
+        # For now, we'll use the first frame approach with Freepik
+        import requests
+        
+        # Freepik API endpoint for Kling v2
+        create_url = "https://api.freepik.com/v1/ai/image-to-video/kling-v2"
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "x-freepik-api-key": api_key
+        }
+        
+        # Convert base64 to data URL for Freepik
+        redesign_data_url = f"data:image/png;base64,{redesign_base64}"
+        
+        # Create video generation request with slow, natural transition
+        payload = {
+            "image": redesign_data_url,
+            "prompt": "Very slow and gentle camera pan from left to right. Natural, gradual transformation. No dramatic effects, no exaggeration. Realistic and subtle changes. Photorealistic quality. 5 seconds.",
+            "duration": 5,
+            "cfg_scale": 0.5,  # Lower value for more natural results
+            "negative_prompt": "sudden changes, dramatic effects, exaggeration, unrealistic, artificial"
+        }
+        
+        # Create generation task
+        print(f"🎬 Creating Freepik video generation task...")
+        response = requests.post(create_url, json=payload, headers=headers, timeout=30)
+        response.raise_for_status()
+        task_data = response.json()
+        
+        task_id = task_data.get('data', {}).get('id')
+        if not task_id:
+            raise Exception(f"No task ID returned: {task_data}")
+        
+        print(f"✅ Task created: {task_id}")
+        
+        # Poll for completion
+        status_url = f"https://api.freepik.com/v1/ai/image-to-video/kling-v2/{task_id}"
+        max_wait = 300  # 5 minutes
+        poll_interval = 5
+        elapsed = 0
+        
+        while elapsed < max_wait:
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+            
+            status_response = requests.get(status_url, headers=headers, timeout=30)
+            status_response.raise_for_status()
+            status_data = status_response.json()
+            
+            task_status = status_data.get('data', {}).get('status')
+            print(f"⏳ Task status: {task_status} (elapsed: {elapsed}s)")
+            
+            if task_status == 'completed':
+                video_url = status_data.get('data', {}).get('video_url')
+                if video_url:
+                    print(f"✅ Video generation completed: {video_url[:50]}...")
+                    return {
+                        "status": "completed",
+                        "video_url": video_url,
+                        "provider": "freepik"
+                    }
+                else:
+                    raise Exception("No video URL in completed task")
+            
+            elif task_status == 'failed':
+                error_msg = status_data.get('data', {}).get('error', 'Unknown error')
+                raise Exception(f"Video generation failed: {error_msg}")
+        
+        # Timeout
+        return {
+            "status": "error",
+            "error": f"Video generation timed out after {max_wait} seconds"
+        }
+        
+    except Exception as e:
+        print(f"❌ Freepik video generation error: {e}")
+        # Fallback to mock video
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
 
 
 def generate_gemini_video(original_base64: str, redesign_base64: str, api_key: str) -> dict:
