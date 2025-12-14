@@ -780,3 +780,27 @@ export const getAllDesignsAdmin = async (): Promise<SavedDesign[]> => {
         return [];
     }
 };
+
+/**
+ * Delete design (Admin)
+ */
+export const deleteDesignAdmin = async (designId: string): Promise<void> => {
+    try {
+        await deleteDoc(doc(db, 'designs', designId));
+    } catch (error) {
+        console.error('Error deleting design:', error);
+        throw error;
+    }
+};
+
+/**
+ * Update designer verification status (Admin)
+ */
+export const updateDesignerVerification = async (designerId: string, isVerified: boolean): Promise<void> => {
+    try {
+        await updateDoc(doc(db, 'designers', designerId), { isVerified });
+    } catch (error) {
+        console.error('Error updating verification:', error);
+        throw error;
+    }
+};

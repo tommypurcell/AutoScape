@@ -9,9 +9,12 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { syncUser } from '../services/firestoreService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface AuthContextType {
     user: User | null;
+    userRole: 'user' | 'admin' | 'pro' | null;
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
     signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -31,16 +34,31 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [userRole, setUserRole] = useState<'user' | 'admin' | 'pro' | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user);
-            setLoading(false);
             if (user) {
                 // Sync user data to Firestore
-                syncUser(user).catch(err => console.error("Failed to sync user:", err));
+                await syncUser(user).catch(err => console.error("Failed to sync user:", err));
+                // Fetch user role
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', user.uid));
+                    if (userDoc.exists()) {
+                        setUserRole(userDoc.data().role || 'user');
+                    } else {
+                        setUserRole('user');
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch user role:", err);
+                    setUserRole('user');
+                }
+            } else {
+                setUserRole(null);
             }
+            setLoading(false);
         });
 
         return unsubscribe;
@@ -64,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const value = {
         user,
+        userRole,
         loading,
         signInWithGoogle,
         signInWithEmail,
