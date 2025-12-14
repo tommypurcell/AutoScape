@@ -123,7 +123,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     {/* "Before" Image (Base) */}
                     <div className="absolute inset-0">
                         <img
-                            src="/demo_clips/before-yard.jpg"
+                            src="/demo_clips/autoscape_hero_original.png"
                             onError={(e) => e.currentTarget.src = getStyleImage(DesignStyle.MODERN)}
                             className="w-full h-full object-cover grayscale-[30%]"
                             alt="Original Yard"
@@ -137,7 +137,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                         style={{ animationIterationCount: '1' }}
                     >
                         <img
-                            src="/demo_clips/after-yard.webp"
+                            src="/demo_clips/autoscape_hero_gen.png"
                             onError={(e) => e.currentTarget.src = getStyleImage(DesignStyle.TROPICAL)}
                             className="absolute inset-0 w-screen max-w-none h-full object-cover"
                             alt="Designed Yard"
