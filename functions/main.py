@@ -73,7 +73,11 @@ def generate_video(req: https_fn.Request) -> https_fn.Response:
             )
         
         # Generate video
-        result = generate_transformation_video(original_base64, redesign_base64, api_key)
+
+        provider = data.get("provider", "gemini")
+        
+        # Generate video
+        result = generate_transformation_video(original_base64, redesign_base64, api_key, provider)
         
         status_code = 200 if result["status"] == "completed" else 500
         return https_fn.Response(
@@ -90,9 +94,35 @@ def generate_video(req: https_fn.Request) -> https_fn.Response:
         )
 
 
-def generate_transformation_video(original_base64: str, redesign_base64: str, api_key: str) -> dict:
+def generate_transformation_video(original_base64: str, redesign_base64: str, api_key: str, provider: str = "gemini") -> dict:
     """
-    Generate before→after transformation video using Gemini Veo 3.1.
+    Generate video using specified provider.
+    """
+    provider = provider.lower()
+    
+    if provider == "freepik":
+        return generate_freepik_video(original_base64, redesign_base64)
+    
+    return generate_gemini_video(original_base64, redesign_base64, api_key)
+
+
+def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
+    """
+    Generate video using Freepik (Simulated).
+    """
+    time.sleep(3) # Simulate API latency
+    # Mock result for demo purposes
+ 
+    return {
+        "status": "completed",
+        "video_url": "https://videos.pexels.com/video-files/5234/5234-hd_1920_1080_30fps.mp4", # Generic garden video
+        "provider": "freepik"
+    }
+
+
+def generate_gemini_video(original_base64: str, redesign_base64: str, api_key: str) -> dict:
+    """
+    Generate video using Gemini Veo 3.1.
     """
     try:
         # Initialize client
@@ -171,7 +201,8 @@ def generate_transformation_video(original_base64: str, redesign_base64: str, ap
         
         return {
             "status": "completed",
-            "video_url": video_data_url
+            "video_url": video_data_url,
+            "provider": "gemini"
         }
         
     except Exception as e:

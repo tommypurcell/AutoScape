@@ -63,7 +63,10 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const [activeTab, setActiveTab] = useState<'original' | 'render' | 'plan' | 'compare' | 'video'>('compare');
     const [currentRenderIndex, setCurrentRenderIndex] = useState(0);
     const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-    const [videoUrl, setVideoUrl] = useState<string | null>(existingVideoUrl || null);
+    const [videoUrl, setVideoUrl] = useState<string | null>(existingVideoUrl || null); // Keep for backward compat/primary display
+    const [geminiVideoUrl, setGeminiVideoUrl] = useState<string | null>(existingVideoUrl || null);
+    const [freepikVideoUrl, setFreepikVideoUrl] = useState<string | null>(null);
+    const [generatingProvider, setGeneratingProvider] = useState<'gemini' | 'freepik' | null>(null);
     const [videoError, setVideoError] = useState<string | null>(null);
     const [ragBudget, setRagBudget] = useState<RAGBudget | null>(null);
     const [copied, setCopied] = useState(false);
@@ -435,9 +438,10 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         }
     };
 
-    const handleGenerateVideo = async () => {
+    const handleGenerateVideo = async (provider: 'gemini' | 'freepik' = 'gemini') => {
         if (!originalImage || !result.renderImages[currentRenderIndex]) return;
         setIsGeneratingVideo(true);
+        setGeneratingProvider(provider);
         setVideoError(null);
         try {
             // Helper function to convert URL to base64
@@ -446,11 +450,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                 if (url.startsWith('data:')) return url.split(',')[1];
 
                 try {
-                    // Try direct fetch first
-                    const response = await fetch(url, { mode: 'cors' });
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch ${imageName}: ${response.status}`);
-                    }
+                    const response = await fetch(url);
                     const blob = await response.blob();
                     return new Promise((resolve, reject) => {
                         const reader = new FileReader();
@@ -489,16 +489,12 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                 }
             };
 
-            console.log('Starting video generation...');
-            console.log('Original image URL:', originalImage?.substring(0, 100));
-            console.log('Render image URL:', result.renderImages[currentRenderIndex]?.substring(0, 100));
+            console.log(`Starting video generation (${provider})...`);
 
             const [originalBase64, redesignBase64] = await Promise.all([
                 getBase64(originalImage, 'original image'),
                 getBase64(result.renderImages[currentRenderIndex], 'rendered image')
             ]);
-
-            console.log('Base64 conversion complete. Original:', originalBase64?.length, 'chars, Render:', redesignBase64?.length, 'chars');
 
             // Use localhost for dev, direct Firebase Function URL for production
             const videoApiUrl = import.meta.env.DEV
@@ -508,52 +504,56 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             const response = await fetch(videoApiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ original_image: originalBase64, redesign_image: redesignBase64, duration: 5 }),
+                body: JSON.stringify({
+                    original_image: originalBase64,
+                    redesign_image: redesignBase64,
+                    duration: 5,
+                    provider: provider
+                }),
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail || 'Failed to generate video');
 
-            // Set the video URL immediately so user can view it
-            setVideoUrl(data.video_url);
+            // Set specific provider URL
+            if (provider === 'freepik') {
+                setFreepikVideoUrl(data.video_url);
+            } else {
+                setGeminiVideoUrl(data.video_url);
+                setVideoUrl(data.video_url); // Primary for backward compat
+            }
+
             setActiveTab('video');
 
             // Try to save the video to Firebase Storage if we have a design ID
             if (currentDesignId && user) {
                 setIsSavingVideo(true);
                 try {
-                    console.log('📹 Saving video to Firebase Storage...');
-                    const videoPath = `designs/${user.uid}/videos/${currentDesignId}_${Date.now()}.mp4`;
+                    console.log(`📹 Saving ${provider} video to Firebase Storage...`);
+                    const videoPath = `designs/${user.uid}/videos/${currentDesignId}_${provider}_${Date.now()}.mp4`;
                     const persistentVideoUrl = await uploadVideo(data.video_url, videoPath);
 
-                    // Update the design document with the video URL
-                    await updateDesignVideoUrl(currentDesignId, persistentVideoUrl);
-
                     // Update local state with persistent URL
-                    setVideoUrl(persistentVideoUrl);
+                    if (provider === 'freepik') {
+                        setFreepikVideoUrl(persistentVideoUrl);
+                    } else {
+                        setGeminiVideoUrl(persistentVideoUrl);
+                        setVideoUrl(persistentVideoUrl);
+                        // Only update main doc with Gemini video (primary)
+                        await updateDesignVideoUrl(currentDesignId, persistentVideoUrl);
+                    }
                     console.log('✅ Video saved to Firebase Storage');
                 } catch (saveError) {
                     console.error('Failed to save video to Firebase (video still available locally):', saveError);
-                    // Don't show error to user since video is still available locally
                 }
                 setIsSavingVideo(false);
-            } else if (!currentDesignId) {
-                console.log('ℹ️ Video generated but not saved (no design ID - save design first to persist video)');
             }
         } catch (err) {
             console.error('Video generation error:', err);
             const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-            // Provide more helpful error messages
-            if (errorMessage.includes('CORS') || errorMessage.includes('cross-origin')) {
-                setVideoError('Unable to access images due to CORS policy. Please ask the developer to configure Firebase Storage CORS settings.');
-            } else if (errorMessage.includes('Invalid') && errorMessage.includes('video URL')) {
-                setVideoError('Video generation service is temporarily unavailable. This may be due to API rate limits - please try again later.');
-            } else if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('daily limit')) {
-                setVideoError('Video generation daily limit reached. Please try again tomorrow or upgrade your plan.');
-            } else {
-                setVideoError(errorMessage);
-            }
+            setVideoError(errorMessage);
         } finally {
             setIsGeneratingVideo(false);
+            setGeneratingProvider(null);
         }
     };
 
@@ -638,11 +638,8 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                 });
                                 window.dispatchEvent(saveEvent);
                             }}
-                            className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-medium text-sm transition-all flex items-center gap-2 shadow-sm"
+                            className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-medium text-sm transition-all shadow-sm"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
                             Save Privately
                         </button>
 
@@ -658,11 +655,8 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                 });
                                 window.dispatchEvent(saveEvent);
                             }}
-                            className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-medium text-sm transition-all flex items-center gap-2 shadow-sm"
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-all shadow-sm"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
                             Share to Gallery
                         </button>
                         {/* Edit Design Button */}
@@ -671,11 +665,8 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                 setActiveTab('render');
                                 setIsImageEditMode(true);
                             }}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm"
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-colors shadow-sm"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
                             Edit Design
                         </button>
 
@@ -683,21 +674,15 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                         <button
                             disabled={isSaving}
                             onClick={handleShareLink}
-                            className={`px-4 py-2 border rounded-lg font-medium transition-all flex items-center gap-2 ${isSaving ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-wait' : 'bg-white border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 text-slate-700'}`}
+                            className={`px-4 py-2 border rounded-lg font-medium text-sm transition-all ${isSaving ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-wait' : 'bg-white border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 text-slate-700'}`}
                         >
-                            {isSaving ? (
-                                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                            ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                            )}
                             {isSaving ? 'Saving...' : copied ? 'Copied!' : currentShortId ? 'Copy link' : 'Share link'}
                         </button>
                         {/* Contact Designer Button */}
                         <button
                             onClick={() => setIsContactModalOpen(true)}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-all flex items-center gap-2"
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-all"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                             Contact Designer
                         </button>
                     </div>
@@ -860,40 +845,76 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                             <img src={result.planImage} alt="2D landscape plan" className="w-full h-full object-contain" />
                         )}
                         {activeTab === 'video' && (
-                            <div className="w-full h-full flex flex-col items-center justify-center p-8">
-                                {videoUrl ? (
-                                    <div className="relative w-full h-full flex flex-col items-center justify-center">
-                                        <video src={videoUrl} controls autoPlay loop className="max-w-full max-h-full rounded-lg shadow-lg" />
-                                        {isSavingVideo && (
-                                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-sm font-medium animate-pulse">
-                                                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                </svg>
-                                                Saving to cloud...
-                                            </div>
-                                        )}
-                                        {!isSavingVideo && videoUrl.startsWith('http') && (
-                                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-medium">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                Saved
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="text-center">
-                                        <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                        </div>
-                                        <h3 className="text-lg font-bold text-slate-800 mb-2">Generate Video Tour</h3>
-                                        <p className="text-slate-600 mb-4 text-sm">Create a cinematic video of your redesign</p>
-                                        <button onClick={handleGenerateVideo} disabled={isGeneratingVideo} className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50">
-                                            {isGeneratingVideo ? 'Generating...' : 'Generate Video'}
+                            <div className="w-full h-full flex flex-col items-center justify-start p-8 overflow-y-auto">
+                                <div className="max-w-4xl w-full space-y-8">
+
+                                    {/* Action Buttons */}
+                                    <div className="flex flex-wrap justify-center gap-4 mb-4">
+                                        <button
+                                            onClick={() => handleGenerateVideo('gemini')}
+                                            disabled={isGeneratingVideo && generatingProvider === 'gemini' || !!geminiVideoUrl}
+                                            className={`px-6 py-2 rounded-lg font-medium disabled:opacity-50 flex items-center gap-2 ${geminiVideoUrl ? 'bg-green-600 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
+                                        >
+                                            {isGeneratingVideo && generatingProvider === 'gemini' ? <Loader className="w-4 h-4 animate-spin" /> : null}
+                                            {geminiVideoUrl ? 'Gemini Video Ready' : 'Generate with Gemini (High Quality)'}
                                         </button>
-                                        {videoError && <p className="text-red-500 mt-2 text-sm">{videoError}</p>}
+                                        <button
+                                            onClick={() => handleGenerateVideo('freepik')}
+                                            disabled={isGeneratingVideo && generatingProvider === 'freepik' || !!freepikVideoUrl}
+                                            className={`px-6 py-2 rounded-lg font-medium disabled:opacity-50 flex items-center gap-2 ${freepikVideoUrl ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                                        >
+                                            {isGeneratingVideo && generatingProvider === 'freepik' ? <Loader className="w-4 h-4 animate-spin" /> : null}
+                                            {freepikVideoUrl ? 'Freepik Video Ready' : 'Generate with Freepik (Fast)'}
+                                        </button>
                                     </div>
-                                )}
+
+                                    {/* Error Message */}
+                                    {videoError && <p className="text-red-500 text-center font-medium bg-red-50 p-2 rounded">{videoError}</p>}
+
+                                    {/* Suggestion if one failed or missing */}
+                                    {(!geminiVideoUrl && freepikVideoUrl && !isGeneratingVideo) && (
+                                        <p className="text-slate-500 text-center text-sm">Want higher quality? Try generating with Gemini too.</p>
+                                    )}
+                                    {(geminiVideoUrl && !freepikVideoUrl && !isGeneratingVideo) && (
+                                        <p className="text-slate-500 text-center text-sm">Want a faster alternative? Try generating with Freepik.</p>
+                                    )}
+
+                                    {/* Videos */}
+                                    {(geminiVideoUrl || freepikVideoUrl) && (
+                                        <div className="grid grid-cols-1 gap-8">
+                                            {geminiVideoUrl && (
+                                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                    <h4 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                                        <span className="text-purple-600">✨</span> Gemini Video Generation
+                                                        {isSavingVideo && <span className="text-xs font-normal text-purple-500 animate-pulse ml-2">(Saving...)</span>}
+                                                    </h4>
+                                                    <video src={geminiVideoUrl} controls autoPlay muted loop className="w-full rounded-lg shadow-lg" />
+                                                </div>
+                                            )}
+
+                                            {freepikVideoUrl && (
+                                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                    <h4 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                                        <span className="text-blue-600">🚀</span> Freepik Video Generation
+                                                        {isSavingVideo && <span className="text-xs font-normal text-purple-500 animate-pulse ml-2">(Saving...)</span>}
+                                                    </h4>
+                                                    <video src={freepikVideoUrl} controls autoPlay muted loop className="w-full rounded-lg shadow-lg" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Empty State / Initial Prompt */}
+                                    {!geminiVideoUrl && !freepikVideoUrl && (
+                                        <div className="text-center py-10">
+                                            <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                            </div>
+                                            <h3 className="text-lg font-bold text-slate-800 mb-2">Create a Video Tour</h3>
+                                            <p className="text-slate-600 max-w-md mx-auto">Choose a provider above to generate a cinematic transformation video of your new garden design.</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>

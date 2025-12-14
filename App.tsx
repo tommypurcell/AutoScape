@@ -509,7 +509,7 @@ const AppContent: React.FC = () => {
 
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/admin" element={<AdminDashboard onClose={() => navigate('/')} />} />
+        <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
 
       {/* Modals & Overlays */}

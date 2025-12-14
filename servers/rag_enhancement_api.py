@@ -135,19 +135,21 @@ class VideoRequest(BaseModel):
     original_image: str  # Base64 encoded
     redesign_image: str  # Base64 encoded
     duration: int = 5
+    provider: str = "gemini"
 
 @app.post("/api/generate-video")
 async def generate_video(request: VideoRequest):
     """Generate transformation video with angle rotation"""
     try:
-        print(f"📥 Received video request - original: {len(request.original_image)} chars, redesign: {len(request.redesign_image)} chars")
+        print(f"📥 Received video request - original: {len(request.original_image)} chars, redesign: {len(request.redesign_image)} chars, provider: {request.provider}")
         # Import inside function to avoid circular imports or startup errors if module issues
         from video_generator import generate_transformation_video
         
         result = generate_transformation_video(
             request.original_image,
             request.redesign_image,
-            request.duration
+            request.duration,
+            request.provider
         )
         
         if result.get("status") == "completed":

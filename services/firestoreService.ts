@@ -13,6 +13,7 @@ import {
     Timestamp,
     QueryDocumentSnapshot,
     updateDoc,
+    setDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { GeneratedDesign } from '../types';
@@ -660,6 +661,9 @@ export const sendMessage = async (
 /**
  * Get messages for a designer
  */
+/**
+ * Get messages for a designer
+ */
 export const getMessagesForDesigner = async (recipientUserId: string): Promise<Message[]> => {
     try {
         const q = query(
@@ -676,6 +680,103 @@ export const getMessagesForDesigner = async (recipientUserId: string): Promise<M
         })) as Message[];
     } catch (error) {
         console.error('Error fetching messages:', error);
+        return [];
+    }
+};
+
+// ==================== USER MANAGEMENT (ADMIN) ====================
+
+export interface UserData {
+    uid: string;
+    email: string;
+    displayName?: string;
+    photoURL?: string;
+    role: 'user' | 'admin' | 'pro';
+    createdAt: Date;
+    lastLogin: Date;
+}
+
+/**
+ * Sync user data to Firestore on login
+ */
+export const syncUser = async (user: any): Promise<void> => {
+    if (!user) return;
+
+    try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+
+        const userData: Partial<UserData> = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || '',
+            photoURL: user.photoURL || '',
+            lastLogin: new Date(),
+        };
+
+        if (userSnap.exists()) {
+            await updateDoc(userRef, userData);
+        } else {
+            // New user
+            await setDoc(userRef, {
+                ...userData,
+                role: 'user', // Default role
+                createdAt: new Date(),
+            });
+        }
+    } catch (error) {
+        console.error('Error syncing user:', error);
+    }
+};
+
+/**
+ * Get all users (Admin)
+ */
+export const getAllUsers = async (): Promise<UserData[]> => {
+    try {
+        const q = query(collection(db, 'users'), orderBy('lastLogin', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+            lastLogin: doc.data().lastLogin?.toDate() || new Date(),
+        } as UserData));
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        return [];
+    }
+};
+
+/**
+ * Update user role
+ */
+export const updateUserRole = async (uid: string, role: 'user' | 'admin' | 'pro'): Promise<void> => {
+    try {
+        await updateDoc(doc(db, 'users', uid), { role });
+    } catch (error) {
+        console.error('Error updating role:', error);
+        throw error;
+    }
+};
+
+/**
+ * Get all designs (Admin)
+ */
+export const getAllDesignsAdmin = async (): Promise<SavedDesign[]> => {
+    try {
+        const q = query(
+            collection(db, 'designs'),
+            orderBy('createdAt', 'desc'),
+            limit(500)
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+        } as SavedDesign));
+    } catch (error) {
+        console.error('Error fetching all designs:', error);
         return [];
     }
 };

@@ -1,287 +1,265 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-    getAdminStats,
-    getAllDesigns,
-    getStyleDistribution,
-    deleteDesignAdmin,
-    isAdmin,
-    AdminStats,
-    AdminDesign,
-    DesignStyleCount
-} from '../services/adminService';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import { Loader2, Users, DollarSign, Image, TrendingUp, Trash2 } from 'lucide-react';
+    getAllUsers,
+    updateUserRole,
+    getAllDesignsAdmin,
+    getAllDesigners,
+    UserData,
+    SavedDesign,
+    DesignerProfile
+} from '../services/firestoreService';
+import { Loader, Users, Image, Briefcase, DollarSign, Shield, Check, X } from 'lucide-react';
 
-interface AdminDashboardProps {
-    onClose: () => void;
-}
-
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
+export const AdminDashboard: React.FC = () => {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'overview' | 'designs' | 'analytics'>('overview');
-    const [stats, setStats] = useState<AdminStats | null>(null);
-    const [designs, setDesigns] = useState<AdminDesign[]>([]);
-    const [styleData, setStyleData] = useState<DesignStyleCount[]>([]);
+    const [activeTab, setActiveTab] = useState<'users' | 'gallery' | 'pros'>('users');
+    const [users, setUsers] = useState<UserData[]>([]);
+    const [designs, setDesigns] = useState<SavedDesign[]>([]);
+    const [designers, setDesigners] = useState<DesignerProfile[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [error, setError] = useState<string | null>(null);
 
+    // Initial Load
     useEffect(() => {
-        if (!user || !isAdmin(user.email)) {
-            onClose();
-            return;
-        }
-        loadDashboardData();
-    }, [user]);
+        loadData();
+    }, [user, activeTab]);
 
-    const loadDashboardData = async () => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            const [statsData, designsData, stylesData] = await Promise.all([
-                getAdminStats(),
-                getAllDesigns(100),
-                getStyleDistribution(),
-            ]);
-            setStats(statsData);
-            setDesigns(designsData);
-            setStyleData(stylesData);
-        } catch (error) {
-            console.error('Error loading dashboard:', error);
+            if (activeTab === 'users') {
+                const data = await getAllUsers();
+                setUsers(data);
+            } else if (activeTab === 'gallery') {
+                const data = await getAllDesignsAdmin();
+                setDesigns(data);
+            } else if (activeTab === 'pros') {
+                const data = await getAllDesigners();
+                setDesigners(data);
+            }
+        } catch (err: any) {
+            setError(err.message);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDeleteDesign = async (designId: string) => {
-        if (!confirm('Delete this design? This cannot be undone.')) return;
+    const handleRoleUpdate = async (uid: string, newRole: 'user' | 'admin' | 'pro') => {
         try {
-            await deleteDesignAdmin(designId);
-            setDesigns(designs.filter(d => d.id !== designId));
-        } catch (error) {
-            console.error('Error deleting design:', error);
+            await updateUserRole(uid, newRole);
+            // Optimistic update
+            setUsers(users.map(u => u.uid === uid ? { ...u, role: newRole } : u));
+        } catch (err) {
+            console.error(err);
+            alert('Failed to update role');
         }
     };
 
-    const filteredDesigns = designs.filter(d =>
-        d.analysis?.designConcept?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.analysis?.style?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.shortId?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const calculateCost = (design: SavedDesign) => {
+        // Simple estimation logic
+        let cost = 0;
+        // Gemini Image Generation (Render) ~ $0.04
+        if (design.renderImages) cost += design.renderImages.length * 0.04;
+        // Gemini Veo (Video) ~ $0.10 (Estimate)
+        if (design.videoUrl) cost += 0.10;
+        // Scene understanding ~ $0.01
+        cost += 0.01;
 
-    if (!user || !isAdmin(user.email)) {
-        return null;
-    }
+        return cost.toFixed(2);
+    };
 
-    const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4'];
+    if (!user) return <div className="p-8 text-center">Please login to access admin dashboard.</div>;
 
     return (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-green-700 to-green-600 text-white p-6 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-bold">Admin Dashboard</h2>
-                            <p className="text-sm text-green-100">System overview and management</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="text-white/70 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
-                    >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+        <div className="min-h-screen bg-slate-50 p-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                    <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                        <Shield className="w-8 h-8 text-purple-600" />
+                        Admin Dashboard
+                    </h1>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-slate-200 bg-slate-50">
-                    {(['overview', 'designs', 'analytics'] as const).map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`flex-1 py-4 px-6 text-sm font-medium capitalize transition-colors relative ${activeTab === tab
-                                ? 'text-green-600 bg-white'
-                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                                }`}
-                        >
-                            {tab}
-                            {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />}
-                        </button>
-                    ))}
+                <div className="flex gap-4 mb-8">
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${activeTab === 'users' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                            }`}
+                    >
+                        <Users className="w-4 h-4" /> Users
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('gallery')}
+                        className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${activeTab === 'gallery' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                            }`}
+                    >
+                        <Image className="w-4 h-4" /> Gallery & Costs
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('pros')}
+                        className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${activeTab === 'pros' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                            }`}
+                    >
+                        <Briefcase className="w-4 h-4" /> Professionals
+                    </button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6">
-                    {loading ? (
-                        <div className="flex items-center justify-center h-64">
-                            <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
-                        </div>
-                    ) : (
-                        <>
-                            {/* Overview Tab */}
-                            {activeTab === 'overview' && stats && (
-                                <div className="space-y-6">
-                                    {/* Stats Cards */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <Users className="w-8 h-8 text-blue-600" />
-                                                <span className="text-xs font-medium text-blue-600 bg-blue-200 px-2 py-1 rounded-full">Users</span>
-                                            </div>
-                                            <p className="text-3xl font-bold text-slate-900">{stats.totalUsers || 'N/A'}</p>
-                                            <p className="text-sm text-slate-600 mt-1">Registered users</p>
-                                        </div>
+                {loading ? (
+                    <div className="flex items-center justify-center h-64">
+                        <Loader className="w-8 h-8 text-purple-600 animate-spin" />
+                    </div>
+                ) : error ? (
+                    <div className="bg-red-50 text-red-600 p-4 rounded-lg">{error}</div>
+                ) : (
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
 
-                                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-6 border border-emerald-200">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <Image className="w-8 h-8 text-emerald-600" />
-                                                <span className="text-xs font-medium text-emerald-600 bg-emerald-200 px-2 py-1 rounded-full">Designs</span>
-                                            </div>
-                                            <p className="text-3xl font-bold text-slate-900">{stats.totalDesigns}</p>
-                                            <p className="text-sm text-slate-600 mt-1">Total created</p>
-                                        </div>
-
-                                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <DollarSign className="w-8 h-8 text-purple-600" />
-                                                <span className="text-xs font-medium text-purple-600 bg-purple-200 px-2 py-1 rounded-full">Budget</span>
-                                            </div>
-                                            <p className="text-3xl font-bold text-slate-900">${(stats.totalBudget / 1000).toFixed(0)}k</p>
-                                            <p className="text-sm text-slate-600 mt-1">Total estimated</p>
-                                        </div>
-
-                                        <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 border border-orange-200">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <TrendingUp className="w-8 h-8 text-orange-600" />
-                                                <span className="text-xs font-medium text-orange-600 bg-orange-200 px-2 py-1 rounded-full">24h</span>
-                                            </div>
-                                            <p className="text-3xl font-bold text-slate-900">{stats.recentDesigns}</p>
-                                            <p className="text-sm text-slate-600 mt-1">Recent designs</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Recent Designs Preview */}
-                                    <div className="bg-white rounded-xl border border-slate-200 p-6">
-                                        <h3 className="text-lg font-bold text-slate-900 mb-4">Recent Designs</h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {designs.slice(0, 8).map((design) => (
-                                                <div key={design.id} className="relative aspect-square rounded-lg overflow-hidden group">
-                                                    <img
-                                                        src={design.renderImages[0]}
-                                                        alt="Design"
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                        <span className="text-white text-xs font-medium">
-                                                            {new Date(design.createdAt).toLocaleDateString()}
-                                                        </span>
+                        {/* USERS TAB */}
+                        {activeTab === 'users' && (
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-4 font-semibold text-slate-700">User</th>
+                                        <th className="px-6 py-4 font-semibold text-slate-700">Role</th>
+                                        <th className="px-6 py-4 font-semibold text-slate-700">Last Login</th>
+                                        <th className="px-6 py-4 font-semibold text-slate-700 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {users.map(u => (
+                                        <tr key={u.uid} className="hover:bg-slate-50">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    {u.photoURL ? (
+                                                        <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full" />
+                                                    ) : (
+                                                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">
+                                                            {u.displayName?.[0] || u.email[0]}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div className="font-medium text-slate-900">{u.displayName || 'No Name'}</div>
+                                                        <div className="text-sm text-slate-500">{u.email}</div>
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Designs Tab */}
-                            {activeTab === 'designs' && (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-bold text-slate-900">All Designs ({designs.length})</h3>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {designs.map((design) => (
-                                            <div key={design.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow">
-                                                <div className="relative aspect-video">
-                                                    <img
-                                                        src={design.renderImages[0]}
-                                                        alt="Design"
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                </div>
-                                                <div className="p-4">
-                                                    <p className="font-semibold text-slate-900 mb-1">
-                                                        {design.analysis?.designConcept || 'Landscape Design'}
-                                                    </p>
-                                                    <p className="text-xs text-slate-500 mb-2">
-                                                        {new Date(design.createdAt).toLocaleString()}
-                                                    </p>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full">
-                                                            {design.analysis?.style || 'Modern'}
-                                                        </span>
-                                                        <button
-                                                            onClick={() => handleDeleteDesign(design.id)}
-                                                            className="text-red-500 hover:text-red-700 p-2"
-                                                            title="Delete design"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Analytics Tab */}
-                            {activeTab === 'analytics' && (
-                                <div className="space-y-6">
-                                    <div className="bg-white rounded-xl border border-slate-200 p-6">
-                                        <h3 className="text-lg font-bold text-slate-900 mb-6">Design Styles Distribution</h3>
-                                        <div className="h-80">
-                                            <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-                                                <PieChart>
-                                                    <Pie
-                                                        data={styleData}
-                                                        dataKey="count"
-                                                        nameKey="style"
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        outerRadius={100}
-                                                        label={({ style, count }) => `${style}: ${count}`}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' :
+                                                        u.role === 'pro' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-slate-100 text-slate-600'
+                                                    }`}>
+                                                    {u.role || 'user'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-500">
+                                                {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'N/A'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleRoleUpdate(u.uid, u.role === 'admin' ? 'user' : 'admin')}
+                                                        className={`text-xs px-2 py-1 rounded border ${u.role === 'admin' ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-purple-200 text-purple-600 hover:bg-purple-50'}`}
                                                     >
-                                                        {styleData.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                        ))}
-                                                    </Pie>
-                                                    <Tooltip />
-                                                    <Legend />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
+                                                        {u.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
 
-                                    <div className="bg-white rounded-xl border border-slate-200 p-6">
-                                        <h3 className="text-lg font-bold text-slate-900 mb-6">Popular Styles</h3>
-                                        <div className="h-64">
-                                            <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-                                                <BarChart data={styleData.slice(0, 8)} layout="vertical">
-                                                    <XAxis type="number" />
-                                                    <YAxis type="category" dataKey="style" width={100} />
-                                                    <Tooltip />
-                                                    <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                                                        {styleData.slice(0, 8).map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                        ))}
-                                                    </Bar>
-                                                </BarChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
+                        {/* GALLERY TAB */}
+                        {activeTab === 'gallery' && (
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-4 font-semibold text-slate-700">Preview</th>
+                                        <th className="px-6 py-4 font-semibold text-slate-700">Design Info</th>
+                                        <th className="px-6 py-4 font-semibold text-slate-700">Generated Assets</th>
+                                        <th className="px-6 py-4 font-semibold text-slate-700 text-right">Est. Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {designs.map(d => (
+                                        <tr key={d.id} className="hover:bg-slate-50">
+                                            <td className="px-6 py-4">
+                                                {d.renderImages && d.renderImages[0] ? (
+                                                    <img src={d.renderImages[0]} alt="Render" className="w-16 h-16 object-cover rounded-lg border border-slate-200" />
+                                                ) : <div className="w-16 h-16 bg-slate-100 rounded-lg" />}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-slate-900">Short ID: {d.shortId}</div>
+                                                <div className="text-xs text-slate-500">User: {d.userId.substring(0, 8)}...</div>
+                                                <div className="text-xs text-slate-400">{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : ''}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-600">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="flex items-center gap-1">
+                                                        <Image className="w-3 h-3" /> {d.renderImages?.length || 0} Images
+                                                    </span>
+                                                    {d.videoUrl && (
+                                                        <span className="flex items-center gap-1 text-purple-600">
+                                                            <Check className="w-3 h-3" /> Video Generated
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono text-slate-700">
+                                                ${calculateCost(d)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+
+                        {/* PROS TAB */}
+                        {activeTab === 'pros' && (
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-4 font-semibold text-slate-700">Professional</th>
+                                        <th className="px-6 py-4 font-semibold text-slate-700">Details</th>
+                                        <th className="px-6 py-4 font-semibold text-slate-700">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {designers.map(designer => (
+                                        <tr key={designer.id} className="hover:bg-slate-50">
+                                            <td className="px-6 py-4">
+                                                <div className="font-medium text-slate-900">{designer.businessName}</div>
+                                                <div className="text-sm text-slate-500">{designer.item}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-600">
+                                                <div>{designer.city}, {designer.state}</div>
+                                                <div className="text-xs text-slate-400">{designer.email}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {designer.isVerified ? (
+                                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Verified</span>
+                                                ) : (
+                                                    <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs">Pending</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {designers.length === 0 && (
+                                        <tr>
+                                            <td colSpan={3} className="px-6 py-8 text-center text-slate-500">
+                                                No professionals found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
+
+                    </div>
+                )}
             </div>
         </div>
     );
