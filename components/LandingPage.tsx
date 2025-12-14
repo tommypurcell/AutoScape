@@ -281,8 +281,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                 <div className="grid grid-cols-1 md:grid-cols-2 min-h-[600px]">
                     <div className="relative h-full min-h-[400px]">
                         <img
-                            src={getStyleImage(DesignStyle.JAPANESE)}
-                            alt="Modern Japanese Garden"
+                            src="https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&q=80"
+                            alt="Formal Garden Design"
                             className="absolute inset-0 w-full h-full object-cover"
                         />
                     </div>
@@ -323,8 +323,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     </div>
                     <div className="relative h-full min-h-[400px] order-1 md:order-2">
                         <img
-                            src={getStyleImage(DesignStyle.MODERN)}
-                            alt="Detailed Plan"
+                            src="/demo_clips/autoscape_hero_gen.png"
+                            alt="Landscape Design Plan"
                             className="absolute inset-0 w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/10"></div>
