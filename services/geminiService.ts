@@ -246,42 +246,38 @@ export const generateLandscapeDesign = async (
     console.log("Phase 3: Generating Plan");
 
     const planPrompt = `
-      Act as a Professional Landscape Architect Drafter specializing in 2D site plans.
-      INPUT: The provided 3D RENDER of a designed yard.
-      CONTEXT: ${sceneContext}
+      Generate a 2D LANDSCAPING MAP based on the provided yard design image.
       
-      TASK: Generate a PROFESSIONAL 2D LANDSCAPE SITE PLAN / BLUEPRINT in true top-down orthographic view.
+      THIS IS STRICTLY A 2D TOP-DOWN MAP:
+      - Pure bird's-eye view looking straight down from above
+      - Flat 2D technical drawing style - NOT a photo, NOT 3D
+      - Clean architectural site plan aesthetic
       
-      STYLE REQUIREMENTS - THIS MUST LOOK LIKE A REAL LANDSCAPE ARCHITECTURE DRAWING:
-      - True bird's-eye view (90° straight down, no perspective)
-      - Clean, professional blueprint/site plan aesthetic
-      - White or light cream background
-      - Use standard landscape plan symbols and conventions
-      - Show property boundaries as dashed lines
-      - Show the house footprint as solid outlined rectangle
-      - Show all hardscape (patios, paths, driveways) with hatching patterns
-      - Show planting beds with organic curved shapes
-      - Represent plants as circles/ovals from above (use different sizes for trees vs shrubs)
-      - Use subtle color coding: greens for plants, grays/browns for hardscape, blue for water features
-      - Include a simple compass/north arrow symbol
-      - Include a simple scale bar
+      MAP ELEMENTS TO INCLUDE:
+      - Property boundaries (dashed lines)
+      - House/building footprint (outlined rectangle)
+      - All paths, patios, driveways (shown with pattern fills)
+      - Lawn and garden bed areas (organic shapes)
+      - Trees shown as circles from above
+      - Shrubs shown as smaller circles/clusters
+      - Any water features (pools, fountains) shown as shapes
+      - North arrow symbol
+      - Scale bar
       
-      CRITICAL RULES:
-      - NO TEXT LABELS or annotations on the drawing
-      - NO 3D effects, shadows, or perspective - pure 2D flat view
-      - NO photorealistic rendering - this is a TECHNICAL DRAWING
-      - Must accurately represent the spatial layout from the 3D render
-      - Show the ENTIRE property from boundary to boundary
-      - The house should be clearly visible as an outlined footprint
-      - All landscape elements must be clearly distinguishable
+      VISUAL STYLE:
+      - White/cream background
+      - Light green for lawn areas
+      - Darker greens for trees and plantings
+      - Gray for hardscape/pavers
+      - Blue for water features
+      - Black outlines for structures
       
-      COLOR PALETTE:
-      - Plants/Trees: Various greens (dark for evergreens, light for deciduous)
-      - Lawn/Grass areas: Light green
-      - Hardscape/Pavers: Light gray with subtle patterns
-      - Wood features: Tan/beige
-      - Water features: Light blue
-      - Buildings: White with black outlines
+      DO NOT INCLUDE:
+      - Any 3D perspective or shadows
+      - Any photorealistic elements
+      - Any decorative borders or frames
+      
+      Output a clean, professional 2D landscaping site map.
     `;
 
     const planPromise = ai.models.generateContent({

@@ -500,10 +500,10 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
             console.log('Base64 conversion complete. Original:', originalBase64?.length, 'chars, Render:', redesignBase64?.length, 'chars');
 
-            // Use relative URL - works with both local dev (proxy) and Firebase Hosting (functions rewrite)
+            // Use localhost for dev, direct Firebase Function URL for production
             const videoApiUrl = import.meta.env.DEV
                 ? 'http://localhost:8002/api/generate-video'
-                : '/api/generate-video';
+                : 'https://us-central1-autoscape-dfc00.cloudfunctions.net/generate_video';
 
             const response = await fetch(videoApiUrl, {
                 method: 'POST',
