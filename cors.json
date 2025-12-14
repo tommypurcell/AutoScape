@@ -3,6 +3,8 @@
         "origin": [
             "http://localhost:3000",
             "http://localhost:5173",
+            "https://autoscape-dfc00.web.app",
+            "https://autoscape-dfc00.firebaseapp.com",
             "https://autoscape.web.app",
             "https://autoscape.firebaseapp.com"
         ],
