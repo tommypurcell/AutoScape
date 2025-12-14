@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 import { Share2, Download, Facebook, Twitter, Instagram, Mail, MessageCircle, Link, Copy, Check, Loader } from 'lucide-react';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { PlantPalette } from './PlantPalette';
-import { saveDesign, updateDesignVideoUrl } from '../services/firestoreService';
+import { saveDesign, updateDesignVideoUrl, deleteDesignAdmin } from '../services/firestoreService';
 import { uploadVideo } from '../services/storageService';
 import { useAuth } from '../contexts/AuthContext';
 import { useDesign } from '../contexts/DesignContext';
@@ -22,6 +22,7 @@ interface ResultsViewProps {
     onReset?: () => void;
     designShortId?: string;
     designId?: string; // Firebase document ID for video storage
+    designUserId?: string; // Creator's user ID for delete permission
     existingVideoUrl?: string | null; // Pre-loaded video URL from saved design
 }
 
@@ -44,6 +45,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     onReset: propOnReset,
     designShortId,
     designId: propDesignId,
+    designUserId,
     existingVideoUrl
 }) => {
     const navigate = useNavigate();
@@ -1199,6 +1201,32 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                 onClose={() => setIsContactModalOpen(false)}
                 designLink={currentShortId ? `${window.location.origin}/result/${currentShortId}` : window.location.href}
             />
+
+            {/* Delete Design Section (for creator only) */}
+            {user && designUserId && user.uid === designUserId && currentDesignId && (
+                <div className="mt-12 pt-8 border-t border-slate-200">
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-red-800 mb-2">Danger Zone</h3>
+                        <p className="text-sm text-red-600 mb-4">Once you delete this design, there is no going back. Please be certain.</p>
+                        <button
+                            onClick={async () => {
+                                if (!confirm('Are you sure you want to delete this design? This action cannot be undone.')) return;
+                                try {
+                                    await deleteDesignAdmin(currentDesignId);
+                                    alert('Design deleted successfully.');
+                                    navigate('/gallery');
+                                } catch (err) {
+                                    console.error('Failed to delete design:', err);
+                                    alert('Failed to delete design.');
+                                }
+                            }}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
+                        >
+                            Delete This Design
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

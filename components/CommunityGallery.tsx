@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { SavedDesign, getPublicDesigns } from '../services/firestoreService';
-import { Loader2, Heart, User, Calendar, Link2 } from 'lucide-react';
+import { SavedDesign, getPublicDesigns, deleteDesignAdmin } from '../services/firestoreService';
+import { Loader2, Heart, User, Calendar, Link2, Trash2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CommunityGalleryProps {
     onLoadDesign: (design: SavedDesign) => void;
 }
 
 const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => {
+    const { userRole } = useAuth();
     const [designs, setDesigns] = useState<SavedDesign[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -36,6 +38,21 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
             setError('Failed to load designs. This might be a Firestore indexing issue. Check the browser console for details.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteDesign = async (designId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm('Are you sure you want to delete this design? This cannot be undone.')) return;
+        try {
+            await deleteDesignAdmin(designId);
+            setDesigns(designs.filter(d => d.id !== designId));
+            if (selectedDesign?.id === designId) {
+                setSelectedDesign(null);
+            }
+        } catch (err) {
+            console.error('Failed to delete design:', err);
+            alert('Failed to delete design');
         }
     };
 
@@ -114,6 +131,16 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                                 View Details
                                             </span>
                                         </div>
+                                        {/* Admin Delete Button */}
+                                        {userRole === 'admin' && (
+                                            <button
+                                                onClick={(e) => handleDeleteDesign(design.id, e)}
+                                                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                title="Delete Design"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
 
                                     {/* Content */}
@@ -121,7 +148,7 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                         <div className="flex items-center justify-between mb-4">
                                             <div className="flex items-center gap-2 text-slate-500 text-sm">
                                                 <User className="w-4 h-4" />
-                                                <span>Designer</span>
+                                                <span className="font-mono text-xs">{design.userId?.substring(0, 8) || 'Anonymous'}...</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-slate-400 text-xs">
                                                 <Calendar className="w-3 h-3" />
@@ -171,7 +198,8 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                         {/* Right: Details */}
                         <div className="w-full md:w-1/3 p-8 bg-white overflow-y-auto">
                             <h3 className="text-2xl font-bold text-slate-900 mb-2">Design Details</h3>
-                            <p className="text-slate-500 text-sm mb-6">Created on {selectedDesign.createdAt.toLocaleDateString()}</p>
+                            <p className="text-slate-500 text-sm mb-2">Created on {selectedDesign.createdAt.toLocaleDateString()}</p>
+                            <p className="text-slate-400 text-xs mb-6 font-mono">Creator: {selectedDesign.userId?.substring(0, 12) || 'Anonymous'}...</p>
 
                             <div className="space-y-6">
                                 <div>
@@ -235,7 +263,7 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                     </div>
                                 )}
 
-                                <div className="pt-6 border-t border-slate-100">
+                                <div className="pt-6 border-t border-slate-100 space-y-3">
                                     <button
                                         onClick={() => {
                                             onLoadDesign(selectedDesign);
@@ -245,6 +273,15 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                     >
                                         Load This Design
                                     </button>
+                                    {/* Admin Delete in Modal */}
+                                    {userRole === 'admin' && (
+                                        <button
+                                            onClick={(e) => handleDeleteDesign(selectedDesign.id, e)}
+                                            className="w-full py-3 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4" /> Delete Design
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

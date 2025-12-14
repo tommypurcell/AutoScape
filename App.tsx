@@ -34,7 +34,7 @@ import { saveDesignerProfile } from './services/firestoreService';
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signUpWithEmail } = useAuth();
+  const { user, userRole, signUpWithEmail } = useAuth();
   const { loadDesign, setYardImage, setYardImagePreview, setResult } = useDesign();
 
   // Local state for design wizard (not in context)
@@ -311,10 +311,10 @@ const AppContent: React.FC = () => {
         fontFamily: `'Montserrat', sans-serif`
       }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-8">
+          <div className="flex items-baseline gap-8">
             <button
               onClick={() => setShowSidebar(true)}
-              className="p-2 hover:bg-gray-50 rounded transition-colors"
+              className="p-2 hover:bg-gray-50 rounded transition-colors self-center"
             >
               <Menu className="w-6 h-6 text-gray-700" />
             </button>
@@ -326,7 +326,7 @@ const AppContent: React.FC = () => {
             </span>
 
             {/* Navigation Links */}
-            <div className="hidden md:flex items-center gap-6">
+            <div className="hidden md:flex items-baseline gap-6">
               <button
                 onClick={() => navigate('/business')}
                 className={`transition-colors font-normal pb-1 border-b-2 ${location.pathname === '/business'
@@ -357,11 +357,22 @@ const AppContent: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-baseline gap-3">
+            {userRole === 'admin' && (
+              <button
+                onClick={() => navigate('/admin')}
+                className={`transition-colors font-normal pb-1 border-b-2 ${location.pathname === '/admin'
+                  ? 'text-purple-700 border-purple-700 font-semibold'
+                  : 'text-purple-600 hover:text-purple-700 border-transparent'
+                  }`}
+              >
+                Admin
+              </button>
+            )}
             {user ? (
               <button
                 onClick={() => setShowAccountSettings(true)}
-                className="text-gray-700 hover:text-green-700 transition-colors font-normal"
+                className="text-gray-700 hover:text-green-700 transition-colors font-normal pb-1"
               >
                 Account
               </button>
@@ -369,7 +380,7 @@ const AppContent: React.FC = () => {
               <>
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="text-gray-700 hover:text-green-700 transition-colors font-normal"
+                  className="text-gray-700 hover:text-green-700 transition-colors font-normal pb-1"
                 >
                   Sign in
                 </button>
