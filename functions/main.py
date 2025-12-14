@@ -121,9 +121,35 @@ def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
         }
     
     try:
-        # Upload the redesign image to get a URL (Freepik needs a URL, not base64)
-        # For now, we'll use the first frame approach with Freepik
+        # Create a composite image showing before (left) and after (right)
+        # This will be animated to show the transformation
         import requests
+        from PIL import Image
+        import io
+        
+        # Decode base64 images
+        original_bytes = base64.b64decode(original_base64)
+        redesign_bytes = base64.b64decode(redesign_base64)
+        
+        # Open images with PIL
+        original_img = Image.open(io.BytesIO(original_bytes))
+        redesign_img = Image.open(io.BytesIO(redesign_bytes))
+        
+        # Resize both to a smaller height to reduce file size (Freepik has limits)
+        target_height = min(original_img.height, redesign_img.height, 512)  # Reduced from 720
+        original_img = original_img.resize((int(original_img.width * target_height / original_img.height), target_height), Image.Resampling.LANCZOS)
+        redesign_img = redesign_img.resize((int(redesign_img.width * target_height / redesign_img.height), target_height), Image.Resampling.LANCZOS)
+        
+        # Create side-by-side composite
+        total_width = original_img.width + redesign_img.width
+        composite = Image.new('RGB', (total_width, target_height))
+        composite.paste(original_img, (0, 0))
+        composite.paste(redesign_img, (original_img.width, 0))
+        
+        # Convert composite back to base64 with compression
+        buffered = io.BytesIO()
+        composite.save(buffered, format="JPEG", quality=85)  # Use JPEG with compression
+        composite_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
         
         # Freepik API endpoint for Kling v2
         create_url = "https://api.freepik.com/v1/ai/image-to-video/kling-v2"
@@ -136,11 +162,11 @@ def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
         # Freepik expects raw base64 string, not data URL
         # Create video generation request with slow, natural transition
         payload = {
-            "image": redesign_base64,  # Send raw base64 string
-            "prompt": "Very slow and gentle camera pan from left to right. Natural, gradual transformation. No dramatic effects, no exaggeration. Realistic and subtle changes. Photorealistic quality. 5 seconds.",
+            "image": composite_base64,  # Send composite showing before->after
+            "prompt": "Slow camera pan from left to right revealing landscape transformation. Natural, gradual transition from original state to redesigned landscape. Very smooth movement. No dramatic effects. Photorealistic quality. 5 seconds.",
             "duration": "5",  # Must be string '5' or '10'
             "cfg_scale": 0.5,  # Lower value for more natural results
-            "negative_prompt": "sudden changes, dramatic effects, exaggeration, unrealistic, artificial"
+            "negative_prompt": "sudden changes, dramatic effects, exaggeration, unrealistic, artificial, jerky motion"
         }
         
         # Create generation task
