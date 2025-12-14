@@ -517,7 +517,16 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                 }),
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.detail || 'Failed to generate video');
+
+            // Check both HTTP status and response body status
+            if (!response.ok || data.status === 'error') {
+                const errorMsg = data.error || data.detail || 'Failed to generate video';
+                // Check if it's a quota error and suggest Freepik
+                if (errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('quota')) {
+                    throw new Error(`Gemini quota exceeded. Try using Freepik (Fast) instead!`);
+                }
+                throw new Error(errorMsg);
+            }
 
             // Set specific provider URL
             if (provider === 'freepik') {

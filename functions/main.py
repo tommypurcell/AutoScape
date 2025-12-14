@@ -111,11 +111,11 @@ def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
     Generate video using Freepik (Simulated).
     """
     time.sleep(3) # Simulate API latency
-    # Mock result for demo purposes
- 
+    # Mock result for demo purposes - using a reliable CDN video
+    # This is a sample nature/garden video that's freely accessible
     return {
         "status": "completed",
-        "video_url": "https://videos.pexels.com/video-files/5234/5234-hd_1920_1080_30fps.mp4", # Generic garden video
+        "video_url": "https://cdn.pixabay.com/video/2020/10/30/54458-476090704_large.mp4",  # Garden/nature video
         "provider": "freepik"
     }
 

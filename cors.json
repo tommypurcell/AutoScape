@@ -1,30 +1,18 @@
 [
     {
         "origin": [
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:3002",
-            "http://localhost:5173",
-            "https://autoscape-dfc00.web.app",
-            "https://autoscape-dfc00.firebaseapp.com",
-            "https://autoscape.web.app",
-            "https://autoscape.firebaseapp.com"
+            "*"
         ],
         "method": [
             "GET",
-            "POST",
-            "PUT",
-            "DELETE",
-            "OPTIONS",
-            "HEAD"
+            "HEAD",
+            "OPTIONS"
         ],
-        "maxAgeSeconds": 3600,
         "responseHeader": [
             "Content-Type",
-            "Authorization",
             "Content-Length",
-            "User-Agent",
-            "x-goog-resumable"
-        ]
+            "Access-Control-Allow-Origin"
+        ],
+        "maxAgeSeconds": 3600
     }
 ]
