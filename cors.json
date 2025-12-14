@@ -1,24 +1,26 @@
 [
     {
         "origin": [
-            "*"
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://autoscape.web.app",
+            "https://autoscape.firebaseapp.com"
         ],
         "method": [
             "GET",
             "POST",
             "PUT",
             "DELETE",
-            "HEAD",
-            "OPTIONS"
+            "OPTIONS",
+            "HEAD"
         ],
+        "maxAgeSeconds": 3600,
         "responseHeader": [
             "Content-Type",
             "Authorization",
             "Content-Length",
             "User-Agent",
-            "x-goog-resumable",
-            "x-goog-meta-*"
-        ],
-        "maxAgeSeconds": 3600
+            "x-goog-resumable"
+        ]
     }
 ]
