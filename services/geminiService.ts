@@ -41,6 +41,34 @@ const GEMINI_API_KEY =
   process.env.GEMINI_API_KEY ||
   process.env.API_KEY;
 
+// Retry helper for Gemini API calls (handles transient 500 errors)
+const retryOperation = async <T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 2000
+): Promise<T> => {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      const isRetryable =
+        error?.message?.includes('500') ||
+        error?.message?.includes('INTERNAL') ||
+        error?.message?.includes('Internal error');
+
+      if (isRetryable && attempt < maxRetries) {
+        console.warn(`⚠️ Gemini API error (attempt ${attempt}/${maxRetries}), retrying in ${delayMs}ms...`, error?.message);
+        await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw lastError;
+};
+
 export const generateLandscapeDesign = async (
   yardFile: File,
   styleFiles: File[],
@@ -116,10 +144,12 @@ export const generateLandscapeDesign = async (
       Do NOT invent structures that aren't in the photo.
     `});
 
-    const sceneUnderstandingRes = await ai.models.generateContent({
-      model: MODEL_REASONING,
-      contents: { parts: analysisParts }
-    });
+    const sceneUnderstandingRes = await retryOperation(() =>
+      ai.models.generateContent({
+        model: MODEL_REASONING,
+        contents: { parts: analysisParts }
+      })
+    );
 
     const sceneContext = sceneUnderstandingRes.text || "";
     console.log("Scene Context Generated:", sceneContext.substring(0, 200) + "...");
@@ -164,15 +194,17 @@ export const generateLandscapeDesign = async (
       Be specific and comprehensive - include EVERYTHING you added to transform the yard.
     `;
 
-    const renderRes = await ai.models.generateContent({
-      model: MODEL_GENERATION,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: yardFile.type, data: yardBase64 } },
-          { text: renderPrompt }
-        ]
-      }
-    });
+    const renderRes = await retryOperation(() =>
+      ai.models.generateContent({
+        model: MODEL_GENERATION,
+        contents: {
+          parts: [
+            { inlineData: { mimeType: yardFile.type, data: yardBase64 } },
+            { text: renderPrompt }
+          ]
+        }
+      })
+    );
 
     const renderImage = extractImage(renderRes);
 
@@ -347,8 +379,10 @@ export const generateLandscapeDesign = async (
       }
     });
 
-    // Wait for both Plan and Analysis
-    const [planRes, analysisRes] = await Promise.all([planPromise, analysisPromise]);
+    // Wait for both Plan and Analysis (with retry for transient errors)
+    const [planRes, analysisRes] = await retryOperation(
+      () => Promise.all([planPromise, analysisPromise])
+    );
 
     const planImage = extractImage(planRes);
     if (!planImage) {
