@@ -108,16 +108,30 @@ async def enhance_with_rag(request: EnhancementRequest):
                 elif isinstance(plant_item.quantity, str) and plant_item.quantity.isdigit():
                     quantity = int(plant_item.quantity)
                 
+                # Get price from RAG or use default
+                unit_price = plant.get('price_estimate', '$25')
+                if not unit_price:
+                    unit_price = '$25'  # Default fallback
+                
+                # Calculate total estimate
+                try:
+                    price_num = float(unit_price.replace('$', '').replace(',', '').split()[0])
+                    total = price_num * quantity
+                    total_estimate = f'${total:.0f}'
+                except:
+                    total_estimate = f'{unit_price} x{quantity}'
+                
                 plant_palette.append({
-                    "common_name": plant['common_name'],
-                    "botanical_name": plant['botanical_name'],
+                    "common_name": plant.get('common_name', plant.get('specific_name', '')),
+                    "botanical_name": plant.get('botanical_name', ''),
                     "image_url": plant['image_url'],
                     "quantity": quantity,
-                    "size": "5-gallon",  # Default size
-                    "unit_price": "$0", # Placeholder, would come from pricing service
-                    "total_estimate": "$0", # Placeholder
+                    "size": "5-gallon",
+                    "unit_price": unit_price,
+                    "total_estimate": total_estimate,
                     "rag_verified": True,
-                    "original_name": plant_item.name
+                    "original_name": plant_item.name,
+                    "description": plant.get('description', '')
                 })
         
         # TODO: Process hardscape/features for budget if needed

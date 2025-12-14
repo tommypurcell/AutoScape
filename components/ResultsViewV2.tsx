@@ -15,6 +15,7 @@ import { EditModeCanvas, Annotation } from './EditModeCanvas';
 import { analyzeAndRegenerateDesign } from '../services/geminiService';
 import { generateAffiliateLinks, VerifiedMaterialItem } from '../services/affiliateService';
 import { ContactDesignerModal } from './ContactDesignerModal';
+import { API_ENDPOINTS, getVideoEndpoint } from '../config/api';
 
 interface ResultsViewProps {
     result?: GeneratedDesign;
@@ -196,13 +197,16 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                     return;
                 }
 
-                const response = await fetch('http://localhost:8002/api/enhance-with-rag', {
+                const response = await fetch(API_ENDPOINTS.enhanceWithRag, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ plants, hardscape, features, structures, furniture }),
                 });
 
-                if (!response.ok) throw new Error('Failed to fetch RAG budget');
+                if (!response.ok) {
+                    console.warn('RAG API not available, using fallback estimates');
+                    throw new Error('RAG API unavailable');
+                }
                 const data = await response.json();
 
                 if (data.success) {
@@ -499,10 +503,8 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                 getBase64(result.renderImages[currentRenderIndex], 'rendered image')
             ]);
 
-            // Use localhost for dev, direct Firebase Function URL for production
-            const videoApiUrl = import.meta.env.DEV
-                ? 'http://localhost:8002/api/generate-video'
-                : 'https://us-central1-autoscape-dfc00.cloudfunctions.net/generate_video';
+            // Use centralized API config for video generation
+            const videoApiUrl = getVideoEndpoint();
 
             const response = await fetch(videoApiUrl, {
                 method: 'POST',
@@ -845,395 +847,400 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                 <img src={result.planImage} alt="2D landscape plan" className="w-full h-full object-contain" />
                             )}
                             {activeTab === 'video' && (
-                                <div className="w-full h-full flex flex-col items-center justify-start px-8 pb-8 pt-0 overflow-y-auto">
+                                <div className="w-full h-full flex flex-col items-center justify-start p-8 overflow-y-auto">
                                     <div className="max-w-4xl w-full space-y-8">
 
-                                        <div className="w-full">
-                                            {/* Tabs Header */}
-                                            <div className="flex border-b border-slate-200 mb-0">
-                                                <button
-                                                    onClick={() => setVideoTab('gemini')}
-                                                    className={`flex-1 py-3 text-sm font-bold transition-colors relative rounded-t-lg flex items-center justify-center gap-2 ${videoTab === 'gemini' ? 'bg-green-50 text-green-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
-                                                >
-                                                    {geminiVideoUrl ? 'Gemini Video Ready' : 'Gemini (High Quality)'}
-                                                    {videoTab === 'gemini' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />}
-                                                </button>
-                                                <button
-                                                    onClick={() => setVideoTab('freepik')}
-                                                    className={`flex-1 py-3 text-sm font-bold transition-colors relative rounded-t-lg flex items-center justify-center gap-2 ${videoTab === 'freepik' ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
-                                                >
-                                                    {freepikVideoUrl ? 'Freepik Video Ready' : 'Freepik (Fast)'}
-                                                    {videoTab === 'freepik' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
-                                                </button>
-                                            </div>
+                                        {/* Tabs Header */}
+                                        <div className="flex border-b border-slate-200 mb-0">
+                                            <button
+                                                onClick={() => setVideoTab('gemini')}
+                                                className={`flex-1 py-3 text-sm font-bold transition-colors relative rounded-t-lg flex items-center justify-center gap-2 ${videoTab === 'gemini' ? 'bg-green-50 text-green-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+                                            >
+                                                {geminiVideoUrl ? 'Gemini Video Ready' : 'Gemini (High Quality)'}
+                                                {videoTab === 'gemini' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />}
+                                            </button>
+                                            <button
+                                                onClick={() => setVideoTab('freepik')}
+                                                className={`flex-1 py-3 text-sm font-bold transition-colors relative rounded-t-lg flex items-center justify-center gap-2 ${videoTab === 'freepik' ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+                                            >
+                                                {freepikVideoUrl ? 'Freepik Video Ready' : 'Freepik (Fast)'}
+                                                {videoTab === 'freepik' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
+                                            </button>
+                                        </div>
 
-                                            {/* Tab Content */}
-                                            <div className="bg-slate-50 rounded-b-xl border border-t-0 border-slate-200 p-1 min-h-[300px] flex flex-col justify-center">
-                                                {/* Error Message */}
-                                                {videoError && <p className="text-red-500 text-center font-medium bg-red-50 p-2 rounded mb-2 mx-4">{videoError}</p>}
+                                        {/* Tab Content */}
+                                        <div className="bg-slate-50 rounded-b-xl border border-t-0 border-slate-200 p-1 min-h-[300px] flex flex-col justify-center">
+                                            {/* Error Message */}
+                                            {videoError && <p className="text-red-500 text-center font-medium bg-red-50 p-2 rounded mb-2 mx-4">{videoError}</p>}
 
-                                                {videoTab === 'gemini' && (
-                                                    <div className="w-full h-full">
-                                                        {geminiVideoUrl ? (
-                                                            <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm relative bg-black">
-                                                                {isSavingVideo && <div className="absolute top-2 right-2 z-10 bg-black/50 text-white text-xs px-2 py-1 rounded animate-pulse">Saving...</div>}
-                                                                <video src={geminiVideoUrl} controls autoPlay muted loop className="w-full" />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="text-center py-10 px-4">
-                                                                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                                                    <span className="text-2xl">✨</span>
-                                                                </div>
-                                                                <h3 className="text-lg font-bold text-slate-800 mb-2">Generate Cinematic Video</h3>
-                                                                <p className="text-slate-600 max-w-md mx-auto mb-6">Create a high-quality video transformation using Gemini's advanced AI.</p>
-                                                                <button
-                                                                    onClick={() => handleGenerateVideo('gemini')}
-                                                                    disabled={isGeneratingVideo}
-                                                                    className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 mx-auto disabled:opacity-50 transition-colors shadow-sm hover:shadow-md"
-                                                                >
-                                                                    {isGeneratingVideo && generatingProvider === 'gemini' ? <Loader className="w-5 h-5 animate-spin" /> : null}
-                                                                    Generate with Gemini
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {videoTab === 'freepik' && (
-                                                    <div className="w-full h-full">
-                                                        {freepikVideoUrl ? (
-                                                            <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm relative bg-black">
-                                                                {isSavingVideo && <div className="absolute top-2 right-2 z-10 bg-black/50 text-white text-xs px-2 py-1 rounded animate-pulse">Saving...</div>}
-                                                                <video src={freepikVideoUrl} controls autoPlay muted loop className="w-full" />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="text-center py-10 px-4">
-                                                                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                                                    <span className="text-2xl">🚀</span>
-                                                                </div>
-                                                                <h3 className="text-lg font-bold text-slate-800 mb-2">Generate Fast Video</h3>
-                                                                <p className="text-slate-600 max-w-md mx-auto mb-6">Need a quick preview? Generate a video instantly with Freepik.</p>
-                                                                <button
-                                                                    onClick={() => handleGenerateVideo('freepik')}
-                                                                    disabled={isGeneratingVideo}
-                                                                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 mx-auto disabled:opacity-50 transition-colors shadow-sm hover:shadow-md"
-                                                                >
-                                                                    {isGeneratingVideo && generatingProvider === 'freepik' ? <Loader className="w-5 h-5 animate-spin" /> : null}
-                                                                    Generate with Freepik
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                    </div>
-
-                                            {/* Design Intention Section */}
-                                            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-                                                <h3 className="font-bold text-slate-800 text-lg mb-3 flex items-center gap-2">
-                                                    <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                                                    Design Intention
-                                                </h3>
-                                                <div className="space-y-3">
-                                                    {/* Style */}
-                                                    <div className="flex items-start gap-3">
-                                                        <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">Style:</span>
-                                                        <span className="text-sm text-slate-700 font-medium">{result.designJSON?.style || result.analysis?.designConcept?.split('.')[0] || 'Modern Landscape'}</span>
-                                                    </div>
-                                                    {/* User's Request */}
-                                                    {result.designJSON?.userPrompt && (
-                                                        <div className="flex items-start gap-3">
-                                                            <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">Your Request:</span>
-                                                            <span className="text-sm text-slate-700 italic">"{result.designJSON.userPrompt}"</span>
+                                            {videoTab === 'gemini' && (
+                                                <div className="w-full h-full">
+                                                    {geminiVideoUrl ? (
+                                                        <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm relative bg-black">
+                                                            {isSavingVideo && <div className="absolute top-2 right-2 z-10 bg-black/50 text-white text-xs px-2 py-1 rounded animate-pulse">Saving...</div>}
+                                                            <video src={geminiVideoUrl} controls autoPlay muted loop className="w-full" />
                                                         </div>
-                                                    )}
-                                                    {/* AI Interpretation */}
-                                                    <div className="flex items-start gap-3">
-                                                        <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">AI Design:</span>
-                                                        <span className="text-sm text-slate-700">{result.concept?.description || result.analysis?.designConcept || 'A thoughtfully designed outdoor space with balanced hardscape and plantings.'}</span>
-                                                    </div>
-                                                    {/* Maintenance */}
-                                                    {result.analysis?.maintenanceLevel && (
-                                                        <div className="flex items-start gap-3">
-                                                            <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">Maintenance:</span>
-                                                            <span className={`text-sm font-medium px-2 py-0.5 rounded ${result.analysis.maintenanceLevel === 'Low' ? 'bg-green-100 text-green-700' : result.analysis.maintenanceLevel === 'High' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                                {result.analysis.maintenanceLevel}
-                                                            </span>
+                                                    ) : (
+                                                        <div className="text-center py-10 px-4">
+                                                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                                <span className="text-2xl">✨</span>
+                                                            </div>
+                                                            <h3 className="text-lg font-bold text-slate-800 mb-2">Generate Cinematic Video</h3>
+                                                            <p className="text-slate-600 max-w-md mx-auto mb-6">Create a high-quality video transformation using Gemini's advanced AI.</p>
+                                                            <button
+                                                                onClick={() => handleGenerateVideo('gemini')}
+                                                                disabled={isGeneratingVideo}
+                                                                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 mx-auto disabled:opacity-50 transition-colors shadow-sm hover:shadow-md"
+                                                            >
+                                                                {isGeneratingVideo && generatingProvider === 'gemini' ? <Loader className="w-5 h-5 animate-spin" /> : null}
+                                                                Generate with Gemini
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
-                                            </div>
+                                            )}
 
-                                            {/* Material List & Cost Distribution - Tabbed */}
-                                            {result.estimates.totalCost > 0 && (
-                                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                                                    <div className="flex border-b border-slate-100">
-                                                        <button onClick={() => setCostViewTab('materials')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${costViewTab === 'materials' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
-                                                            Material List & Estimates
-                                                            {costViewTab === 'materials' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
-                                                        </button>
-                                                        <button onClick={() => setCostViewTab('distribution')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${costViewTab === 'distribution' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
-                                                            Cost Distribution
-                                                            {costViewTab === 'distribution' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
-                                                        </button>
-                                                    </div>
-
-                                                    {costViewTab === 'materials' && (
-                                                        <div className="p-6">
-                                                            <div className="flex items-center justify-between mb-4">
-                                                                <div className="flex items-center gap-2">
-                                                                    <button onClick={handleGenerateAffiliateLinks} disabled={isLoadingAffiliateLinks} className="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-orange-200 disabled:opacity-50">
-                                                                        {isLoadingAffiliateLinks ? 'Generating...' : 'Shop Materials'}
-                                                                    </button>
-                                                                    <button onClick={downloadCSV} className="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-slate-200">
-                                                                        Export to Excel
-                                                                    </button>
-                                                                    <button onClick={handleExportToGoogleSheets} className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-green-200">
-                                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z" /><path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z" /></svg>
-                                                                        Export to Sheets
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            <div className="overflow-x-auto">
-                                                                <table className="w-full text-sm text-left">
-                                                                    <thead className="text-sm text-slate-600 uppercase bg-slate-50 border-b border-slate-100">
-                                                                        <tr>
-                                                                            <th className="px-4 py-3">Item</th>
-                                                                            <th className="px-4 py-3">Qty</th>
-                                                                            <th className="px-4 py-3 text-right">Est. Cost</th>
-                                                                            {showAffiliateLinks && <th className="px-4 py-3 text-center">Purchase</th>}
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {result.estimates.breakdown.slice(0, 10).map((item, idx) => {
-                                                                            const affiliateItem = affiliateLinks.get(item.name);
-                                                                            return (
-                                                                                <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50">
-                                                                                    <td className="px-4 py-3 font-medium text-slate-700">
-                                                                                        <div className="flex items-center gap-2">
-                                                                                            {item.name}
-                                                                                            {affiliateItem?.verified && (
-                                                                                                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full" title="Verified in render">
-                                                                                                    ✓ Verified
-                                                                                                </span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </td>
-                                                                                    <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
-                                                                                    <td className="px-4 py-3 text-right text-slate-700">{item.totalCost}</td>
-                                                                                    {showAffiliateLinks && (
-                                                                                        <td className="px-4 py-3 text-center">
-                                                                                            {affiliateItem?.amazonSearchUrl ? (
-                                                                                                <a
-                                                                                                    href={affiliateItem.amazonSearchUrl}
-                                                                                                    target="_blank"
-                                                                                                    rel="noopener noreferrer"
-                                                                                                    className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
-                                                                                                    title={`Find similar ${item.name} on Amazon`}
-                                                                                                >
-                                                                                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                                                                                        <path d="M23.27 13.73L22 12.5l-1.27-1.23L19.5 12l1.23 1.27L22 14.5l1.27-1.23L24.5 12l-1.23-1.27zM6.32 2.72c-.35-.35-.92-.35-1.27 0L2.72 5.05c-.35.35-.35.92 0 1.27l2.33 2.33c.35.35.92.35 1.27 0l2.33-2.33c.35-.35.35-.92 0-1.27L6.32 2.72zM12 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                                                                                    </svg>
-                                                                                                    Find Similar on Amazon
-                                                                                                </a>
-                                                                                            ) : (
-                                                                                                <span className="text-xs text-slate-400">Not available</span>
-                                                                                            )}
-                                                                                        </td>
-                                                                                    )}
-                                                                                </tr>
-                                                                            );
-                                                                        })}
-                                                                    </tbody>
-                                                                    <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
-                                                                        <tr>
-                                                                            <td className="px-4 py-3" colSpan={2}>Estimated Total</td>
-                                                                            <td className="px-4 py-3 text-right text-emerald-700">{formatCurrency(result.estimates.totalCost)}</td>
-                                                                        </tr>
-                                                                    </tfoot>
-                                                                </table>
-                                                            </div>
+                                            {videoTab === 'freepik' && (
+                                                <div className="w-full h-full">
+                                                    {freepikVideoUrl ? (
+                                                        <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm relative bg-black">
+                                                            {isSavingVideo && <div className="absolute top-2 right-2 z-10 bg-black/50 text-white text-xs px-2 py-1 rounded animate-pulse">Saving...</div>}
+                                                            <video src={freepikVideoUrl} controls autoPlay muted loop className="w-full" />
                                                         </div>
-                                                    )}
-
-                                                    {costViewTab === 'distribution' && (
-                                                        <div className="p-6">
-                                                            <div className="h-[300px]">
-                                                                <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
-                                                                    <PieChart>
-                                                                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="cost" nameKey="name" label={({ name, value, percent }) => `${name}: ${formatCurrency(value)} (${(percent * 100).toFixed(0)}%)`} labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}>
-                                                                            {chartData.map((_, index) => {
-                                                                                const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
-                                                                                return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                                                                            })}
-                                                                        </Pie>
-                                                                        <Tooltip formatter={(value: number, name: string) => { const total = chartData.reduce((sum, item) => sum + item.cost, 0); return [`${formatCurrency(value)} (${((value / total) * 100).toFixed(1)}%)`, name]; }} />
-                                                                        <Legend layout="horizontal" verticalAlign="bottom" align="center" />
-                                                                    </PieChart>
-                                                                </ResponsiveContainer>
+                                                    ) : (
+                                                        <div className="text-center py-10 px-4">
+                                                            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                                <span className="text-2xl">🚀</span>
                                                             </div>
-                                                            <p className="text-sm text-slate-600 mt-4 text-center">*Estimates based on national averages. Labor costs may vary by region.</p>
+                                                            <h3 className="text-lg font-bold text-slate-800 mb-2">Generate Fast Video</h3>
+                                                            <p className="text-slate-600 max-w-md mx-auto mb-6">Need a quick preview? Generate a video instantly with Freepik.</p>
+                                                            <button
+                                                                onClick={() => handleGenerateVideo('freepik')}
+                                                                disabled={isGeneratingVideo}
+                                                                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 mx-auto disabled:opacity-50 transition-colors shadow-sm hover:shadow-md"
+                                                            >
+                                                                {isGeneratingVideo && generatingProvider === 'freepik' ? <Loader className="w-5 h-5 animate-spin" /> : null}
+                                                                Generate with Freepik
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
                                             )}
                                         </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                                        {/* Right Column - Unified Palette Sidebar */}
-                                        <div className="w-[280px] flex-shrink-0 hidden lg:block">
-                                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                                                <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                                    <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
-                                                    Palette {isLoadingBudget && <span className="text-xs text-slate-400">(loading...)</span>}
-                                                </h3>
-                                                <div className="space-y-4">
-                                                    {ragBudget?.line_items && ragBudget.line_items.map((item, index) => {
-                                                        // Use Google Shopping image search if image available, otherwise fall back to Amazon text search
-                                                        const shopUrl = item.image_url
-                                                            ? `https://www.google.com/searchbyimage?sbisrc=tg&image_url=${encodeURIComponent(item.image_url)}&tbm=shop`
-                                                            : `https://www.amazon.com/s?k=${encodeURIComponent(item.match || item.item)}`;
-                                                        const isPlant = item.item.toLowerCase().includes('plant') ||
-                                                            item.item.toLowerCase().includes('tree') ||
-                                                            item.item.toLowerCase().includes('shrub') ||
-                                                            item.item.toLowerCase().includes('flower');
+                    {/* Design Intention Section */}
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+                        <h3 className="font-bold text-slate-800 text-lg mb-3 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                            Design Intention
+                        </h3>
+                        <div className="space-y-3">
+                            {/* Style */}
+                            <div className="flex items-start gap-3">
+                                <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">Style:</span>
+                                <span className="text-sm text-slate-700 font-medium">{result.designJSON?.style || result.analysis?.designConcept?.split('.')[0] || 'Modern Landscape'}</span>
+                            </div>
+                            {/* User's Request */}
+                            {result.designJSON?.userPrompt && (
+                                <div className="flex items-start gap-3">
+                                    <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">Your Request:</span>
+                                    <span className="text-sm text-slate-700 italic">"{result.designJSON.userPrompt}"</span>
+                                </div>
+                            )}
+                            {/* AI Interpretation */}
+                            <div className="flex items-start gap-3">
+                                <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">AI Design:</span>
+                                <span className="text-sm text-slate-700">{result.concept?.description || result.analysis?.designConcept || 'A thoughtfully designed outdoor space with balanced hardscape and plantings.'}</span>
+                            </div>
+                            {/* Maintenance */}
+                            {result.analysis?.maintenanceLevel && (
+                                <div className="flex items-start gap-3">
+                                    <span className="text-sm font-semibold text-slate-500 w-24 flex-shrink-0">Maintenance:</span>
+                                    <span className={`text-sm font-medium px-2 py-0.5 rounded ${result.analysis.maintenanceLevel === 'Low' ? 'bg-green-100 text-green-700' : result.analysis.maintenanceLevel === 'High' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        {result.analysis.maintenanceLevel}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                                                        return (
-                                                            <div key={`rag-${index}`} className="group">
-                                                                <div className={`relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 ${isPlant ? 'group-hover:border-emerald-400' : 'group-hover:border-blue-400'} group-hover:shadow-md transition-all`}>
-                                                                    {item.image_url ? (
-                                                                        <img src={item.image_url} alt={item.match || item.item} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                                                    ) : (
-                                                                        <div className={`w-full h-full flex items-center justify-center ${isPlant ? 'bg-gradient-to-br from-emerald-50 to-green-100' : 'bg-gradient-to-br from-blue-50 to-slate-100'}`}>
-                                                                            {isPlant ? (
-                                                                                <svg className="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                                                                            ) : (
-                                                                                <svg className="w-10 h-10 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
-                                                                    {/* Shop Button Inside - Uses Google Lens for image search */}
-                                                                    <a
-                                                                        href={shopUrl}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className={`absolute bottom-1 right-1 px-1.5 py-0.5 ${isPlant ? 'bg-amber-400/90 hover:bg-amber-500 text-amber-900' : 'bg-blue-400/90 hover:bg-blue-500 text-white'} rounded text-[14px] font-bold transition-colors shadow-sm`}
-                                                                        onClick={e => e.stopPropagation()}
-                                                                    >
-                                                                        Shop
-                                                                    </a>
-                                                                    {/* Type badge */}
-                                                                    <span className={`absolute top-1 left-1 px-1.5 py-0.5 ${isPlant ? 'bg-emerald-500/80' : 'bg-blue-500/80'} text-white rounded text-[14px] font-medium`}>
-                                                                        {isPlant ? 'Plant' : 'Material'}
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-xs text-slate-700 font-medium text-center mt-1.5 truncate" title={item.match || item.item}>{item.match || item.item}</p>
-                                                                <p className="text-xs text-slate-500 text-center">{item.price_estimate}</p>
-                                                            </div>
-                                                        );
-                                                    })}
+                    {/* Material List & Cost Distribution - Tabbed */}
+                    {result.estimates.totalCost > 0 && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div className="flex border-b border-slate-100">
+                                <button onClick={() => setCostViewTab('materials')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${costViewTab === 'materials' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
+                                    Material List & Estimates
+                                    {costViewTab === 'materials' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
+                                </button>
+                                <button onClick={() => setCostViewTab('distribution')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${costViewTab === 'distribution' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
+                                    Cost Distribution
+                                    {costViewTab === 'distribution' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500" />}
+                                </button>
+                            </div>
 
-                                                    {(!ragBudget?.line_items || ragBudget.line_items.length === 0) && result.estimates.plantPalette && result.estimates.plantPalette.map((plant, index) => {
-                                                        // Use Google Shopping image search if image available, otherwise fall back to Amazon text search
-                                                        const shopUrl = plant.image_url
-                                                            ? `https://www.google.com/searchbyimage?sbisrc=tg&image_url=${encodeURIComponent(plant.image_url)}&tbm=shop`
-                                                            : `https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' live plant')}&i=lawngarden`;
-
-                                                        return (
-                                                            <div key={`plant-${index}`} className="group">
-                                                                <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-emerald-400 group-hover:shadow-md transition-all">
-                                                                    {plant.image_url ? (
-                                                                        <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                                                    ) : (
-                                                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-100">
-                                                                            <svg className="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                                                                        </div>
-                                                                    )}
-                                                                    {/* Shop Button Inside - Uses Google Lens for image search */}
-                                                                    <a
-                                                                        href={shopUrl}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-amber-400/90 hover:bg-amber-500 text-amber-900 rounded text-[14px] font-bold transition-colors shadow-sm"
-                                                                        onClick={e => e.stopPropagation()}
-                                                                    >
-                                                                        Shop
-                                                                    </a>
-                                                                    {/* Plant type badge */}
-                                                                    <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-emerald-500/80 text-white rounded text-[14px] font-medium">
-                                                                        Plant
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-sm text-slate-700 font-medium text-center mt-1.5 truncate" title={plant.common_name}>{plant.common_name}</p>
-                                                                <p className="text-sm text-slate-500 text-center">{plant.unit_price}</p>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
+                            {costViewTab === 'materials' && (
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={handleGenerateAffiliateLinks} disabled={isLoadingAffiliateLinks} className="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-orange-200 disabled:opacity-50">
+                                                {isLoadingAffiliateLinks ? 'Generating...' : 'Shop Materials'}
+                                            </button>
+                                            <button onClick={downloadCSV} className="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-slate-200">
+                                                Export to Excel
+                                            </button>
+                                            <button onClick={handleExportToGoogleSheets} className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 border border-green-200">
+                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z" /><path d="M7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7zm4-8h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z" /></svg>
+                                                Export to Sheets
+                                            </button>
                                         </div>
                                     </div>
-
-                                    {/* Plant Detail Modal */}
-                                    {selectedPlant && (
-                                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedPlant(null)}>
-                                            <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <h3 className="text-xl font-bold text-slate-800">{selectedPlant.common_name}</h3>
-                                                    <button onClick={() => setSelectedPlant(null)} className="text-slate-400 hover:text-slate-600">
-                                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                    </button>
-                                                </div>
-                                                {selectedPlant.image_url && <img src={selectedPlant.image_url} alt={selectedPlant.common_name} className="w-full h-48 object-cover rounded-lg mb-4" />}
-                                                <div className="space-y-2 text-sm">
-                                                    {selectedPlant.botanical_name && <p><span className="font-medium text-slate-600">Botanical:</span> {selectedPlant.botanical_name}</p>}
-                                                    {selectedPlant.size && <p><span className="font-medium text-slate-600">Size:</span> {selectedPlant.size}</p>}
-                                                    {selectedPlant.quantity && <p><span className="font-medium text-slate-600">Quantity:</span> {selectedPlant.quantity}</p>}
-                                                    {selectedPlant.unit_price && <p><span className="font-medium text-slate-600">Unit Price:</span> {selectedPlant.unit_price}</p>}
-                                                    {selectedPlant.total_estimate && <p><span className="font-medium text-slate-600">Total:</span> {selectedPlant.total_estimate}</p>}
-                                                    {selectedPlant.rag_verified && <p className="text-emerald-600 font-medium">✅ Verified from database</p>}
-                                                </div>
-                                                <button
-                                                    onClick={() => window.open(`https://www.amazon.com/s?k=${encodeURIComponent(selectedPlant.common_name + ' plant')}`, '_blank')}
-                                                    className="w-full mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
-                                                >
-                                                    Shop on Amazon
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Contact Designer Modal */}
-                                    <ContactDesignerModal
-                                        isOpen={isContactModalOpen}
-                                        onClose={() => setIsContactModalOpen(false)}
-                                        designLink={currentShortId ? `${window.location.origin}/result/${currentShortId}` : window.location.href}
-                                    />
-
-                                    {/* Delete Design Section (for creator only) */}
-                                    {user && designUserId && user.uid === designUserId && currentDesignId && (
-                                        <div className="mt-12 pt-8 border-t border-slate-200">
-                                            <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-                                                <h3 className="text-lg font-semibold text-red-800 mb-2">Danger Zone</h3>
-                                                <p className="text-sm text-red-600 mb-4">Once you delete this design, there is no going back. Please be certain.</p>
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!confirm('Are you sure you want to delete this design? This action cannot be undone.')) return;
-                                                        try {
-                                                            await deleteDesignAdmin(currentDesignId);
-                                                            alert('Design deleted successfully.');
-                                                            navigate('/gallery');
-                                                        } catch (err) {
-                                                            console.error('Failed to delete design:', err);
-                                                            alert('Failed to delete design.');
-                                                        }
-                                                    }}
-                                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
-                                                >
-                                                    Delete This Design
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="text-sm text-slate-600 uppercase bg-slate-50 border-b border-slate-100">
+                                                <tr>
+                                                    <th className="px-4 py-3">Item</th>
+                                                    <th className="px-4 py-3">Qty</th>
+                                                    <th className="px-4 py-3 text-right">Est. Cost</th>
+                                                    {showAffiliateLinks && <th className="px-4 py-3 text-center">Purchase</th>}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {result.estimates.breakdown.slice(0, 10).map((item, idx) => {
+                                                    const affiliateItem = affiliateLinks.get(item.name);
+                                                    return (
+                                                        <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50">
+                                                            <td className="px-4 py-3 font-medium text-slate-700">
+                                                                <div className="flex items-center gap-2">
+                                                                    {item.name}
+                                                                    {affiliateItem?.verified && (
+                                                                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full" title="Verified in render">
+                                                                            ✓ Verified
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-slate-600">{item.quantity}</td>
+                                                            <td className="px-4 py-3 text-right text-slate-700">{item.totalCost}</td>
+                                                            {showAffiliateLinks && (
+                                                                <td className="px-4 py-3 text-center">
+                                                                    {affiliateItem?.amazonSearchUrl ? (
+                                                                        <a
+                                                                            href={affiliateItem.amazonSearchUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                                                                            title={`Find similar ${item.name} on Amazon`}
+                                                                        >
+                                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                                                <path d="M23.27 13.73L22 12.5l-1.27-1.23L19.5 12l1.23 1.27L22 14.5l1.27-1.23L24.5 12l-1.23-1.27zM6.32 2.72c-.35-.35-.92-.35-1.27 0L2.72 5.05c-.35.35-.35.92 0 1.27l2.33 2.33c.35.35.92.35 1.27 0l2.33-2.33c.35-.35.35-.92 0-1.27L6.32 2.72zM12 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm8-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                                                            </svg>
+                                                                            Find Similar on Amazon
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span className="text-xs text-slate-400">Not available</span>
+                                                                    )}
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                            <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold text-slate-800">
+                                                <tr>
+                                                    <td className="px-4 py-3" colSpan={2}>Estimated Total</td>
+                                                    <td className="px-4 py-3 text-right text-emerald-700">{formatCurrency(result.estimates.totalCost)}</td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
                                 </div>
-                            );
+                            )}
+
+                            {costViewTab === 'distribution' && (
+                                <div className="p-6">
+                                    <div className="h-[300px]">
+                                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
+                                            <PieChart>
+                                                <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="cost" nameKey="name" label={({ name, value, percent }) => `${name}: ${formatCurrency(value)} (${(percent * 100).toFixed(0)}%)`} labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}>
+                                                    {chartData.map((_, index) => {
+                                                        const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
+                                                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                                    })}
+                                                </Pie>
+                                                <Tooltip formatter={(value: number, name: string) => { const total = chartData.reduce((sum, item) => sum + item.cost, 0); return [`${formatCurrency(value)} (${((value / total) * 100).toFixed(1)}%)`, name]; }} />
+                                                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <p className="text-sm text-slate-600 mt-4 text-center">*Estimates based on national averages. Labor costs may vary by region.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Right Column - Unified Palette Sidebar */}
+                <div className="w-[280px] flex-shrink-0 hidden lg:block">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                        <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                            Palette {isLoadingBudget && <span className="text-xs text-slate-400">(loading...)</span>}
+                        </h3>
+                        <div className="space-y-4">
+                            {ragBudget?.line_items && ragBudget.line_items.map((item, index) => {
+                                // Use Google Shopping image search if image available, otherwise fall back to Amazon text search
+                                const shopUrl = item.image_url
+                                    ? `https://www.google.com/searchbyimage?sbisrc=tg&image_url=${encodeURIComponent(item.image_url)}&tbm=shop`
+                                    : `https://www.amazon.com/s?k=${encodeURIComponent(item.match || item.item)}`;
+                                const isPlant = item.item.toLowerCase().includes('plant') ||
+                                    item.item.toLowerCase().includes('tree') ||
+                                    item.item.toLowerCase().includes('shrub') ||
+                                    item.item.toLowerCase().includes('flower');
+
+                                return (
+                                    <div key={`rag-${index}`} className="group">
+                                        <div className={`relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 ${isPlant ? 'group-hover:border-emerald-400' : 'group-hover:border-blue-400'} group-hover:shadow-md transition-all`}>
+                                            {item.image_url ? (
+                                                <img src={item.image_url} alt={item.match || item.item} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                            ) : (
+                                                <div className={`w-full h-full flex items-center justify-center ${isPlant ? 'bg-gradient-to-br from-emerald-50 to-green-100' : 'bg-gradient-to-br from-blue-50 to-slate-100'}`}>
+                                                    {isPlant ? (
+                                                        <svg className="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                                                    ) : (
+                                                        <svg className="w-10 h-10 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {/* Shop Button Inside - Uses Google Lens for image search */}
+                                            <a
+                                                href={shopUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`absolute bottom-1 right-1 px-1.5 py-0.5 ${isPlant ? 'bg-amber-400/90 hover:bg-amber-500 text-amber-900' : 'bg-blue-400/90 hover:bg-blue-500 text-white'} rounded text-[14px] font-bold transition-colors shadow-sm`}
+                                                onClick={e => e.stopPropagation()}
+                                            >
+                                                Shop
+                                            </a>
+                                            {/* Type badge */}
+                                            <span className={`absolute top-1 left-1 px-1.5 py-0.5 ${isPlant ? 'bg-emerald-500/80' : 'bg-blue-500/80'} text-white rounded text-[14px] font-medium`}>
+                                                {isPlant ? 'Plant' : 'Material'}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-700 font-medium text-center mt-1.5 truncate" title={item.match || item.item}>{item.match || item.item}</p>
+                                        <p className="text-xs text-slate-500 text-center">{item.price_estimate}</p>
+                                    </div>
+                                );
+                            })}
+
+                            {(!ragBudget?.line_items || ragBudget.line_items.length === 0) && result.estimates.plantPalette && result.estimates.plantPalette.map((plant, index) => {
+                                // Use Google Shopping image search if image available, otherwise fall back to Amazon text search
+                                const shopUrl = plant.image_url
+                                    ? `https://www.google.com/searchbyimage?sbisrc=tg&image_url=${encodeURIComponent(plant.image_url)}&tbm=shop`
+                                    : `https://www.amazon.com/s?k=${encodeURIComponent(plant.common_name + ' live plant')}&i=lawngarden`;
+
+                                return (
+                                    <div key={`plant-${index}`} className="group">
+                                        <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-emerald-400 group-hover:shadow-md transition-all">
+                                            {plant.image_url ? (
+                                                <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-100">
+                                                    <svg className="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                                                </div>
+                                            )}
+                                            {/* Shop Button Inside - Uses Google Lens for image search */}
+                                            <a
+                                                href={shopUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-amber-400/90 hover:bg-amber-500 text-amber-900 rounded text-[14px] font-bold transition-colors shadow-sm"
+                                                onClick={e => e.stopPropagation()}
+                                            >
+                                                Shop
+                                            </a>
+                                            {/* Plant type badge */}
+                                            <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-emerald-500/80 text-white rounded text-[14px] font-medium">
+                                                Plant
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-slate-700 font-medium text-center mt-1.5 truncate" title={plant.common_name}>{plant.common_name}</p>
+                                        <p className="text-sm text-slate-500 text-center">{plant.unit_price}</p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Plant Detail Modal */}
+            {selectedPlant && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedPlant(null)}>
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="text-xl font-bold text-slate-800">{selectedPlant.common_name}</h3>
+                            <button onClick={() => setSelectedPlant(null)} className="text-slate-400 hover:text-slate-600">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        {selectedPlant.image_url && <img src={selectedPlant.image_url} alt={selectedPlant.common_name} className="w-full h-48 object-cover rounded-lg mb-4" />}
+                        <div className="space-y-2 text-sm">
+                            {selectedPlant.botanical_name && <p><span className="font-medium text-slate-600">Botanical:</span> {selectedPlant.botanical_name}</p>}
+                            {selectedPlant.size && <p><span className="font-medium text-slate-600">Size:</span> {selectedPlant.size}</p>}
+                            {selectedPlant.quantity && <p><span className="font-medium text-slate-600">Quantity:</span> {selectedPlant.quantity}</p>}
+                            {selectedPlant.unit_price && <p><span className="font-medium text-slate-600">Unit Price:</span> {selectedPlant.unit_price}</p>}
+                            {selectedPlant.total_estimate && <p><span className="font-medium text-slate-600">Total:</span> {selectedPlant.total_estimate}</p>}
+                            {selectedPlant.rag_verified && <p className="text-emerald-600 font-medium">✅ Verified from database</p>}
+                        </div>
+                        <button
+                            onClick={() => window.open(`https://www.amazon.com/s?k=${encodeURIComponent(selectedPlant.common_name + ' plant')}`, '_blank')}
+                            className="w-full mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
+                        >
+                            Shop on Amazon
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Contact Designer Modal */}
+            <ContactDesignerModal
+                isOpen={isContactModalOpen}
+                onClose={() => setIsContactModalOpen(false)}
+                designLink={currentShortId ? `${window.location.origin}/result/${currentShortId}` : window.location.href}
+            />
+
+            {/* Delete Design Section (for creator only) */}
+            {user && designUserId && user.uid === designUserId && currentDesignId && (
+                <div className="mt-12 pt-8 border-t border-slate-200">
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-red-800 mb-2">Danger Zone</h3>
+                        <p className="text-sm text-red-600 mb-4">Once you delete this design, there is no going back. Please be certain.</p>
+                        <button
+                            onClick={async () => {
+                                if (!confirm('Are you sure you want to delete this design? This action cannot be undone.')) return;
+                                try {
+                                    await deleteDesignAdmin(currentDesignId);
+                                    alert('Design deleted successfully.');
+                                    navigate('/gallery');
+                                } catch (err) {
+                                    console.error('Failed to delete design:', err);
+                                    alert('Failed to delete design.');
+                                }
+                            }}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
+                        >
+                            Delete This Design
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
 
-                            export default ResultsViewV2;
+export default ResultsViewV2;

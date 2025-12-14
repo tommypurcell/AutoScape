@@ -41,7 +41,9 @@ class PlantCatalog:
                 "image_url": result.get('image_url', result.get('url', '')),
                 "score": result.get('score', 0),
                 "tags": result.get('tags', []),
-                "original_title": result.get('title', '')
+                "original_title": result.get('title', ''),
+                "price_estimate": result.get('price_estimate', ''),
+                "description": result.get('description', '')
             }
             plants.append(plant_entry)
         

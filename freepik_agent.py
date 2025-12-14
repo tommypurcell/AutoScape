@@ -18,7 +18,7 @@ from PIL import Image
 # ==========================================
 # CONFIGURATION
 # ==========================================
-COLLECTION_NAME = "freepik_landscaping"
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "freepik_landscaping")
 TOP_K_RESULTS = 10
 
 # Setup logging
