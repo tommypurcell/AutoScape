@@ -61,7 +61,7 @@ export const BusinessPage: React.FC = () => {
                     rating: d.rating || 5.0, // New profiles have 0 rating, give them a boost for display? Or 0.
                     reviewCount: d.reviewCount || 0,
                     introduction: d.bio,
-                    imageUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200", // Default avatar
+                    imageUrl: d.avatarUrl || `https://mockmind-api.uifaces.co/content/human/${Math.floor(Math.random() * 180) + 1}.jpg`, // Use custom avatar or random default
                     portfolioImages: d.portfolioImages && d.portfolioImages.length > 0
                         ? d.portfolioImages
                         : ["https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&q=80&w=800"],
@@ -339,3 +339,7 @@ export const BusinessPage: React.FC = () => {
         </div>
     );
 };
+
+
+
+
