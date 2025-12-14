@@ -182,9 +182,10 @@ def generate_freepik_video(original_base64: str, redesign_base64: str) -> dict:
                 # Log full response to debug
                 print(f"📦 Full completed response: {status_data}")
                 
-                # Try different field names for video URL
+                # Freepik returns 'generated' as a list of URL strings
+                generated = status_data.get('data', {}).get('generated', [])
                 video_url = (status_data.get('data', {}).get('video_url') or 
-                            status_data.get('data', {}).get('generated', [{}])[0].get('url') or
+                            (generated[0] if generated else None) or
                             status_data.get('data', {}).get('result', {}).get('url'))
                 
                 if video_url:
