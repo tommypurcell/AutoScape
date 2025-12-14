@@ -124,6 +124,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
         fetchFeaturedDesign();
     }, []);
 
+    // Scroll animation observer
+    useEffect(() => {
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-in');
+                }
+            });
+        }, observerOptions);
+
+        const animatedElements = document.querySelectorAll('.scroll-animate, .scroll-animate-left, .scroll-animate-right, .scroll-animate-rotate, .scroll-animate-rotate-reverse');
+        animatedElements.forEach(el => observer.observe(el));
+
+        return () => observer.disconnect();
+    }, []);
+
     const scrollToContent = () => {
         window.scrollTo({
             top: window.innerHeight,
@@ -281,6 +302,69 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                             Create Your Transformation
                             <ArrowRight className="w-4 h-4" />
                         </button>
+                    </div>
+                </div>
+            </section>
+
+            {/* Cost Estimation Section */}
+            <section className="py-20 bg-white">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center mb-12 scroll-animate">
+                        <h2 className="text-3xl md:text-4xl font-light text-gray-900 mb-4">
+                            Know Your <span className="font-semibold">Investment</span>
+                        </h2>
+                        <p className="text-gray-600 max-w-2xl mx-auto">
+                            Get detailed cost breakdowns and material estimates instantly with AI-powered analysis
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-12 items-center">
+                        {/* Pie Chart Image */}
+                        <div className="order-2 md:order-1 scroll-animate-rotate">
+                            <img
+                                src="/demo_clips/pie-chart.png"
+                                alt="Cost breakdown pie chart"
+                                className="w-full rounded-2xl shadow-xl hover:shadow-2xl transition-shadow duration-300"
+                            />
+                            <p className="text-center text-sm text-gray-500 mt-4">
+                                Visual cost breakdown by category
+                            </p>
+                        </div>
+
+                        {/* Estimate Details Image */}
+                        <div className="order-1 md:order-2 scroll-animate-rotate-reverse">
+                            <img
+                                src="/demo_clips/estimate.png"
+                                alt="Detailed material estimates"
+                                className="w-full rounded-2xl shadow-xl hover:shadow-2xl transition-shadow duration-300"
+                            />
+                            <p className="text-center text-sm text-gray-500 mt-4">
+                                Itemized material list with quantities and pricing
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-12 text-center scroll-animate">
+                        <div className="inline-flex flex-col md:flex-row gap-4 items-center justify-center">
+                            <div className="flex items-center gap-2 text-gray-700 scroll-animate stagger-1">
+                                <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-medium">Instant cost analysis</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-700 scroll-animate stagger-2">
+                                <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-medium">Export to Excel or Sheets</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-700 scroll-animate stagger-3">
+                                <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-medium">RAG-verified plant pricing</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -469,7 +553,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
 
             {/* Designer Section - "Are you a Designer?" */}
             {/* Designer Section - "Are you a Designer?" - Bright & Professional */}
-            <section className="py-24 relative overflow-hidden bg-gradient-to-br from-white via-blue-50 to-indigo-50">
+            <section className="py-24 relative overflow-hidden bg-white">
                 {/* Background Decorative Elements */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-amber-100/50 to-transparent rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
