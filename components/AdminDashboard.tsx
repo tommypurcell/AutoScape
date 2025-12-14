@@ -547,23 +547,23 @@ export const AdminDashboard: React.FC = () => {
                             <div className="space-y-6">
                                 {/* Current Features */}
                                 <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
                                         <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                                         Current Active Features
                                     </h3>
                                     <div className="grid md:grid-cols-2 gap-4">
                                         <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
-                                            <h4 className="font-semibold text-emerald-900 mb-2">🎨 Design Generation</h4>
-                                            <ul className="space-y-1 text-sm text-emerald-700">
-                                                <li>• AI-powered landscape design using Gemini 2.0</li>
+                                            <h4 className="font-semibold text-emerald-900 mb-2 text-lg">🎨 Design Generation</h4>
+                                            <ul className="space-y-1 text-base text-emerald-700">
+                                                <li>• AI-powered landscape design using Gemini 3.0</li>
                                                 <li>• Style analysis and customization</li>
                                                 <li>• Before/after comparison slider</li>
                                                 <li>• Multiple design variations</li>
                                             </ul>
                                         </div>
                                         <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                                            <h4 className="font-semibold text-blue-900 mb-2">🎥 Video Generation</h4>
-                                            <ul className="space-y-1 text-sm text-blue-700">
+                                            <h4 className="font-semibold text-blue-900 mb-2 text-lg">🎥 Video Generation</h4>
+                                            <ul className="space-y-1 text-base text-blue-700">
                                                 <li>• Gemini Veo 3.1 (High Quality, 5s)</li>
                                                 <li>• Freepik Kling v2 (Fast, 5s)</li>
                                                 <li>• Before→After transition with camera pan</li>
@@ -571,8 +571,8 @@ export const AdminDashboard: React.FC = () => {
                                             </ul>
                                         </div>
                                         <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                                            <h4 className="font-semibold text-purple-900 mb-2">💰 Cost Estimation</h4>
-                                            <ul className="space-y-1 text-sm text-purple-700">
+                                            <h4 className="font-semibold text-purple-900 mb-2 text-lg">💰 Cost Estimation</h4>
+                                            <ul className="space-y-1 text-base text-purple-700">
                                                 <li>• RAG-based material pricing</li>
                                                 <li>• Plant palette with detailed items</li>
                                                 <li>• Cost distribution breakdown</li>
@@ -580,8 +580,8 @@ export const AdminDashboard: React.FC = () => {
                                             </ul>
                                         </div>
                                         <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
-                                            <h4 className="font-semibold text-orange-900 mb-2">👤 User Management</h4>
-                                            <ul className="space-y-1 text-sm text-orange-700">
+                                            <h4 className="font-semibold text-orange-900 mb-2 text-lg">👤 User Management</h4>
+                                            <ul className="space-y-1 text-base text-orange-700">
                                                 <li>• Firebase authentication (Google, Email)</li>
                                                 <li>• Design save and history</li>
                                                 <li>• Community gallery (public designs)</li>
@@ -593,7 +593,7 @@ export const AdminDashboard: React.FC = () => {
 
                                 {/* Recently Completed */}
                                 <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
                                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                         Recently Completed
                                     </h3>
@@ -601,36 +601,36 @@ export const AdminDashboard: React.FC = () => {
                                         <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                                             <div className="text-green-600 mt-0.5">✓</div>
                                             <div>
-                                                <div className="font-medium text-slate-900">Auth Modal X Button</div>
-                                                <div className="text-sm text-slate-600">Added cancel button to sign in/up modal</div>
+                                                <div className="font-medium text-slate-900 text-base">Auth Modal X Button</div>
+                                                <div className="text-base text-slate-600">Added cancel button to sign in/up modal</div>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                                             <div className="text-green-600 mt-0.5">✓</div>
                                             <div>
-                                                <div className="font-medium text-slate-900">Sign Out Button</div>
-                                                <div className="text-sm text-slate-600">Replaced settings icon with sign out in sidebar</div>
+                                                <div className="font-medium text-slate-900 text-base">Sign Out Button</div>
+                                                <div className="text-base text-slate-600">Replaced settings icon with sign out in sidebar</div>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                                             <div className="text-green-600 mt-0.5">✓</div>
                                             <div>
-                                                <div className="font-medium text-slate-900">Video Before→After Transition</div>
-                                                <div className="text-sm text-slate-600">Composite image showing transformation from original to redesign</div>
+                                                <div className="font-medium text-slate-900 text-base">Video Before→After Transition</div>
+                                                <div className="text-base text-slate-600">Composite image showing transformation from original to redesign</div>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                                             <div className="text-green-600 mt-0.5">✓</div>
                                             <div>
-                                                <div className="font-medium text-slate-900">Gallery Budget Display</div>
-                                                <div className="text-sm text-slate-600">Fixed budget extraction from design data</div>
+                                                <div className="font-medium text-slate-900 text-base">Gallery Budget Display</div>
+                                                <div className="text-base text-slate-600">Fixed budget extraction from design data</div>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                                             <div className="text-green-600 mt-0.5">✓</div>
                                             <div>
-                                                <div className="font-medium text-slate-900">AI Disclaimer Footer</div>
-                                                <div className="text-sm text-slate-600">Added Google Gemini usage disclaimer in footer</div>
+                                                <div className="font-medium text-slate-900 text-base">AI Disclaimer Footer</div>
+                                                <div className="text-base text-slate-600">Added Google Gemini usage disclaimer in footer</div>
                                             </div>
                                         </div>
                                     </div>
@@ -638,7 +638,7 @@ export const AdminDashboard: React.FC = () => {
 
                                 {/* Known Issues */}
                                 <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
                                         <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                                         Known Issues & Limitations
                                     </h3>
@@ -646,22 +646,22 @@ export const AdminDashboard: React.FC = () => {
                                         <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
                                             <div className="text-yellow-600 mt-0.5">⚠️</div>
                                             <div>
-                                                <div className="font-medium text-yellow-900">Freepik API Rate Limits</div>
-                                                <div className="text-sm text-yellow-700">Video generation may hit quota limits (429 error)</div>
+                                                <div className="font-medium text-yellow-900 text-base">Freepik API Rate Limits</div>
+                                                <div className="text-base text-yellow-700">Video generation may hit quota limits (429 error)</div>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
                                             <div className="text-yellow-600 mt-0.5">⚠️</div>
                                             <div>
-                                                <div className="font-medium text-yellow-900">DesignerOnboarding.tsx Warning</div>
-                                                <div className="text-sm text-yellow-700">Duplicate case 1: clause at line 95 (non-blocking)</div>
+                                                <div className="font-medium text-yellow-900 text-base">DesignerOnboarding.tsx Warning</div>
+                                                <div className="text-base text-yellow-700">Duplicate case 1: clause at line 95 (non-blocking)</div>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
                                             <div className="text-yellow-600 mt-0.5">⚠️</div>
                                             <div>
-                                                <div className="font-medium text-yellow-900">Large Bundle Size</div>
-                                                <div className="text-sm text-yellow-700">1.6MB bundle (420KB gzipped) - consider code splitting</div>
+                                                <div className="font-medium text-yellow-900 text-base">Large Bundle Size</div>
+                                                <div className="text-base text-yellow-700">1.6MB bundle (420KB gzipped) - consider code splitting</div>
                                             </div>
                                         </div>
                                     </div>
@@ -669,7 +669,7 @@ export const AdminDashboard: React.FC = () => {
 
                                 {/* API Keys Status */}
                                 <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
                                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                                         API Integration Status
                                     </h3>
@@ -677,34 +677,34 @@ export const AdminDashboard: React.FC = () => {
                                         <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                                <h4 className="font-semibold text-green-900">Gemini API</h4>
+                                                <h4 className="font-semibold text-green-900 text-base">Gemini API</h4>
                                             </div>
-                                            <p className="text-sm text-green-700">Status: <span className="font-medium">Active</span></p>
-                                            <p className="text-xs text-green-600 mt-1">Model: gemini-2.0-flash-exp & veo-3.1</p>
+                                            <p className="text-base text-green-700">Status: <span className="font-medium">Active</span></p>
+                                            <p className="text-sm text-green-600 mt-1">Model: gemini-3.0-flash-image & veo-3.1</p>
                                         </div>
                                         <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                <h4 className="font-semibold text-blue-900">Freepik API</h4>
+                                                <h4 className="font-semibold text-blue-900 text-base">Freepik API</h4>
                                             </div>
-                                            <p className="text-sm text-blue-700">Status: <span className="font-medium">Active</span></p>
-                                            <p className="text-xs text-blue-600 mt-1">Model: kling-v2 (image-to-video)</p>
+                                            <p className="text-base text-blue-700">Status: <span className="font-medium">Active</span></p>
+                                            <p className="text-sm text-blue-600 mt-1">Model: kling-v2 (image-to-video)</p>
                                         </div>
                                         <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                                <h4 className="font-semibold text-purple-900">Firebase</h4>
+                                                <h4 className="font-semibold text-purple-900 text-base">Firebase</h4>
                                             </div>
-                                            <p className="text-sm text-purple-700">Status: <span className="font-medium">Active</span></p>
-                                            <p className="text-xs text-purple-600 mt-1">Auth, Firestore, Storage, Hosting, Functions</p>
+                                            <p className="text-base text-purple-700">Status: <span className="font-medium">Active</span></p>
+                                            <p className="text-sm text-purple-600 mt-1">Auth, Firestore, Storage, Hosting, Functions</p>
                                         </div>
                                         <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                                <h4 className="font-semibold text-orange-900">RAG API</h4>
+                                                <h4 className="font-semibold text-orange-900 text-base">RAG API</h4>
                                             </div>
-                                            <p className="text-sm text-orange-700">Status: <span className="font-medium">Active</span></p>
-                                            <p className="text-xs text-orange-600 mt-1">Plant catalog & budget estimation</p>
+                                            <p className="text-base text-orange-700">Status: <span className="font-medium">Active</span></p>
+                                            <p className="text-sm text-orange-600 mt-1">Plant catalog & budget estimation</p>
                                         </div>
                                     </div>
                                 </div>
