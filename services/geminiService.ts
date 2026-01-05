@@ -151,14 +151,43 @@ If valid, message should be empty string. If invalid, message should politely ex
 };
 
 
+// Helper to approximate area from size label
+const sizeToSqFt = (size?: string): number | null => {
+  if (!size) return null;
+  const normalized = size.toLowerCase();
+  if (normalized.includes('small')) return 500;
+  if (normalized.includes('medium')) return 1500;
+  if (normalized.includes('large')) return 4000;
+  return null;
+};
+
+const budgetRangeFromPerSqFt = (budgetStr?: string, sizeLabel?: string) => {
+  if (!budgetStr) return { text: '', totalRange: '' };
+  const match = budgetStr.match(/\$?(\d+(?:\.\d+)?)\s*-\s*\$?(\d+(?:\.\d+)?)/);
+  const perSq = match ? [parseFloat(match[1]), parseFloat(match[2])] : null;
+  const area = sizeToSqFt(sizeLabel);
+  if (perSq && area) {
+    const minTotal = perSq[0] * area;
+    const maxTotal = perSq[1] * area;
+    return {
+      text: `${budgetStr} (per sq ft)`,
+      totalRange: `Approx total budget target: $${Math.round(minTotal).toLocaleString()} - $${Math.round(maxTotal).toLocaleString()} assuming ~${area.toLocaleString()} sq ft.`
+    };
+  }
+  return { text: budgetStr, totalRange: '' };
+};
+
 export const generateLandscapeDesign = async (
   yardFile: File,
   styleFiles: File[],
   prompt: string,
   stylePreference: string,
   budget: string,
+  locationType?: string,
+  spaceSize?: string,
   onProgress?: (partialResult: Partial<GeneratedDesign>) => void,
-  useRag: boolean = true
+  useRag: boolean = true,
+  options?: { renderOnly?: boolean }
 ): Promise<GeneratedDesign> => {
   if (!GEMINI_API_KEY) {
     throw new Error("Gemini API key not found in environment variables");
@@ -197,9 +226,17 @@ export const generateLandscapeDesign = async (
       });
     }
 
+    const budgetDetails = budgetRangeFromPerSqFt(budget, spaceSize);
     analysisParts.push({
       text: `
       You are a Senior Landscape Architect.
+      
+      CONTEXT:
+      - Location type: ${locationType || 'Not specified'}
+      - Space size: ${spaceSize || 'Not specified'} ${sizeToSqFt(spaceSize) ? `(approx ${sizeToSqFt(spaceSize)?.toLocaleString()} sq ft)` : ''}
+      - Style target: ${stylePreference}
+      ${budget ? `- Budget: ${budgetDetails.text}${budgetDetails.totalRange ? `\n      - ${budgetDetails.totalRange}` : ''}` : ''}
+      - User request: ${prompt || 'No extra notes'}
       
       PHASE 1 TASK: Analyze the yard image to create a strict Scene JSON and Design JSON.
       
@@ -213,13 +250,13 @@ export const generateLandscapeDesign = async (
            "existingTrees": "..."
          }
       
-      2. DESIGN JSON (The Changes): Apply the user's request: "${prompt}" in style "${stylePreference}".
-         ${budget ? `IMPORTANT: The user has a budget of "${budget}". Ensure the design features and materials are realistic for this budget.` : ''}
+      2. DESIGN JSON (The Changes): Apply the user's request in the specified style.
          Structure:
          {
            "newHardscape": "...",
            "newPlantings": "...",
-           "furniture": "..."
+           "furniture": "...",
+           "budgetNotes": "${budget ? budgetDetails.totalRange || budget : 'not provided'}"
          }
 
       OUTPUT FORMAT: Provide a structured text response containing these two JSON blocks clearly labeled.
@@ -253,6 +290,8 @@ export const generateLandscapeDesign = async (
       STRICT RULES:
       1. GEOMETRY ANCHORS: You MUST keep the house architecture, windows, and perimeter fences EXACTLY as they appear in the input photo. Do not move the camera.
       2. STYLE: ${stylePreference}. Photorealistic, high definition.
+      3. LOCATION CONTEXT: ${locationType || 'Not specified'} | SIZE: ${spaceSize || 'Not specified'} ${sizeToSqFt(spaceSize) ? `(approx ${sizeToSqFt(spaceSize)?.toLocaleString()} sq ft)` : ''}
+      ${budget ? `4. BUDGET GUIDANCE: ${budgetRangeFromPerSqFt(budget, spaceSize).totalRange || budgetRangeFromPerSqFt(budget, spaceSize).text}` : ''}
       3. Do NOT hallucinate new buildings.
 
       ADDITIONAL OUTPUT REQUIREMENT:
@@ -320,6 +359,28 @@ export const generateLandscapeDesign = async (
         // We can emit empty/loading states for others if needed, or just omit them
         // The UI should handle missing fields gracefully
       });
+    }
+
+    // If renderOnly is requested, return early with render image only
+    if (options?.renderOnly) {
+      return {
+        analysis: {
+          currentLayout: "Scene Analyzed",
+          designConcept: `${stylePreference} concept`,
+          visualDescription: "See render",
+          maintenanceLevel: "Medium",
+        },
+        estimates: {
+          totalCost: 0,
+          currency: "USD",
+          breakdown: [],
+          plantPalette: [],
+          ragEnhanced: false,
+        },
+        renderImages: [renderImage],
+        planImage: "",
+        designJSON: designJSON,
+      };
     }
 
     // -------------------------------------------------------------------------

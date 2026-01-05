@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useDesign } from '../contexts/DesignContext';
 import { getVideoEndpoint } from '../config/api';
 import { Loader } from 'lucide-react';
+import { generateLandscapeDesign } from '../services/geminiService';
 
 interface ResultsViewProps {
   result?: GeneratedDesign;
@@ -42,6 +43,8 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [altRenders, setAltRenders] = useState<string[]>([]);
+  const [isGeneratingAlts, setIsGeneratingAlts] = useState(false);
 
   useEffect(() => {
     setLocalResult(propResult || ctxResult);
@@ -149,6 +152,165 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     }
   };
 
+  const fileFromUrl = async (url: string, name: string): Promise<File> => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new File([blob], name, { type: blob.type || 'image/png' });
+  };
+
+  const handleGenerateAlternatives = async () => {
+    if (!originalImage) return;
+    setIsGeneratingAlts(true);
+    try {
+      const yardFile = await fileFromUrl(originalImage, 'yard.png');
+      const stylePref = result.designJSON?.style || result.analysis?.designConcept || 'Modern Minimalist';
+      const prompt = result.designJSON?.userPrompt || '';
+
+      const alts: string[] = [];
+      for (let i = 0; i < 2; i++) {
+        const alt = await generateLandscapeDesign(
+          yardFile,
+          [],
+          prompt,
+          stylePref,
+          '',
+          undefined,
+          undefined,
+          undefined,
+          false,
+          { renderOnly: true }
+        );
+        if (alt.renderImages?.[0]) alts.push(alt.renderImages[0]);
+      }
+      setAltRenders(alts);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate alternatives.');
+    } finally {
+      setIsGeneratingAlts(false);
+    }
+  };
+
+  const handleRedesignWith = async (renderUrl: string) => {
+    if (!originalImage) return;
+    setIsGeneratingVideo(true);
+    try {
+      const yardFile = await fileFromUrl(originalImage, 'yard.png');
+      const stylePref = result.designJSON?.style || result.analysis?.designConcept || 'Modern Minimalist';
+      const prompt = result.designJSON?.userPrompt || '';
+      const newResult = await generateLandscapeDesign(
+        yardFile,
+        [],
+        prompt,
+        stylePref,
+        '',
+        undefined,
+        undefined,
+        undefined,
+        true // useRag
+      );
+      // Replace primary render with the chosen one
+      if (renderUrl) {
+        newResult.renderImages = [renderUrl, ...newResult.renderImages];
+      }
+      setLocalResult(newResult);
+      setCtxResult(newResult);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to regenerate with this image.');
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  };
+
+  const handleDownloadInvoice = async () => {
+    const id = await ensureSaved();
+    const invoiceId = id || currentShortId || 'unsaved';
+    const today = new Date().toLocaleDateString();
+    const client = user?.email || 'Client';
+    const lineItems = result.estimates.breakdown.slice(0, 12);
+    const disclaimer = 'This is an AI-generated conceptual estimate and is not a binding quote. Site verification and professional review are required before any work begins.';
+
+    const invoiceHtml = `
+      <html>
+        <head>
+          <title>AutoScape Invoice</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
+            h1 { margin: 0 0 4px; }
+            .muted { color: #64748b; font-size: 12px; }
+            .header { display:flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+            .card { border:1px solid #e2e8f0; border-radius: 10px; padding:16px; margin-bottom: 12px; }
+            table { width:100%; border-collapse: collapse; margin-top: 12px; }
+            th, td { border-bottom: 1px solid #e2e8f0; padding: 8px; font-size: 13px; text-align:left; }
+            th { background:#f8fafc; }
+            .total { font-weight: 700; font-size: 14px; }
+            .disclaimer { font-size:12px; color:#475569; margin-top:16px; }
+            .images { display:flex; gap:12px; margin-top:12px; }
+            .images img { width:48%; border-radius:8px; border:1px solid #e2e8f0; object-fit: cover; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>Landscape Estimate</h1>
+              <div class="muted">AutoScape • ${today}</div>
+              <div class="muted">Invoice ID: ${invoiceId}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="muted">Prepared for</div>
+              <div style="font-weight:700;">${client}</div>
+            </div>
+          </div>
+          <div class="card">
+            <div style="font-weight:700;">Design Intent</div>
+            <div class="muted">Style: ${result.designJSON?.style || result.analysis?.designConcept || 'Modern'}</div>
+            <div class="muted">Concept: ${result.concept?.description || result.analysis?.designConcept || 'Balanced hardscape and plantings.'}</div>
+            ${result.analysis?.maintenanceLevel ? `<div class="muted">Maintenance: ${result.analysis.maintenanceLevel}</div>` : ''}
+          </div>
+          <div class="card">
+            <div style="font-weight:700; margin-bottom:6px;">Estimate</div>
+            <table>
+              <thead><tr><th>Item</th><th>Qty</th><th style="text-align:right;">Est. Cost</th></tr></thead>
+              <tbody>
+                ${lineItems.map(item => `
+                  <tr>
+                    <td>${item.name}</td>
+                    <td>${item.quantity}</td>
+                    <td style="text-align:right;">${item.totalCost}</td>
+                  </tr>
+                `).join('')}
+                <tr>
+                  <td colspan="2" class="total">Total</td>
+                  <td style="text-align:right;" class="total">${formatCurrency(result.estimates.totalCost)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div style="font-weight:700;">Visuals</div>
+            <div class="images">
+              ${originalImage ? `<img src="${originalImage}" alt="Original" />` : ''}
+              ${result.renderImages[currentRenderIndex] ? `<img src="${result.renderImages[currentRenderIndex]}" alt="Render" />` : ''}
+            </div>
+          </div>
+          <div class="disclaimer">${disclaimer}</div>
+        </body>
+      </html>
+    `;
+
+    const w = window.open('', '_blank');
+    if (!w) {
+      alert('Popup blocked. Please allow popups to download the PDF.');
+      return;
+    }
+    w.document.write(invoiceHtml);
+    w.document.close();
+    w.focus();
+    w.print();
+    setTimeout(() => w.close(), 500);
+  };
+
   return (
     <div className="space-y-8 pb-10 px-3 sm:px-6 lg:px-16 xl:px-24">
       {/* Header */}
@@ -162,6 +324,9 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
           <div className="flex gap-2">
             <button onClick={handleCopyLink} disabled={isSaving} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60">
               {copied ? 'Copied' : 'Copy Link'}
+            </button>
+            <button onClick={handleDownloadInvoice} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-semibold hover:bg-slate-900 transition-colors">
+              Download PDF
             </button>
             <button onClick={() => onReset()} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-colors">
               New Design
@@ -295,6 +460,37 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Alternative renders */}
+      <div className="bg-white rounded-2xl shadow border border-slate-200 p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-800">Alternative Renders</h3>
+          <button
+            onClick={handleGenerateAlternatives}
+            disabled={isGeneratingAlts}
+            className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-60"
+          >
+            {isGeneratingAlts ? 'Generating...' : 'Generate 2 more'}
+          </button>
+        </div>
+        {altRenders.length === 0 && <p className="text-sm text-slate-600">No alternatives yet.</p>}
+        {altRenders.length > 0 && (
+          <div className="grid sm:grid-cols-2 gap-4">
+            {altRenders.map((url, idx) => (
+              <div key={idx} className="border border-slate-200 rounded-xl p-3 space-y-2">
+                <img src={url} className="w-full rounded-lg object-contain" />
+                <button
+                  onClick={() => handleRedesignWith(url)}
+                  disabled={isGeneratingVideo}
+                  className="w-full px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60"
+                >
+                  Re-design with this
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

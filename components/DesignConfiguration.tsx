@@ -133,6 +133,8 @@ export const DesignConfiguration: React.FC = () => {
                 userPrompt,
                 finalStyle,
                 budget,
+                locationType,
+                spaceSize,
                 (partial) => {
                     // Create a safe result object with defaults for missing data
                     const safeResult: any = {

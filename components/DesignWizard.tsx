@@ -372,7 +372,7 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                         {/* Budget Input */}
                                         <div className="space-y-2">
                                             <label className="block text-base font-semibold text-gray-800">
-                                                Budget (Optional)
+                                                Budget (per sq ft, optional)
                                             </label>
                                             <div className="relative">
                                                 <select
@@ -380,12 +380,11 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                                     onChange={(e) => onBudgetChange(e.target.value)}
                                                     className="w-full p-4 bg-white border-2 border-gray-200 rounded-lg focus:border-green-600 focus:ring-green-600 appearance-none text-base"
                                                 >
-                                                    <option value="">Select a budget range...</option>
-                                                    <option value="$1,000 - $5,000">$1,000 - $5,000 (DIY/Small)</option>
-                                                    <option value="$5,000 - $15,000">$5,000 - $15,000 (Standard)</option>
-                                                    <option value="$15,000 - $30,000">$15,000 - $30,000 (Full Remodel)</option>
-                                                    <option value="$30,000 - $50,000">$30,000 - $50,000 (Premium)</option>
-                                                    <option value="$50,000+">$50,000+ (Luxury)</option>
+                                                    <option value="">Select a budget per sq ft...</option>
+                                                    <option value="$5 - $15 per sq ft">$5 - $15 per sq ft (DIY/basic)</option>
+                                                    <option value="$15 - $30 per sq ft">$15 - $30 per sq ft (standard)</option>
+                                                    <option value="$30 - $60 per sq ft">$30 - $60 per sq ft (premium)</option>
+                                                    <option value="$60+ per sq ft">$60+ per sq ft (luxury/custom)</option>
                                                 </select>
                                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
                                                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -394,7 +393,7 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                                 </div>
                                             </div>
                                             <p className="text-sm text-gray-500">
-                                                This helps us ensure the design materials and features are realistic for your project.
+                                                Entering a per-square-foot target helps us scale materials and scope realistically.
                                             </p>
                                         </div>
 

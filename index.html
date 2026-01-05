@@ -19,52 +19,9 @@
   <meta property="twitter:description" content="Transform your yard with AI-powered landscape design." />
   <meta property="twitter:image" content="https://images.unsplash.com/photo-1558904541-01470460287c?q=80&w=2000&auto=format" />
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          animation: {
-            'subtle-zoom': 'subtle-zoom 20s infinite alternate',
-            'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
-            'scan': 'scan 5s ease-in-out forwards',
-            'scan-once': 'scan 5s ease-in-out 1 normal forwards',
-          },
-          keyframes: {
-            'subtle-zoom': {
-              '0%': { transform: 'scale(1)' },
-              '100%': { transform: 'scale(1.1)' },
-            },
-            fadeInUp: {
-              '0%': { opacity: '0', transform: 'translateY(20px)' },
-              '100%': { opacity: '1', transform: 'translateY(0)' },
-            },
-            scan: {
-              '0%': { width: '0%' },
-              '100%': { width: '100%' }
-            }
-          }
-        }
-      }
-    }
-  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Text:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Google Sans Text', 'Montserrat', sans-serif;
-      background: linear-gradient(to bottom, #e8f5e9, #f1f8e9, #fffde7);
-    }
-
-    .font-bold {
-      font-weight: 700;
-    }
-
-    .font-normal {
-      font-weight: 400;
-    }
-  </style>
   <script type="importmap">
 {
   "imports": {
