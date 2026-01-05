@@ -18,7 +18,7 @@ export const BusinessPage: React.FC = () => {
     const [selectedState, setSelectedState] = useState<string>('California');
     const [filterRole, setFilterRole] = useState<'All' | 'Designer' | 'Landscaper'>('All');
     const [filteredPros, setFilteredPros] = useState<Professional[]>([]);
-    const [allPros, setAllPros] = useState<Professional[]>([]);
+    const [allPros, setAllPros] = useState<Professional[]>(regenerateProfessionals());
     const [isLoading, setIsLoading] = useState(false);
 
     // Messaging State
@@ -32,47 +32,52 @@ export const BusinessPage: React.FC = () => {
         const fetchAndMergeDesigners = async () => {
             setIsLoading(true);
             try {
-                // Fetch real design images from storage to use for mock professionals
-                const publicDesigns = await getPublicDesigns(20);
-                const storageImages = publicDesigns
-                    .flatMap(d => d.renderImages)
-                    .filter(img => img && img.length > 0);
+                // Start with local mock data so the UI never appears empty
+                let combinedPros: Professional[] = [...regenerateProfessionals()];
 
-                // Update mock professionals with real images from storage
-                let mockProfessionals: Professional[] = [];
-                if (storageImages.length > 0) {
-                    setPortfolioImagesFromStorage(storageImages);
-                    mockProfessionals = regenerateProfessionals(); // Regenerate with new images
-                } else {
-                    mockProfessionals = regenerateProfessionals();
+                // Fetch real design images from storage to use for mock professionals
+                try {
+                    const publicDesigns = await getPublicDesigns(20);
+                    const storageImages = publicDesigns
+                        .flatMap(d => d.renderImages)
+                        .filter(img => img && img.length > 0);
+
+                    if (storageImages.length > 0) {
+                        setPortfolioImagesFromStorage(storageImages);
+                        combinedPros = [...regenerateProfessionals()];
+                    }
+                } catch (err) {
+                    console.warn("Falling back to local mock images for pros:", err);
                 }
 
-                // Fetch real designers from Firestore
-                const realDesigners = await getAllDesigners();
+                // Fetch real designers from Firestore (best effort)
+                try {
+                    const realDesigners = await getAllDesigners();
+                    const mappedRealPros: Professional[] = realDesigners.map(d => ({
+                        id: d.id,
+                        userId: d.userId,
+                        name: d.businessName || d.fullName,
+                        role: 'Garden Designer', // Default role if not specified, or map from d.specialties
+                        state: d.state,
+                        city: d.city,
+                        rating: d.rating || 5.0, // New profiles have 0 rating, give them a boost for display? Or 0.
+                        reviewCount: d.reviewCount || 0,
+                        introduction: d.bio,
+                        imageUrl: d.avatarUrl || `https://mockmind-api.uifaces.co/content/human/${Math.floor(Math.random() * 180) + 1}.jpg`,
+                        portfolioImages: d.portfolioImages && d.portfolioImages.length > 0
+                            ? d.portfolioImages
+                            : ["/demo_clips/autoscape_hero_gen.png"],
+                        contactEmail: d.email,
+                        contactPhone: d.phone || '',
+                        feeRange: 'Contact for pricing'
+                    }));
 
-                // Map Firestore designers to Professional interface (keep their actual portfolio images)
-                const mappedRealPros: Professional[] = realDesigners.map(d => ({
-                    id: d.id,
-                    userId: d.userId,
-                    name: d.businessName || d.fullName,
-                    role: 'Garden Designer', // Default role if not specified, or map from d.specialties
-                    state: d.state,
-                    city: d.city,
-                    rating: d.rating || 5.0, // New profiles have 0 rating, give them a boost for display? Or 0.
-                    reviewCount: d.reviewCount || 0,
-                    introduction: d.bio,
-                    imageUrl: d.avatarUrl || `https://mockmind-api.uifaces.co/content/human/${Math.floor(Math.random() * 180) + 1}.jpg`, // Use custom avatar or random default
-                    portfolioImages: d.portfolioImages && d.portfolioImages.length > 0
-                        ? d.portfolioImages
-                        : ["https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&q=80&w=800"],
-                    contactEmail: d.email,
-                    contactPhone: d.phone || '',
-                    feeRange: 'Contact for pricing'
-                }));
+                    combinedPros = [...mappedRealPros, ...combinedPros];
+                } catch (err) {
+                    console.warn("No real designers loaded; using mock pros only:", err);
+                }
 
-                // Combine real designers with mock professionals
-                // Real designers keep their actual portfolio, mocks use random storage images
-                setAllPros([...mappedRealPros, ...mockProfessionals]);
+                setAllPros(combinedPros);
             } catch (error) {
                 console.error("Error fetching designers:", error);
                 setAllPros(regenerateProfessionals());
@@ -339,7 +344,6 @@ export const BusinessPage: React.FC = () => {
         </div>
     );
 };
-
 
 
 
