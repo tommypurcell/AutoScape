@@ -42,9 +42,15 @@ import { DesignStyle } from '../types';
 import { getStyleImage } from './styleReferences';
 
 // Portfolio images will be populated from real designs in storage
-// This is a fallback set in case we can't fetch real designs
+// Fallback set (served from /public) to guarantee visuals even when Firestore has none
 let PORTFOLIO_IMAGES: string[] = [
-    "https://images.unsplash.com/photo-1558904541-01470460287c?auto=format&fit=crop&w=800&q=80", // Fallback
+    "/demo_clips/autoscape_hero_gen.png",
+    "/demo_clips/after-pad.png",
+    "/images/hero-after.jpg",
+    "/demo_clips/estimate.png",
+    "/demo_clips/pie-chart.png",
+    "/demo_clips/scene_2_solution.jpg",
+    "/demo_clips/scene_1_problem.jpg",
 ];
 
 // Generate random avatar URL with number between 1-180

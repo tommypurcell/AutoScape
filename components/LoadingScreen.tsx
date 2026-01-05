@@ -41,7 +41,7 @@ export const LoadingScreen: React.FC = () => {
           <div className="h-full bg-emerald-500 rounded-full animate-[loading_30s_ease-in-out_infinite]" style={{ width: '85%' }}></div>
         </div>
 
-        <p className="text-sm text-slate-600">Using Gemini 3 Pro reasoning. This process ensures geometric accuracy.</p>
+        <p className="text-base text-slate-600">Gemini 3 Pro locks in your yard geometry so house lines and fences stay true while we redesign.</p>
       </div>
     </div>
   );

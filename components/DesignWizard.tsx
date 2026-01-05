@@ -224,29 +224,29 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                         />
 
                                         {yardImage && (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-                                                <div className="space-y-3">
-                                                    <label className="block text-sm font-semibold text-gray-700">
-                                                        Location Type
-                                                    </label>
-                                                    <select
-                                                        value={locationType}
-                                                        onChange={(e) => onLocationChange(e.target.value as LocationType)}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+                                                    <div className="space-y-3">
+                                                        <label className="block text-base font-semibold text-gray-700">
+                                                            Location Type
+                                                        </label>
+                                                        <select
+                                                            value={locationType}
+                                                            onChange={(e) => onLocationChange(e.target.value as LocationType)}
                                                         className="w-full p-3 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
                                                     >
                                                         {Object.values(LocationType).map((type) => (
                                                             <option key={type} value={type}>{type}</option>
                                                         ))}
                                                     </select>
-                                                </div>
+                                                    </div>
 
-                                                <div className="space-y-3">
-                                                    <label className="block text-sm font-semibold text-gray-700">
-                                                        Space Size
-                                                    </label>
-                                                    <select
-                                                        value={spaceSize}
-                                                        onChange={(e) => onSizeChange(e.target.value as SpaceSize)}
+                                                    <div className="space-y-3">
+                                                        <label className="block text-base font-semibold text-gray-700">
+                                                            Space Size
+                                                        </label>
+                                                        <select
+                                                            value={spaceSize}
+                                                            onChange={(e) => onSizeChange(e.target.value as SpaceSize)}
                                                         className="w-full p-3 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
                                                     >
                                                         {Object.values(SpaceSize).map((size) => (
@@ -350,10 +350,10 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                 <div className="space-y-6 animate-fade-in">
                                     <div className="text-center mb-8">
                                         <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
-                                            ✍️ Add Your Preferences
+                                            ✍️ Add Details
                                             <HelpTip content="The more specific you are, the better! Mention specific plants, colors, or features (like a fire pit or pergola) you want to include." />
                                         </h2>
-                                        <p className="text-gray-600">
+                                        <p className="text-gray-600 text-base">
                                             Tell us about specific features you want in your landscape design
                                         </p>
                                     </div>
@@ -363,44 +363,22 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                             Additional Preferences (Optional)
                                         </label>
                                         <textarea
-                                            className="w-full p-4 h-48 bg-white rounded-lg border-2 border-gray-200 focus:border-green-600 focus:ring-green-600 resize-none text-sm"
+                                            className="w-full p-4 h-48 bg-white rounded-lg border-2 border-gray-200 focus:border-green-600 focus:ring-green-600 resize-none text-base"
                                             placeholder="e.g. I want a fire pit area with comfortable seating, low maintenance native plants, a stone walkway to the backyard, and a small vegetable garden..."
                                             value={userPrompt}
                                             onChange={(e) => onPromptChange(e.target.value)}
                                         />
 
-                                        {/* RAG Enhancement Toggle */}
-                                        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                            <div className="flex items-center gap-2">
-                                                <label htmlFor="rag-toggle" className="text-sm font-semibold text-gray-800 cursor-pointer">
-                                                    Add RAG Enhancement
-                                                </label>
-                                                <HelpTip content="RAG Enhancement uses our plant database to provide verified plant recommendations with images and accurate pricing for your design." />
-                                            </div>
-                                            <button
-                                                id="rag-toggle"
-                                                type="button"
-                                                onClick={() => onUseRagChange(!useRag)}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${useRag ? 'bg-green-600' : 'bg-gray-300'
-                                                    }`}
-                                            >
-                                                <span
-                                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useRag ? 'translate-x-6' : 'translate-x-1'
-                                                        }`}
-                                                />
-                                            </button>
-                                        </div>
-
                                         {/* Budget Input */}
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-gray-800">
+                                            <label className="block text-base font-semibold text-gray-800">
                                                 Budget (Optional)
                                             </label>
                                             <div className="relative">
                                                 <select
                                                     value={budget}
                                                     onChange={(e) => onBudgetChange(e.target.value)}
-                                                    className="w-full p-4 bg-white border-2 border-gray-200 rounded-lg focus:border-green-600 focus:ring-green-600 appearance-none text-sm"
+                                                    className="w-full p-4 bg-white border-2 border-gray-200 rounded-lg focus:border-green-600 focus:ring-green-600 appearance-none text-base"
                                                 >
                                                     <option value="">Select a budget range...</option>
                                                     <option value="$1,000 - $5,000">$1,000 - $5,000 (DIY/Small)</option>
@@ -415,15 +393,15 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                                     </svg>
                                                 </div>
                                             </div>
-                                            <p className="text-xs text-gray-500">
+                                            <p className="text-sm text-gray-500">
                                                 This helps us ensure the design materials and features are realistic for your project.
                                             </p>
                                         </div>
 
                                         <div className="grid md:grid-cols-2 gap-4 mt-6">
                                             <div className="p-4 bg-gray-50 rounded-lg">
-                                                <h4 className="font-semibold text-gray-800 mb-2 text-sm">💡 Suggestions:</h4>
-                                                <ul className="text-xs text-gray-600 space-y-1">
+                                                <h4 className="font-semibold text-gray-800 mb-2 text-base">💡 Suggestions:</h4>
+                                                <ul className="text-sm text-gray-600 space-y-1">
                                                     <li>• Fire pit or outdoor kitchen</li>
                                                     <li>• Water features (fountain, pond)</li>
                                                     <li>• Seating areas or pergola</li>
@@ -431,8 +409,8 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                                 </ul>
                                             </div>
                                             <div className="p-4 bg-gray-50 rounded-lg">
-                                                <h4 className="font-semibold text-gray-800 mb-2 text-sm">🎯 Be Specific:</h4>
-                                                <ul className="text-xs text-gray-600 space-y-1">
+                                                <h4 className="font-semibold text-gray-800 mb-2 text-base">🎯 Be Specific:</h4>
+                                                <ul className="text-sm text-gray-600 space-y-1">
                                                     <li>• Mention colors you like</li>
                                                     <li>• Budget considerations</li>
                                                     <li>• Maintenance level desired</li>

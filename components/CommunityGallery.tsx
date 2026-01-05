@@ -3,6 +3,64 @@ import { SavedDesign, getPublicDesigns, deleteDesignAdmin } from '../services/fi
 import { Loader2, Heart, User, Calendar, Link2, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+// Local fallback gallery entries to ensure the page always has content
+const LOCAL_FALLBACK_DESIGNS: SavedDesign[] = [
+    {
+        id: 'local-modern-oasis',
+        shortId: 'local-modern',
+        userId: 'demo-user',
+        renderImages: ['/demo_clips/autoscape_hero_gen.png'],
+        yardImageUrl: '/demo_clips/autoscape_hero_original.png',
+        planImage: '/demo_clips/scene_2_solution.jpg',
+        analysis: {
+            description: 'Modern oasis with structured plantings and a clean lounging pad.',
+            style: 'Modern'
+        },
+        estimates: {
+            totalCost: 42000,
+            breakdown: [],
+            currency: 'USD'
+        },
+        createdAt: new Date()
+    },
+    {
+        id: 'local-courtyard',
+        shortId: 'local-courtyard',
+        userId: 'demo-user',
+        renderImages: ['/demo_clips/after-pad.png'],
+        yardImageUrl: '/demo_clips/before-pad.JPG',
+        planImage: '/demo_clips/scene_1_problem.jpg',
+        analysis: {
+            description: 'Cozy courtyard transformation with pavers and accent plantings.',
+            style: 'Contemporary'
+        },
+        estimates: {
+            totalCost: 18000,
+            breakdown: [],
+            currency: 'USD'
+        },
+        createdAt: new Date()
+    },
+    {
+        id: 'local-budget',
+        shortId: 'local-budget',
+        userId: 'demo-user',
+        renderImages: ['/demo_clips/scene_3_analysis.jpg'],
+        yardImageUrl: '/demo_clips/scene_1_problem.jpg',
+        planImage: '/demo_clips/scene_5_budget.jpg',
+        analysis: {
+            description: 'Budget-friendly refresh with gravel paths and low-maintenance plants.',
+            style: 'Native'
+        },
+        estimates: {
+            totalCost: 12000,
+            breakdown: [],
+            currency: 'USD'
+        },
+        createdAt: new Date()
+    }
+];
+
 interface CommunityGalleryProps {
     onLoadDesign: (design: SavedDesign) => void;
 }
@@ -32,10 +90,12 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
             const publicDesigns = await getPublicDesigns(10000);
             console.log(`CommunityGallery: Received ${publicDesigns.length} designs from getPublicDesigns`);
             console.log(`  Design IDs: ${publicDesigns.map(d => d.id).join(', ')}`);
-            setDesigns(publicDesigns);
+            setDesigns(publicDesigns.length > 0 ? publicDesigns : LOCAL_FALLBACK_DESIGNS);
         } catch (err) {
             console.error('Failed to load community gallery:', err);
-            setError('Failed to load designs. This might be a Firestore indexing issue. Check the browser console for details.');
+            // Fall back to local demo designs so the gallery still renders
+            setDesigns(LOCAL_FALLBACK_DESIGNS);
+            setError(null);
         } finally {
             setLoading(false);
         }
