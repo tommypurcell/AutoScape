@@ -14,6 +14,7 @@ import {
     QueryDocumentSnapshot,
     updateDoc,
     setDoc,
+    increment,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { GeneratedDesign } from '../types';
@@ -136,11 +137,11 @@ const uploadDesignImages = async (
     };
 };
 
-// Generate a random 6-character alphanumeric ID
+// Generate a random 10-character lowercase ID
 const generateShortId = (): string => {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
     let result = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 10; i++) {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
@@ -693,6 +694,7 @@ export interface UserData {
     displayName?: string;
     photoURL?: string;
     role: 'user' | 'admin' | 'pro';
+    credits?: number;
     createdAt: Date;
     lastLogin: Date;
 }
@@ -722,6 +724,7 @@ export const syncUser = async (user: any): Promise<void> => {
             await setDoc(userRef, {
                 ...userData,
                 role: 'user', // Default role
+                credits: 0, // Default credits
                 createdAt: new Date(),
             });
         }
@@ -756,6 +759,18 @@ export const updateUserRole = async (uid: string, role: 'user' | 'admin' | 'pro'
         await updateDoc(doc(db, 'users', uid), { role });
     } catch (error) {
         console.error('Error updating role:', error);
+        throw error;
+    }
+};
+
+/**
+ * Adjust a user's credits by a delta (can be negative)
+ */
+export const adjustUserCredits = async (uid: string, delta: number): Promise<void> => {
+    try {
+        await updateDoc(doc(db, 'users', uid), { credits: increment(delta) });
+    } catch (error) {
+        console.error('Error adjusting user credits:', error);
         throw error;
     }
 };

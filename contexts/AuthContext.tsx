@@ -15,6 +15,8 @@ import { db } from '../firebase';
 interface AuthContextType {
     user: User | null;
     userRole: 'user' | 'admin' | 'pro' | null;
+    credits: number;
+    setCredits: React.Dispatch<React.SetStateAction<number>>;
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
     signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -35,6 +37,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [userRole, setUserRole] = useState<'user' | 'admin' | 'pro' | null>(null);
+    const [credits, setCredits] = useState<number>(0);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -47,16 +50,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 try {
                     const userDoc = await getDoc(doc(db, 'users', user.uid));
                     if (userDoc.exists()) {
-                        setUserRole(userDoc.data().role || 'user');
+                        const data = userDoc.data();
+                        setUserRole(data.role || 'user');
+                        setCredits(typeof data.credits === 'number' ? data.credits : 0);
                     } else {
                         setUserRole('user');
+                        setCredits(0);
                     }
                 } catch (err) {
                     console.error("Failed to fetch user role:", err);
                     setUserRole('user');
+                    setCredits(0);
                 }
             } else {
                 setUserRole(null);
+                setCredits(0);
             }
             setLoading(false);
         });
@@ -83,6 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const value = {
         user,
         userRole,
+        credits,
+        setCredits,
         loading,
         signInWithGoogle,
         signInWithEmail,
