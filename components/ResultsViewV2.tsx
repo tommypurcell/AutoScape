@@ -585,6 +585,30 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             return;
         }
 
+        // Check credits before applying changes
+        try {
+            const { getUserCredits, hasEnoughCredits } = await import('../services/creditService');
+            
+            if (user) {
+                const hasCredits = await hasEnoughCredits(user.uid, 1);
+                if (!hasCredits) {
+                    // Redirect to pricing page with message
+                    navigate('/pricing?message=insufficient_credits');
+                    return;
+                }
+            } else {
+                // For anonymous users, check localStorage
+                const anonymousCreditsUsed = parseInt(localStorage.getItem('anonymousCreditsUsed') || '0');
+                if (anonymousCreditsUsed >= 2) {
+                    navigate('/pricing?message=insufficient_credits');
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Error checking credits:', error);
+            // Continue with generation if credit check fails (graceful degradation)
+        }
+
         setIsRegenerating(true);
         setIsImageEditMode(false);
 
@@ -620,6 +644,24 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             if (contextResult && !propResult) {
                 setContextResult(updatedResult);
             }
+
+            // Deduct credit after successful regeneration
+            try {
+                const { useCredits } = await import('../services/creditService');
+                if (user) {
+                    await useCredits(user.uid, 1);
+                } else {
+                    // For anonymous users, track in localStorage
+                    const anonymousCreditsUsed = parseInt(localStorage.getItem('anonymousCreditsUsed') || '0');
+                    localStorage.setItem('anonymousCreditsUsed', (anonymousCreditsUsed + 1).toString());
+                }
+                // Dispatch event to update credit display
+                window.dispatchEvent(new CustomEvent('creditsUpdated'));
+            } catch (creditError) {
+                console.error('Error deducting credits:', creditError);
+                // Don't block the user if credit deduction fails
+            }
+
             alert('✅ Design updated successfully! Your changes have been applied.');
         } catch (error) {
             console.error('Error regenerating design:', error);

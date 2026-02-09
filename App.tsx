@@ -31,6 +31,10 @@ import { TermsOfService } from './components/TermsOfService';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { saveDesignerProfile } from './services/firestoreService';
 import { Footer } from './components/Footer';
+import PricingPage from './components/PricingPage';
+import { CreditDisplay } from './components/CreditDisplay';
+import { BlogPage } from './components/BlogPage';
+import { BlogArticle } from './components/BlogArticle';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -231,6 +235,31 @@ const AppContent: React.FC = () => {
   const handleGenerate = async () => {
     if (!state.yardImage) return;
 
+    // Check credits before generating
+    try {
+      const { getUserCredits, hasEnoughCredits } = await import('./services/creditService');
+      
+      if (user) {
+        const hasCredits = await hasEnoughCredits(user.uid, 1);
+        if (!hasCredits) {
+          // Redirect to pricing page with message
+          navigate('/pricing?message=insufficient_credits');
+          return;
+        }
+      } else {
+        // For anonymous users, check if they've used their free credits
+        // Store in localStorage for anonymous users
+        const anonymousCreditsUsed = parseInt(localStorage.getItem('anonymousCreditsUsed') || '0');
+        if (anonymousCreditsUsed >= 2) {
+          navigate('/pricing?message=insufficient_credits');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking credits:', error);
+      // Continue with generation if credit check fails (graceful degradation)
+    }
+
     setState(prev => ({ ...prev, step: 'processing', error: null }));
 
     try {
@@ -265,6 +294,23 @@ const AppContent: React.FC = () => {
 
       // Update context with the result
       setResult(result);
+
+      // Deduct credit after successful generation
+      try {
+        const { useCredits } = await import('./services/creditService');
+        if (user) {
+          await useCredits(user.uid, 1);
+        } else {
+          // For anonymous users, track in localStorage
+          const anonymousCreditsUsed = parseInt(localStorage.getItem('anonymousCreditsUsed') || '0');
+          localStorage.setItem('anonymousCreditsUsed', (anonymousCreditsUsed + 1).toString());
+        }
+        // Dispatch event to update credit display
+        window.dispatchEvent(new CustomEvent('creditsUpdated'));
+      } catch (creditError) {
+        console.error('Error deducting credits:', creditError);
+        // Don't block the user if credit deduction fails
+      }
 
       // Save to Firestore for ALL users (authenticated or anonymous) to generate a unique URL
       try {
@@ -355,10 +401,31 @@ const AppContent: React.FC = () => {
               >
                 Create
               </button>
+              <button
+                onClick={() => navigate('/pricing')}
+                className={`transition-colors font-normal pb-1 border-b-2 ${location.pathname === '/pricing'
+                  ? 'text-green-700 border-green-700 font-semibold'
+                  : 'text-gray-700 hover:text-green-700 border-transparent'
+                  }`}
+              >
+                Pricing
+              </button>
+              <button
+                onClick={() => navigate('/blog')}
+                className={`transition-colors font-normal pb-1 border-b-2 ${location.pathname.startsWith('/blog')
+                  ? 'text-green-700 border-green-700 font-semibold'
+                  : 'text-gray-700 hover:text-green-700 border-transparent'
+                  }`}
+              >
+                Blog
+              </button>
             </div>
           </div>
 
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-center gap-3">
+            {/* Credit Display */}
+            <CreditDisplay compact={true} showLabel={true} />
+            
             {userRole === 'admin' && (
               <button
                 onClick={() => navigate('/admin')}
@@ -519,6 +586,9 @@ const AppContent: React.FC = () => {
           </div>
         } />
 
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/blog/:slug" element={<BlogArticle />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/admin" element={<AdminDashboard />} />

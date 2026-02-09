@@ -724,6 +724,14 @@ export const syncUser = async (user: any): Promise<void> => {
                 role: 'user', // Default role
                 createdAt: new Date(),
             });
+            
+            // Initialize credits for new user (2 free credits)
+            try {
+                const { initializeUserCredits } = await import('./creditService');
+                await initializeUserCredits(user.uid);
+            } catch (creditError) {
+                console.error('Error initializing user credits:', creditError);
+            }
         }
     } catch (error) {
         console.error('Error syncing user:', error);

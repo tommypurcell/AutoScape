@@ -14,6 +14,10 @@ export const RAG_API_BASE = import.meta.env.VITE_RAG_API_URL ||
 export const CLOUD_FUNCTIONS_BASE = import.meta.env.VITE_CLOUD_FUNCTIONS_URL ||
     'https://us-central1-autoscape-dfc00.cloudfunctions.net';
 
+// Stripe Checkout API Base URL
+const STRIPE_API_BASE = import.meta.env.VITE_STRIPE_API_BASE || 
+    'http://localhost:8003';
+
 // Endpoints
 export const API_ENDPOINTS = {
     // RAG Enhancement API
@@ -21,6 +25,10 @@ export const API_ENDPOINTS = {
     generateVideoLocal: `${RAG_API_BASE}/api/generate-video`,
     freepikSearch: `${RAG_API_BASE}/api/freepik/search`,
     health: `${RAG_API_BASE}/health`,
+
+    // Stripe Checkout API
+    createCheckoutSession: `${STRIPE_API_BASE}/api/create-checkout-session`,
+    stripeWebhook: `${STRIPE_API_BASE}/api/webhook`,
 
     // Cloud Functions (for production)
     generateVideoCloud: `${CLOUD_FUNCTIONS_BASE}/generate_video`,

@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""
+Stripe Checkout API - FastAPI Backend
+======================================
+REST API for creating Stripe Checkout sessions for AutoScape subscriptions.
+
+Endpoints:
+- POST /api/create-checkout-session - Create a Stripe Checkout session
+- POST /api/webhook - Handle Stripe webhooks (for payment confirmation)
+
+Usage:
+    python servers/stripe_checkout_api.py
+    
+Then access at: http://localhost:8003
+"""
+
+import os
+import logging
+from typing import Optional
+from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from dotenv import load_dotenv
+import stripe
+
+# Load environment variables
+load_dotenv()
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Stripe Checkout API",
+    description="API for creating Stripe Checkout sessions and handling webhooks",
+    version="1.0.0",
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust for production - use specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize Stripe
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+if not STRIPE_SECRET_KEY:
+    logger.warning("STRIPE_SECRET_KEY not found in environment variables")
+else:
+    stripe.api_key = STRIPE_SECRET_KEY
+
+# Price IDs from environment
+PRICE_IDS = {
+    "weekly": os.getenv("VITE_STRIPE_PRICE_ID_WEEKLY"),
+    "monthly": os.getenv("VITE_STRIPE_PRICE_ID_MONTHLY"),
+    "annual": os.getenv("VITE_STRIPE_PRICE_ID_ANNUAL"),
+}
+
+# Request/Response models
+class CheckoutSessionRequest(BaseModel):
+    userId: str
+    priceId: str
+    planType: str  # "weekly", "monthly", or "annual"
+    credits: int
+
+class CheckoutSessionResponse(BaseModel):
+    sessionId: str
+    url: str
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "stripe-checkout-api",
+        "stripe_configured": STRIPE_SECRET_KEY is not None
+    }
+
+@app.post("/api/create-checkout-session", response_model=CheckoutSessionResponse)
+async def create_checkout_session(request: CheckoutSessionRequest):
+    """
+    Create a Stripe Checkout session for subscription purchase
+    
+    Args:
+        request: CheckoutSessionRequest with userId, priceId, planType, and credits
+        
+    Returns:
+        CheckoutSessionResponse with sessionId and checkout URL
+    """
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Stripe not configured. Missing STRIPE_SECRET_KEY.")
+    
+    try:
+        # Validate priceId matches one of our configured prices
+        if request.priceId not in PRICE_IDS.values():
+            logger.warning(f"Invalid priceId: {request.priceId}")
+            raise HTTPException(status_code=400, detail="Invalid price ID")
+        
+        # Get the base URL from environment or use default
+        base_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        success_url = f"{base_url}/pricing?success=true&session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{base_url}/pricing?canceled=true"
+        
+        # Create Stripe Checkout session
+        # All plans (weekly, monthly, annual) are subscriptions
+        # Annual is a recurring subscription billed yearly
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price': request.priceId,
+                'quantity': 1,
+            }],
+            mode='subscription',  # All plans are subscriptions (annual is yearly recurring)
+            success_url=success_url,
+            cancel_url=cancel_url,
+            client_reference_id=request.userId,  # Store userId for webhook processing
+            metadata={
+                'userId': request.userId,
+                'planType': request.planType,
+                'credits': str(request.credits),
+            },
+            allow_promotion_codes=True,
+        )
+        
+        logger.info(f"Created checkout session {session.id} for user {request.userId}, plan: {request.planType}")
+        
+        return CheckoutSessionResponse(
+            sessionId=session.id,
+            url=session.url
+        )
+        
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.post("/api/webhook")
+async def stripe_webhook(request: Request, stripe_signature: Optional[str] = Header(None)):
+    """
+    Handle Stripe webhook events
+    
+    This endpoint should be called by Stripe when payment events occur.
+    Configure the webhook URL in Stripe Dashboard to point to this endpoint.
+    """
+    if not stripe_signature:
+        raise HTTPException(status_code=400, detail="Missing Stripe signature")
+    
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    if not webhook_secret:
+        logger.warning("STRIPE_WEBHOOK_SECRET not configured")
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+    
+    try:
+        payload = await request.body()
+        event = stripe.Webhook.construct_event(
+            payload, stripe_signature, webhook_secret
+        )
+        
+        # Handle the event
+        if event['type'] == 'checkout.session.completed':
+            session = event['data']['object']
+            userId = session.get('client_reference_id') or session.get('metadata', {}).get('userId')
+            planType = session.get('metadata', {}).get('planType')
+            credits = int(session.get('metadata', {}).get('credits', 0))
+            
+            logger.info(f"Payment successful for user {userId}, plan: {planType}, credits: {credits}")
+            
+            # Add credits to user account via Firestore
+            try:
+                from firebase_admin import firestore, initialize_app, credentials
+                import firebase_admin
+                
+                # Initialize Firebase Admin if not already initialized
+                if not firebase_admin._apps:
+                    # Try to use service account from environment or default credentials
+                    cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+                    if cred_path and os.path.exists(cred_path):
+                        cred = credentials.Certificate(cred_path)
+                        initialize_app(cred)
+                    else:
+                        # Use default credentials (for Cloud Run, etc.)
+                        initialize_app()
+                
+                db = firestore.client()
+                user_credits_ref = db.collection('userCredits').document(userId)
+                
+                # Get current credits or initialize
+                user_credits_doc = user_credits_ref.get()
+                if user_credits_doc.exists:
+                    current_data = user_credits_doc.to_dict()
+                    current_credits = current_data.get('credits', 0)
+                    total_purchased = current_data.get('totalCreditsPurchased', 0)
+                    
+                    user_credits_ref.update({
+                        'credits': current_credits + credits,
+                        'totalCreditsPurchased': total_purchased + credits,
+                        'lastUpdated': firestore.SERVER_TIMESTAMP,
+                    })
+                else:
+                    # Initialize user credits
+                    user_credits_ref.set({
+                        'credits': credits,
+                        'freeCreditsUsed': 0,
+                        'totalCreditsPurchased': credits,
+                        'lastUpdated': firestore.SERVER_TIMESTAMP,
+                    })
+                
+                logger.info(f"✅ Added {credits} credits to user {userId}. New total: {current_credits + credits if user_credits_doc.exists else credits}")
+                
+            except ImportError:
+                logger.warning("firebase-admin not installed. Install with: pip install firebase-admin")
+                logger.info(f"TODO: Add {credits} credits to user {userId} via Firestore")
+            except Exception as e:
+                logger.error(f"Error adding credits to Firestore: {str(e)}")
+                # Don't fail the webhook - log error for manual processing
+            
+        elif event['type'] == 'customer.subscription.deleted':
+            # Handle subscription cancellation
+            subscription = event['data']['object']
+            logger.info(f"Subscription canceled: {subscription.id}")
+            
+        else:
+            logger.info(f"Unhandled event type: {event['type']}")
+        
+        return {"status": "success"}
+        
+    except ValueError as e:
+        logger.error(f"Invalid payload: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError as e:
+        logger.error(f"Invalid signature: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+    except Exception as e:
+        logger.error(f"Webhook error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Webhook error: {str(e)}")
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8003))
+    uvicorn.run(app, host="0.0.0.0", port=port)

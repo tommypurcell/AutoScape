@@ -4,6 +4,7 @@ import { DesignStyle, LocationType, SpaceSize, DesignStyleGroups } from '../type
 import { getStyleImage, styleDescriptions } from '../data/styleReferences';
 import { Check, ChevronRight, ChevronLeft, Info, X } from 'lucide-react';
 import { HelpTip } from './HelpTip';
+import { CreditDisplay } from './CreditDisplay';
 
 interface DesignWizardProps {
     yardImage: File | null;
@@ -100,11 +101,17 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
 
     return (
         <div className="max-w-7xl mx-auto animate-fade-in">
-            {/* Title - Only on small screens */}
-            <div className="text-left mb-6 lg:hidden">
+            {/* Title and Credits - Only on small screens */}
+            <div className="text-left mb-6 lg:hidden flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">
                     Create Design
                 </h1>
+                <CreditDisplay compact={true} showLabel={false} />
+            </div>
+
+            {/* Credits Display - Desktop (top right) */}
+            <div className="hidden lg:flex justify-end mb-4">
+                <CreditDisplay compact={true} showLabel={true} />
             </div>
 
             {/* Main Layout: Side-by-side on lg+, stacked on smaller */}
