@@ -9,6 +9,15 @@ import { useDesign } from '../contexts/DesignContext';
 import { getVideoEndpoint } from '../config/api';
 import { Loader } from 'lucide-react';
 import { generateLandscapeDesign } from '../services/geminiService';
+import { EditModeCanvas } from './EditModeCanvas';
+
+interface Annotation {
+    id: string;
+    type: string;
+    text: string;
+    x: number;
+    y: number;
+}
 
 interface ResultsViewProps {
     result?: GeneratedDesign;
@@ -45,6 +54,15 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const [copied, setCopied] = useState(false);
     const [altRenders, setAltRenders] = useState<string[]>([]);
     const [isGeneratingAlts, setIsGeneratingAlts] = useState(false);
+    const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'compare' | 'original' | 'render' | 'plan' | 'video'>('compare');
+    const [isImageEditMode, setIsImageEditMode] = useState(false);
+    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [isRegenerating, setIsRegenerating] = useState(false);
+
+    // RAG budget data (from result if available)
+    const ragBudget = (result as any)?.ragBudget || null;
 
     useEffect(() => {
         setLocalResult(propResult || ctxResult);
@@ -410,6 +428,34 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         }
     };
 
+    const handleGenerateAlternatives = async () => {
+        setIsGeneratingAlts(true);
+        try {
+            // TODO: Implement alternative render generation
+            // This would call the design generation API with slightly different parameters
+            console.log('Generating alternative renders...');
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+            // For now, just add placeholder URLs
+            setAltRenders([result.renderImages[0], result.renderImages[0]]);
+        } catch (error) {
+            console.error('Error generating alternatives:', error);
+            alert('Failed to generate alternatives. Please try again.');
+        } finally {
+            setIsGeneratingAlts(false);
+        }
+    };
+
+    const handleRedesignWith = async (imageUrl: string) => {
+        try {
+            // TODO: Implement redesign with selected image
+            console.log('Redesigning with image:', imageUrl);
+            alert('Redesign feature coming soon!');
+        } catch (error) {
+            console.error('Error redesigning:', error);
+            alert('Failed to redesign. Please try again.');
+        }
+    };
+
     return (
         <div className="pb-12 animate-fade-in" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             <div className="flex gap-6">
@@ -631,153 +677,163 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                                     {result.analysis?.maintenanceLevel && <div><span className="font-semibold text-slate-600">Maintenance:</span> {result.analysis.maintenanceLevel}</div>}
                                                 </div>
                                             </div>
-                                        </div>
-
-                                    {/* 1) Compare */}
-                                    {originalImage && result.renderImages[currentRenderIndex] && (
-                                        <div className="bg-white rounded-2xl shadow border border-slate-200 p-4">
-                                            <h3 className="text-lg font-bold text-slate-800 mb-3">Compare</h3>
-                                            <div className="aspect-video">
-                                                <BeforeAfterSlider beforeImage={originalImage} afterImage={result.renderImages[currentRenderIndex]} className="w-full h-full" />
-                                            </div>
-                                        </div>
+                                        </>
                                     )}
+                                </div>
+                            )}
+                        </div>
 
-                                    {/* 2) Originals / Render */}
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        {originalImage && (
-                                            <div className="bg-white border border-slate-200 rounded-xl p-3">
-                                                <h4 className="text-sm font-semibold text-slate-700 mb-2">Original</h4>
-                                                <img src={originalImage} className="w-full rounded-lg object-contain" />
-                                            </div>
-                                        )}
-                                        {result.renderImages[currentRenderIndex] && (
-                                            <div className="bg-white border border-slate-200 rounded-xl p-3">
-                                                <h4 className="text-sm font-semibold text-slate-700 mb-2">Rendered</h4>
-                                                <img src={result.renderImages[currentRenderIndex]} className="w-full rounded-lg object-contain" />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* 3) 2D Plan */}
-                                    {result.planImage && (
-                                        <div className="bg-white rounded-2xl shadow border border-slate-200 p-4">
-                                            <h3 className="text-lg font-bold text-slate-800 mb-3">2D Plan</h3>
-                                            <img src={result.planImage} alt="2D plan" className="w-full rounded-xl border border-slate-100 object-contain" />
-                                        </div>
-                                    )}
-
-                                    {/* 4) Video Generation */}
-                                    <div className="bg-white rounded-2xl shadow border border-slate-200 p-4 space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-lg font-bold text-slate-800">Video Generation</h3>
-                                            <span className="text-sm text-slate-500">Credits: {user ? credits : 0}</span>
-                                        </div>
-                                        {videoUrl ? (
-                                            <video src={videoUrl} controls autoPlay muted loop className="w-full rounded-xl border border-slate-100 bg-black" />
-                                        ) : (
-                                            <p className="text-sm text-slate-600">No video yet.</p>
-                                        )}
-                                        <button
-                                            onClick={handleGenerateVideo}
-                                            disabled={isGeneratingVideo || !user || credits <= 0}
-                                            className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center gap-2 w-fit"
-                                        >
-                                            {isGeneratingVideo && <Loader className="w-4 h-4 animate-spin" />}
-                                            Generate with Credit
-                                        </button>
-                                        {!user && <p className="text-sm text-slate-500">Sign in to use credits.</p>}
-                                        {user && credits <= 0 && <p className="text-sm text-red-500">No credits remaining.</p>}
-                                    </div>
-
-                                    {/* Material list */}
-                                    {result.estimates.totalCost > 0 && (
-                                        <div className="bg-white rounded-2xl shadow border border-slate-200 p-4 space-y-4">
-                                            <h3 className="text-lg font-bold text-slate-800">Material List & Estimates</h3>
-                                            <div className="grid md:grid-cols-2 gap-3">
-                                                {result.estimates.breakdown.slice(0, 10).map((item, idx) => {
-                                                    const ragThumb = ragBudget?.line_items?.find(
-                                                        (li) => li.item === item.name || li.match === item.name
-                                                    )?.image_url;
-                                                    const plantThumb = result.estimates.plantPalette?.find((p: any) => p.common_name === item.name)?.image_url;
-                                                    const thumb = ragThumb || plantThumb || null;
-                                                    return (
-                                                        <div key={idx} className="flex items-center gap-3 border border-slate-100 rounded-lg p-3">
-                                                            <div className="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
-                                                                {thumb ? <img src={thumb} className="w-full h-full object-cover" /> : <span className="text-xs text-slate-400">No image</span>}
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <div className="text-sm font-semibold text-slate-800">{item.name}</div>
-                                                                <div className="text-xs text-slate-600">Qty: {item.quantity}</div>
-                                                            </div>
-                                                            <div className="text-sm font-semibold text-slate-800">{item.totalCost}</div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            <div className="text-right text-sm font-semibold text-emerald-700">Total: {formatCurrency(result.estimates.totalCost)}</div>
-                                        </div>
-                                    )}
-
-                                    {/* Cost distribution */}
-                                    {result.estimates.totalCost > 0 && chartData.length > 0 && (
-                                        <div className="bg-white rounded-2xl shadow border border-slate-200 p-4">
-                                            <h3 className="text-lg font-bold text-slate-800 mb-3">Cost Distribution</h3>
-                                            <div className="h-[280px]">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <PieChart>
-                                                        <Pie data={chartData} cx="50%" cy="50%" outerRadius={100} dataKey="cost" nameKey="name">
-                                                            {chartData.map((_, index) => {
-                                                                const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
-                                                                return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                                                            })}
-                                                        </Pie>
-                                                        <Tooltip formatter={(value: number, name: string) => `${formatCurrency(value as number)} - ${name}`} />
-                                                        <Legend />
-                                                    </PieChart>
-                                                </ResponsiveContainer>
-                                            </div>
-                                            <div className="mt-3 grid sm:grid-cols-2 gap-2 text-sm">
-                                                {chartData.map((item, idx) => (
-                                                    <div key={idx} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2">
-                                                        <span className="font-semibold text-slate-700">{item.name}</span>
-                                                        <span className="text-slate-600">{formatCurrency(item.cost)}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Alternative renders */}
-                                    <div className="bg-white rounded-2xl shadow border border-slate-200 p-4 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-lg font-bold text-slate-800">Alternative Renders</h3>
-                                            <button
-                                                onClick={handleGenerateAlternatives}
-                                                disabled={isGeneratingAlts}
-                                                className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-60"
-                                            >
-                                                {isGeneratingAlts ? 'Generating...' : 'Generate 2 more'}
-                                            </button>
-                                        </div>
-                                        {altRenders.length === 0 && <p className="text-sm text-slate-600">No alternatives yet.</p>}
-                                        {altRenders.length > 0 && (
-                                            <div className="grid sm:grid-cols-2 gap-4">
-                                                {altRenders.map((url, idx) => (
-                                                    <div key={idx} className="border border-slate-200 rounded-xl p-3 space-y-2">
-                                                        <img src={url} className="w-full rounded-lg object-contain" />
-                                                        <button
-                                                            onClick={() => handleRedesignWith(url)}
-                                                            disabled={isGeneratingVideo}
-                                                            className="w-full px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60"
-                                                        >
-                                                            Re-design with this
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                        {/* Content below image display */}
+                        <div className="space-y-6">
+                            {/* 1) Compare */}
+                            {activeTab === 'render' && originalImage && result.renderImages[currentRenderIndex] && (
+                                <div className="bg-white rounded-2xl shadow border border-slate-200 p-4">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-3">Compare</h3>
+                                    <div className="aspect-video">
+                                        <BeforeAfterSlider beforeImage={originalImage} afterImage={result.renderImages[currentRenderIndex]} className="w-full h-full" />
                                     </div>
                                 </div>
-                            );
+                            )}
+
+                            {/* 2) Originals / Render */}
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {originalImage && (
+                                    <div className="bg-white border border-slate-200 rounded-xl p-3">
+                                        <h4 className="text-sm font-semibold text-slate-700 mb-2">Original</h4>
+                                        <img src={originalImage} className="w-full rounded-lg object-contain" />
+                                    </div>
+                                )}
+                                {result.renderImages[currentRenderIndex] && (
+                                    <div className="bg-white border border-slate-200 rounded-xl p-3">
+                                        <h4 className="text-sm font-semibold text-slate-700 mb-2">Rendered</h4>
+                                        <img src={result.renderImages[currentRenderIndex]} className="w-full rounded-lg object-contain" />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 3) 2D Plan */}
+                            {result.planImage && (
+                                <div className="bg-white rounded-2xl shadow border border-slate-200 p-4">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-3">2D Plan</h3>
+                                    <img src={result.planImage} alt="2D plan" className="w-full rounded-xl border border-slate-100 object-contain" />
+                                </div>
+                            )}
+
+                            {/* 4) Video Generation */}
+                            <div className="bg-white rounded-2xl shadow border border-slate-200 p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-bold text-slate-800">Video Generation</h3>
+                                    <span className="text-sm text-slate-500">Credits: {user ? credits : 0}</span>
+                                </div>
+                                {videoUrl ? (
+                                    <video src={videoUrl} controls autoPlay muted loop className="w-full rounded-xl border border-slate-100 bg-black" />
+                                ) : (
+                                    <p className="text-sm text-slate-600">No video yet.</p>
+                                )}
+                                <button
+                                    onClick={handleGenerateVideo}
+                                    disabled={isGeneratingVideo || !user || credits <= 0}
+                                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center gap-2 w-fit"
+                                >
+                                    {isGeneratingVideo && <Loader className="w-4 h-4 animate-spin" />}
+                                    Generate with Credit
+                                </button>
+                                {!user && <p className="text-sm text-slate-500">Sign in to use credits.</p>}
+                                {user && credits <= 0 && <p className="text-sm text-red-500">No credits remaining.</p>}
+                            </div>
+
+                            {/* Material list */}
+                            {result.estimates.totalCost > 0 && (
+                                <div className="bg-white rounded-2xl shadow border border-slate-200 p-4 space-y-4">
+                                    <h3 className="text-lg font-bold text-slate-800">Material List & Estimates</h3>
+                                    <div className="grid md:grid-cols-2 gap-3">
+                                        {result.estimates.breakdown.slice(0, 10).map((item, idx) => {
+                                            const ragThumb = ragBudget?.line_items?.find(
+                                                (li) => li.item === item.name || li.match === item.name
+                                            )?.image_url;
+                                            const plantThumb = result.estimates.plantPalette?.find((p: any) => p.common_name === item.name)?.image_url;
+                                            const thumb = ragThumb || plantThumb || null;
+                                            return (
+                                                <div key={idx} className="flex items-center gap-3 border border-slate-100 rounded-lg p-3">
+                                                    <div className="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+                                                        {thumb ? <img src={thumb} className="w-full h-full object-cover" /> : <span className="text-xs text-slate-400">No image</span>}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="text-sm font-semibold text-slate-800">{item.name}</div>
+                                                        <div className="text-xs text-slate-600">Qty: {item.quantity}</div>
+                                                    </div>
+                                                    <div className="text-sm font-semibold text-slate-800">{item.totalCost}</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="text-right text-sm font-semibold text-emerald-700">Total: {formatCurrency(result.estimates.totalCost)}</div>
+                                </div>
+                            )}
+
+                            {/* Cost distribution */}
+                            {result.estimates.totalCost > 0 && chartData.length > 0 && (
+                                <div className="bg-white rounded-2xl shadow border border-slate-200 p-4">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-3">Cost Distribution</h3>
+                                    <div className="h-[280px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={chartData} cx="50%" cy="50%" outerRadius={100} dataKey="cost" nameKey="name">
+                                                    {chartData.map((_, index) => {
+                                                        const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
+                                                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                                    })}
+                                                </Pie>
+                                                <Tooltip formatter={(value: number, name: string) => `${formatCurrency(value as number)} - ${name}`} />
+                                                <Legend />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="mt-3 grid sm:grid-cols-2 gap-2 text-sm">
+                                        {chartData.map((item, idx) => (
+                                            <div key={idx} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2">
+                                                <span className="font-semibold text-slate-700">{item.name}</span>
+                                                <span className="text-slate-600">{formatCurrency(item.cost)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Alternative renders */}
+                            <div className="bg-white rounded-2xl shadow border border-slate-200 p-4 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-bold text-slate-800">Alternative Renders</h3>
+                                    <button
+                                        onClick={handleGenerateAlternatives}
+                                        disabled={isGeneratingAlts}
+                                        className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors disabled:opacity-60"
+                                    >
+                                        {isGeneratingAlts ? 'Generating...' : 'Generate 2 more'}
+                                    </button>
+                                </div>
+                                {altRenders.length === 0 && <p className="text-sm text-slate-600">No alternatives yet.</p>}
+                                {altRenders.length > 0 && (
+                                    <div className="grid sm:grid-cols-2 gap-4">
+                                        {altRenders.map((url, idx) => (
+                                            <div key={idx} className="border border-slate-200 rounded-xl p-3 space-y-2">
+                                                <img src={url} className="w-full rounded-lg object-contain" />
+                                                <button
+                                                    onClick={() => handleRedesignWith(url)}
+                                                    disabled={isGeneratingVideo}
+                                                    className="w-full px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60"
+                                                >
+                                                    Re-design with this
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
