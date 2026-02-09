@@ -207,11 +207,9 @@ const PricingPage: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight">
-            Flexible plans for every creator
+            Flexible plans for your designs
           </h1>
-          <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto">
-            Choose the perfect plan to automate your design workflow. All plans include 24/7 support and access to our basic tools.
-          </p>
+
           {userCredits !== null && userCredits > 0 && (
             <p className="mt-4 text-sm text-emerald-600 font-medium">
               You have {userCredits} free credit{userCredits !== 1 ? 's' : ''} remaining
