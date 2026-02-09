@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "autoscape-dfc00"
+    "default": "autoscape2-9f048",
+    "prod": "autoscape2-9f048"
   }
 }

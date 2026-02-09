@@ -282,6 +282,8 @@ const AppContent: React.FC = () => {
         state.userPrompt,
         state.selectedStyle,
         state.budget,
+        state.locationType,
+        state.spaceSize,
         undefined, // onProgress callback
         state.useRag
       );
