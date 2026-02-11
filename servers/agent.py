@@ -364,7 +364,7 @@ Make sure the search queries are:
         query: str,
         products: List[Product],
         num_prompts: int = 2,
-    ) -> list[dict[str, str]]:
+    ) -> List[Dict[str, str]]:
         """
         Use Gemini to analyze products and create image generation prompts.
         
@@ -479,7 +479,7 @@ Example of bad composition: "Hiking boots floating in the air above a mountain t
         query: str,
         products: List[Product],
         ad_copy: Any,
-    ) -> dict[str, str]:
+    ) -> Dict[str, str]:
         """
         Generate a single image prompt that includes ALL products (one from each search).
         
@@ -813,7 +813,7 @@ Format: {{"prompt": "...", "description": "..."}}"""
                 image_urls=[reference_image_url],
             )
     
-    def verify_generated_image(self, image_url: str, expected_product: str, prompt: str) -> dict[str, Any]:
+    def verify_generated_image(self, image_url: str, expected_product: str, prompt: str) -> Dict[str, Any]:
         """
         Use Gemini vision to verify the generated image contains the expected product.
         
