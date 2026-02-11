@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Get API key from environment
 MESHY_API_KEY = os.getenv("MESHY_API_KEY")
-MESHY_API_BASE = "https://api.meshy.ai/v2"
+MESHY_API_BASE = "https://api.meshy.ai/openapi/v1"
 
 
 def generate_3d_scene(
@@ -69,9 +69,6 @@ def generate_3d_scene(
         create_payload = {
             "image_url": image_data_url,
             "enable_pbr": enable_pbr,
-            "surface_mode": surface_mode,
-            "target_polycount": target_polycount,
-            "should_remesh": True
         }
 
         create_response = requests.post(
