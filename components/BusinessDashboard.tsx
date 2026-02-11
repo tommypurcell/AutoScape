@@ -120,7 +120,7 @@ export const BusinessDashboard: React.FC = () => {
 
         setIsUploading(true);
         try {
-            const uploadPromises = Array.from(files).map(file => uploadImage(file, `portfolios/${user.uid}`));
+            const uploadPromises = Array.from(files).map((file: File) => uploadImage(file, `portfolios/${user.uid}`));
             const uploadedUrls = await Promise.all(uploadPromises);
 
             const currentPortfolio = formData.portfolioImages || profile?.portfolioImages || [];

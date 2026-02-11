@@ -3,21 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { GeneratedDesign } from '../types';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { saveDesign, adjustUserCredits } from '../services/firestoreService';
+import { saveDesign, adjustUserCredits, updateDesignVideoUrl } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useDesign } from '../contexts/DesignContext';
 import { getVideoEndpoint } from '../config/api';
-import { Loader } from 'lucide-react';
-import { generateLandscapeDesign } from '../services/geminiService';
+import { Loader, Facebook, Twitter, Mail, MessageCircle, Check, Copy, Download, Share2 } from 'lucide-react';
+import { generateLandscapeDesign, analyzeAndRegenerateDesign, Annotation } from '../services/geminiService';
 import { EditModeCanvas } from './EditModeCanvas';
-
-interface Annotation {
-    id: string;
-    type: string;
-    text: string;
-    x: number;
-    y: number;
-}
+import { uploadVideo } from '../services/storageService';
+import { generateAffiliateLinks, VerifiedMaterialItem } from '../services/affiliateService';
 
 interface ResultsViewProps {
     result?: GeneratedDesign;
@@ -60,6 +54,17 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const [isImageEditMode, setIsImageEditMode] = useState(false);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const [isLoadingAffiliateLinks, setIsLoadingAffiliateLinks] = useState(false);
+    const [affiliateLinks, setAffiliateLinks] = useState<Map<string, VerifiedMaterialItem>>(new Map());
+    const [showAffiliateLinks, setShowAffiliateLinks] = useState(false);
+    const [generatingProvider, setGeneratingProvider] = useState<'gemini' | 'freepik' | null>(null);
+    const [videoError, setVideoError] = useState<string | null>(null);
+    const [freepikVideoUrl, setFreepikVideoUrl] = useState<string | null>(null);
+    const [geminiVideoUrl, setGeminiVideoUrl] = useState<string | null>(null);
+    const [isSavingVideo, setIsSavingVideo] = useState(false);
+
+    // Use propDesignId for current design ID
+    const currentDesignId = propDesignId;
 
     // RAG budget data (from result if available)
     const ragBudget = (result as any)?.ragBudget || null;
@@ -125,7 +130,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             return;
         }
 
-        const shortId = await ensureDesignSaved();
+        const shortId = await ensureSaved();
         if (shortId) {
             setShareUrl(`${window.location.origin}/result/${shortId}`);
             setIsShareMenuOpen(true);
@@ -134,7 +139,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
     // Original handleShareLink modified to use new logic if separate button kept
     const handleShareLink = async () => {
-        const shortId = await ensureDesignSaved();
+        const shortId = await ensureSaved();
         if (shortId) {
             const url = `${window.location.origin}/result/${shortId}`;
             navigator.clipboard.writeText(url);
@@ -397,8 +402,8 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             };
 
             setLocalResult(updatedResult);
-            if (contextResult && !propResult) {
-                setContextResult(updatedResult);
+            if (ctxResult && !propResult) {
+                setCtxResult(updatedResult);
             }
 
             // Deduct credit after successful regeneration

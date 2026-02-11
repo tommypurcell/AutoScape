@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
     User,
-    signInWithRedirect,
+    signInWithPopup,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    getRedirectResult,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { syncUser } from '../services/firestoreService';
@@ -73,20 +72,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return unsubscribe;
     }, []);
 
-    // Handle redirect result (Google sign-in)
-    useEffect(() => {
-        const handleRedirectResult = async () => {
-            try {
-                await getRedirectResult(auth);
-            } catch (err) {
-                console.error("Google redirect sign-in failed:", err);
-            }
-        };
-        handleRedirectResult();
-    }, []);
-
     const signInWithGoogle = async () => {
-        await signInWithRedirect(auth, googleProvider);
+        try {
+            await signInWithPopup(auth, googleProvider);
+        } catch (err: any) {
+            console.error("Google sign-in failed:", err);
+            throw err;
+        }
     };
 
     const signInWithEmail = async (email: string, password: string) => {
