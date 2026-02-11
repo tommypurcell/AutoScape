@@ -35,7 +35,7 @@ import PricingPage from './components/PricingPage';
 import { CreditDisplay } from './components/CreditDisplay';
 import { BlogPage } from './components/BlogPage';
 import { BlogArticle } from './components/BlogArticle';
-// TODO: Add ErrorBoundary once TypeScript class component issue is resolved
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -481,7 +481,7 @@ const AppContent: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* Credit Display */}
             <CreditDisplay compact={true} showLabel={true} />
-            
+
             {userRole === 'admin' && (
               <button
                 onClick={() => navigate('/admin')}
@@ -520,136 +520,140 @@ const AppContent: React.FC = () => {
         </div>
       </nav>
 
-      <Routes>
-        <Route path="/" element={
-          <LandingPage
-            onGetStarted={() => {
-              if (user) {
-                navigate('/create');
-              } else {
-                setShowAuthModal(true);
-              }
-            }}
-            onAbout={() => navigate('/about')}
-            onDesignerSignup={() => navigate('/designer-signup')}
-          />
-        } />
-
-        <Route path="/create" element={
-          <div className="min-h-screen bg-gray-50">
-            <main className="flex-1 bg-gray-50">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                {state.step === 'processing' ? (
-                  <LoadingScreen />
-                ) : (
-                  <>
-                    {state.error && (
-                      <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2 max-w-5xl mx-auto">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        {state.error}
-                      </div>
-                    )}
-
-                    <DesignWizard
-                      yardImage={state.yardImage}
-                      yardImagePreview={state.yardImagePreview}
-                      styleImages={state.styleImages}
-                      styleImagePreviews={state.styleImagePreviews}
-                      selectedGalleryStyleIds={selectedGalleryStyleIds}
-                      selectedStyle={state.selectedStyle}
-                      userPrompt={state.userPrompt}
-                      budget={state.budget}
-                      useRag={state.useRag}
-                      onYardSelect={handleYardSelect}
-                      onClearYard={handleClearYard}
-                      onStyleSelect={handleStyleSelect}
-                      onClearStyleImage={handleClearStyleImage}
-                      onClearAllStyles={handleClearAllStyles}
-                      onGalleryStyleToggle={handleGalleryStyleToggle}
-                      onClearGalleryStyles={handleClearGalleryStyles}
-                      onStyleChange={(style) => setState(s => ({ ...s, selectedStyle: style }))}
-                      locationType={state.locationType}
-                      spaceSize={state.spaceSize}
-                      onLocationChange={(type) => setState(s => ({ ...s, locationType: type }))}
-                      onSizeChange={(size) => setState(s => ({ ...s, spaceSize: size }))}
-                      onPromptChange={(prompt) => setState(s => ({ ...s, userPrompt: prompt }))}
-                      onBudgetChange={(budget) => setState(s => ({ ...s, budget }))}
-                      onUseRagChange={(useRag) => setState(s => ({ ...s, useRag }))}
-                      onGenerate={handleGenerate}
-                      currentStep={wizardStep}
-                      onStepChange={setWizardStep}
-                    />
-                  </>
-                )}
-              </div>
-            </main>
-          </div>
-        } />
-
-        <Route path="/result/:id" element={<ResultsPage />} />
-
-        {/* Temporary route for immediate results without ID */}
-        <Route path="/result/generated" element={<ResultsPage />} />
-
-        <Route path="/gallery" element={
-          <div className="min-h-screen bg-gray-50">
-            <CommunityGallery onLoadDesign={handleLoadDesign} />
-          </div>
-        } />
-
-        <Route path="/about" element={<AboutPage onClose={() => navigate('/')} />} />
-
-        <Route path="/business" element={<BusinessPage />} />
-        <Route path="/business/dashboard" element={<BusinessDashboard />} />
-
-        <Route path="/designer/:designerId" element={<DesignerGallery />} />
-
-        <Route path="/designer-signup" element={
-          <div className="min-h-screen pt-20 bg-gray-50">
-            <DesignerOnboarding
-              onComplete={async (designerData: DesignerFormData) => {
-                try {
-                  let uid = user?.uid;
-
-                  // Only sign up if not already logged in
-                  if (!uid) {
-                    await signUpWithEmail(designerData.email, designerData.password);
-                    uid = auth.currentUser?.uid;
-                  }
-
-                  if (uid) {
-                    // Remove password from data before saving to profile
-                    const { password, role, ...profileData } = designerData;
-                    await saveDesignerProfile(uid, {
-                      ...profileData,
-                      rating: 0,
-                      reviewCount: 0,
-                      isVerified: false,
-                    });
-                    console.log('Designer profile saved for:', designerData.email);
-
-                    alert('Welcome to AutoScape Pro! Your partner account has been created.');
-                    navigate('/business');
-                  } else {
-                    throw new Error('Failed to identify user. Please try again.');
-                  }
-
-                } catch (error: any) {
-                  console.error('Error creating designer account:', error);
-                  alert(error.message || 'Failed to create account. Please try again.');
+      <ErrorBoundary fallbackTitle="Something went wrong">
+        <Routes>
+          <Route path="/" element={
+            <LandingPage
+              onGetStarted={() => {
+                if (user) {
+                  navigate('/create');
+                } else {
+                  setShowAuthModal(true);
                 }
               }}
+              onAbout={() => navigate('/about')}
+              onDesignerSignup={() => navigate('/designer-signup')}
             />
-          </div>
-        } />
+          } />
 
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/blog" element={<BlogPage />} />
-        <Route path="/blog/:slug" element={<BlogArticle />} />
-        <Route path="/terms" element={<TermsOfService />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-      </Routes>
+          <Route path="/create" element={
+            <ErrorBoundary fallbackTitle="Design wizard encountered an error">
+              <div className="min-h-screen bg-gray-50">
+                <main className="flex-1 bg-gray-50">
+                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    {state.step === 'processing' ? (
+                      <LoadingScreen />
+                    ) : (
+                      <>
+                        {state.error && (
+                          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2 max-w-5xl mx-auto">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            {state.error}
+                          </div>
+                        )}
+
+                        <DesignWizard
+                          yardImage={state.yardImage}
+                          yardImagePreview={state.yardImagePreview}
+                          styleImages={state.styleImages}
+                          styleImagePreviews={state.styleImagePreviews}
+                          selectedGalleryStyleIds={selectedGalleryStyleIds}
+                          selectedStyle={state.selectedStyle}
+                          userPrompt={state.userPrompt}
+                          budget={state.budget}
+                          useRag={state.useRag}
+                          onYardSelect={handleYardSelect}
+                          onClearYard={handleClearYard}
+                          onStyleSelect={handleStyleSelect}
+                          onClearStyleImage={handleClearStyleImage}
+                          onClearAllStyles={handleClearAllStyles}
+                          onGalleryStyleToggle={handleGalleryStyleToggle}
+                          onClearGalleryStyles={handleClearGalleryStyles}
+                          onStyleChange={(style) => setState(s => ({ ...s, selectedStyle: style }))}
+                          locationType={state.locationType}
+                          spaceSize={state.spaceSize}
+                          onLocationChange={(type) => setState(s => ({ ...s, locationType: type }))}
+                          onSizeChange={(size) => setState(s => ({ ...s, spaceSize: size }))}
+                          onPromptChange={(prompt) => setState(s => ({ ...s, userPrompt: prompt }))}
+                          onBudgetChange={(budget) => setState(s => ({ ...s, budget }))}
+                          onUseRagChange={(useRag) => setState(s => ({ ...s, useRag }))}
+                          onGenerate={handleGenerate}
+                          currentStep={wizardStep}
+                          onStepChange={setWizardStep}
+                        />
+                      </>
+                    )}
+                  </div>
+                </main>
+              </div>
+            </ErrorBoundary>
+          } />
+
+          <Route path="/result/:id" element={<ErrorBoundary fallbackTitle="Could not display results"><ResultsPage /></ErrorBoundary>} />
+
+          {/* Temporary route for immediate results without ID */}
+          <Route path="/result/generated" element={<ErrorBoundary fallbackTitle="Could not display results"><ResultsPage /></ErrorBoundary>} />
+
+          <Route path="/gallery" element={
+            <div className="min-h-screen bg-gray-50">
+              <CommunityGallery onLoadDesign={handleLoadDesign} />
+            </div>
+          } />
+
+          <Route path="/about" element={<AboutPage onClose={() => navigate('/')} />} />
+
+          <Route path="/business" element={<BusinessPage />} />
+          <Route path="/business/dashboard" element={<BusinessDashboard />} />
+
+          <Route path="/designer/:designerId" element={<DesignerGallery />} />
+
+          <Route path="/designer-signup" element={
+            <div className="min-h-screen pt-20 bg-gray-50">
+              <DesignerOnboarding
+                onComplete={async (designerData: DesignerFormData) => {
+                  try {
+                    let uid = user?.uid;
+
+                    // Only sign up if not already logged in
+                    if (!uid) {
+                      await signUpWithEmail(designerData.email, designerData.password);
+                      uid = auth.currentUser?.uid;
+                    }
+
+                    if (uid) {
+                      // Remove password from data before saving to profile
+                      const { password, role, ...profileData } = designerData;
+                      await saveDesignerProfile(uid, {
+                        ...profileData,
+                        rating: 0,
+                        reviewCount: 0,
+                        isVerified: false,
+                      });
+                      console.log('Designer profile saved for:', designerData.email);
+
+                      alert('Welcome to AutoScape Pro! Your partner account has been created.');
+                      navigate('/business');
+                    } else {
+                      throw new Error('Failed to identify user. Please try again.');
+                    }
+
+                  } catch (error: any) {
+                    console.error('Error creating designer account:', error);
+                    alert(error.message || 'Failed to create account. Please try again.');
+                  }
+                }}
+              />
+            </div>
+          } />
+
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogArticle />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/admin" element={<ErrorBoundary fallbackTitle="Admin dashboard error"><AdminDashboard /></ErrorBoundary>} />
+        </Routes>
+      </ErrorBoundary>
 
       {/* Modals & Overlays */}
       {showAuthModal && !user && (

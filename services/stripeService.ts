@@ -70,7 +70,7 @@ export const createCheckoutSession = async (
     };
   } catch (error) {
     console.error('Error creating checkout session:', error);
-    
+
     // Provide helpful error messages
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
       throw new Error(
@@ -78,7 +78,7 @@ export const createCheckoutSession = async (
         'To start it, run: python servers/stripe_checkout_api.py'
       );
     }
-    
+
     throw error;
   }
 };
@@ -91,9 +91,41 @@ export const redirectToCheckout = async (checkoutUrl: string) => {
   if (!checkoutUrl) {
     throw new Error('Checkout URL is required');
   }
-  
+
   // Redirect to Stripe Checkout
   window.location.href = checkoutUrl;
+};
+
+/**
+ * Create a Stripe Customer Portal session for subscription management.
+ * Returns a URL to redirect the user to.
+ */
+export const createPortalSession = async (customerId: string): Promise<string> => {
+  try {
+    const response = await fetch(API_ENDPOINTS.createPortalSession, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.url;
+  } catch (error) {
+    console.error('Error creating portal session:', error);
+
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error(
+        'Cannot connect to payment server. Please make sure the Stripe checkout API is running on port 8003.'
+      );
+    }
+
+    throw error;
+  }
 };
 
 /**

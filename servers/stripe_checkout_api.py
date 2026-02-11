@@ -40,6 +40,10 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# In-memory idempotency set to prevent double-crediting from webhook retries
+# In production, replace with Redis or a database table
+processed_event_ids: set[str] = set()
+
 # Allowed origins for CORS
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -84,6 +88,12 @@ class CheckoutSessionRequest(BaseModel):
 
 class CheckoutSessionResponse(BaseModel):
     sessionId: str
+    url: str
+
+class PortalSessionRequest(BaseModel):
+    customerId: str
+
+class PortalSessionResponse(BaseModel):
     url: str
 
 @app.get("/health")
@@ -155,6 +165,69 @@ async def create_checkout_session(request: CheckoutSessionRequest):
         logger.error(f"Error creating checkout session: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+
+def _add_credits_to_firestore(userId: str, credits: int) -> None:
+    """Helper to add credits to a user account via Firestore."""
+    from firebase_admin import firestore, initialize_app, credentials
+    import firebase_admin
+
+    if not firebase_admin._apps:
+        cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if cred_path and os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+            initialize_app(cred)
+        else:
+            initialize_app()
+
+    db = firestore.client()
+    user_credits_ref = db.collection('userCredits').document(userId)
+
+    user_credits_doc = user_credits_ref.get()
+    if user_credits_doc.exists:
+        current_data = user_credits_doc.to_dict()
+        current_credits = current_data.get('credits', 0)
+        total_purchased = current_data.get('totalCreditsPurchased', 0)
+
+        user_credits_ref.update({
+            'credits': current_credits + credits,
+            'totalCreditsPurchased': total_purchased + credits,
+            'lastUpdated': firestore.SERVER_TIMESTAMP,
+        })
+        logger.info(f"✅ Added {credits} credits to user {userId}. New total: {current_credits + credits}")
+    else:
+        user_credits_ref.set({
+            'credits': credits,
+            'freeCreditsUsed': 0,
+            'totalCreditsPurchased': credits,
+            'lastUpdated': firestore.SERVER_TIMESTAMP,
+        })
+        logger.info(f"✅ Initialized user {userId} with {credits} credits")
+
+
+@app.post("/api/create-portal-session", response_model=PortalSessionResponse)
+async def create_portal_session(request: PortalSessionRequest):
+    """
+    Create a Stripe Customer Portal session for subscription management.
+    Allows users to update payment methods, cancel subscriptions, etc.
+    """
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+
+    try:
+        base_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        session = stripe.billing_portal.Session.create(
+            customer=request.customerId,
+            return_url=f"{base_url}/pricing",
+        )
+        logger.info(f"Created portal session for customer {request.customerId}")
+        return PortalSessionResponse(url=session.url)
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe portal error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error creating portal session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 @app.post("/api/webhook")
 async def stripe_webhook(request: Request, stripe_signature: Optional[str] = Header(None)):
     """
@@ -178,6 +251,13 @@ async def stripe_webhook(request: Request, stripe_signature: Optional[str] = Hea
         )
         
         # Handle the event
+        event_id = event.get('id', '')
+
+        # Idempotency check: skip if we've already processed this event
+        if event_id in processed_event_ids:
+            logger.info(f"Skipping already-processed event: {event_id}")
+            return {"status": "already_processed"}
+
         if event['type'] == 'checkout.session.completed':
             session = event['data']['object']
             userId = session.get('client_reference_id') or session.get('metadata', {}).get('userId')
@@ -188,52 +268,48 @@ async def stripe_webhook(request: Request, stripe_signature: Optional[str] = Hea
             
             # Add credits to user account via Firestore
             try:
-                from firebase_admin import firestore, initialize_app, credentials
-                import firebase_admin
-                
-                # Initialize Firebase Admin if not already initialized
-                if not firebase_admin._apps:
-                    # Try to use service account from environment or default credentials
-                    cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-                    if cred_path and os.path.exists(cred_path):
-                        cred = credentials.Certificate(cred_path)
-                        initialize_app(cred)
-                    else:
-                        # Use default credentials (for Cloud Run, etc.)
-                        initialize_app()
-                
-                db = firestore.client()
-                user_credits_ref = db.collection('userCredits').document(userId)
-                
-                # Get current credits or initialize
-                user_credits_doc = user_credits_ref.get()
-                if user_credits_doc.exists:
-                    current_data = user_credits_doc.to_dict()
-                    current_credits = current_data.get('credits', 0)
-                    total_purchased = current_data.get('totalCreditsPurchased', 0)
-                    
-                    user_credits_ref.update({
-                        'credits': current_credits + credits,
-                        'totalCreditsPurchased': total_purchased + credits,
-                        'lastUpdated': firestore.SERVER_TIMESTAMP,
-                    })
-                else:
-                    # Initialize user credits
-                    user_credits_ref.set({
-                        'credits': credits,
-                        'freeCreditsUsed': 0,
-                        'totalCreditsPurchased': credits,
-                        'lastUpdated': firestore.SERVER_TIMESTAMP,
-                    })
-                
-                logger.info(f"✅ Added {credits} credits to user {userId}. New total: {current_credits + credits if user_credits_doc.exists else credits}")
-                
+                _add_credits_to_firestore(userId, credits)
             except ImportError:
                 logger.warning("firebase-admin not installed. Install with: pip install firebase-admin")
                 logger.info(f"TODO: Add {credits} credits to user {userId} via Firestore")
             except Exception as e:
                 logger.error(f"Error adding credits to Firestore: {str(e)}")
                 # Don't fail the webhook - log error for manual processing
+
+        elif event['type'] == 'payment_intent.succeeded':
+            # Handle direct payment intent success (covers cases where checkout.session.completed
+            # might be missed, or for non-checkout payments)
+            payment_intent = event['data']['object']
+            metadata = payment_intent.get('metadata', {})
+            userId = metadata.get('userId')
+            credits = int(metadata.get('credits', 0))
+
+            if userId and credits > 0:
+                logger.info(f"payment_intent.succeeded for user {userId}, credits: {credits}")
+                try:
+                    _add_credits_to_firestore(userId, credits)
+                except Exception as e:
+                    logger.error(f"Error adding credits from payment_intent: {str(e)}")
+            else:
+                logger.info(f"payment_intent.succeeded without userId/credits metadata, skipping credit grant")
+
+        elif event['type'] == 'invoice.payment_succeeded':
+            # Handle recurring subscription payments (renewal)
+            invoice = event['data']['object']
+            subscription_id = invoice.get('subscription')
+            customer_id = invoice.get('customer')
+
+            if subscription_id:
+                try:
+                    subscription = stripe.Subscription.retrieve(subscription_id)
+                    userId = subscription.get('metadata', {}).get('userId')
+                    credits = int(subscription.get('metadata', {}).get('credits', 0))
+
+                    if userId and credits > 0:
+                        logger.info(f"Subscription renewal for user {userId}, credits: {credits}")
+                        _add_credits_to_firestore(userId, credits)
+                except Exception as e:
+                    logger.error(f"Error processing subscription renewal: {str(e)}")
             
         elif event['type'] == 'customer.subscription.deleted':
             # Handle subscription cancellation
@@ -242,7 +318,12 @@ async def stripe_webhook(request: Request, stripe_signature: Optional[str] = Hea
             
         else:
             logger.info(f"Unhandled event type: {event['type']}")
-        
+
+        # Mark event as processed for idempotency
+        processed_event_ids.add(event_id)
+        # Keep set from growing unbounded in long-running server
+        if len(processed_event_ids) > 10000:
+            processed_event_ids.clear()
         return {"status": "success"}
         
     except ValueError as e:

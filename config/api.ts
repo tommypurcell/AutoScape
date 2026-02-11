@@ -15,7 +15,7 @@ export const CLOUD_FUNCTIONS_BASE = import.meta.env.VITE_CLOUD_FUNCTIONS_URL ||
     'https://us-central1-autoscape-dfc00.cloudfunctions.net';
 
 // Stripe Checkout API Base URL
-const STRIPE_API_BASE = import.meta.env.VITE_STRIPE_API_BASE || 
+const STRIPE_API_BASE = import.meta.env.VITE_STRIPE_API_BASE ||
     'http://localhost:8003';
 
 // Endpoints
@@ -30,6 +30,7 @@ export const API_ENDPOINTS = {
 
     // Stripe Checkout API
     createCheckoutSession: `${STRIPE_API_BASE}/api/create-checkout-session`,
+    createPortalSession: `${STRIPE_API_BASE}/api/create-portal-session`,
     stripeWebhook: `${STRIPE_API_BASE}/api/webhook`,
 
     // Cloud Functions (for production)
