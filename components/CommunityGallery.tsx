@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SavedDesign, getPublicDesigns, deleteDesignAdmin } from '../services/firestoreService';
-import { Loader2, Heart, User, Calendar, Link2, Trash2 } from 'lucide-react';
+import { Loader2, Heart, User, Calendar, Link2, Trash2, Filter, ArrowUpDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 // Local fallback gallery entries to ensure the page always has content
@@ -71,6 +71,46 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedDesign, setSelectedDesign] = useState<SavedDesign | null>(null);
+    const [styleFilter, setStyleFilter] = useState<string>('all');
+    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'cost-high' | 'cost-low'>('newest');
+
+    // Extract unique styles for the filter dropdown
+    const availableStyles = useMemo(() => {
+        const styles = new Set<string>();
+        designs.forEach(d => {
+            const style = d.analysis?.style;
+            if (style) styles.add(style);
+        });
+        return Array.from(styles).sort();
+    }, [designs]);
+
+    // Filter and sort designs
+    const filteredDesigns = useMemo(() => {
+        let result = [...designs];
+
+        // Style filter
+        if (styleFilter !== 'all') {
+            result = result.filter(d => (d.analysis?.style || 'Modern') === styleFilter);
+        }
+
+        // Sort
+        result.sort((a, b) => {
+            switch (sortBy) {
+                case 'newest':
+                    return (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0);
+                case 'oldest':
+                    return (a.createdAt?.getTime?.() || 0) - (b.createdAt?.getTime?.() || 0);
+                case 'cost-high':
+                    return (b.estimates?.totalCost || 0) - (a.estimates?.totalCost || 0);
+                case 'cost-low':
+                    return (a.estimates?.totalCost || 0) - (b.estimates?.totalCost || 0);
+                default:
+                    return 0;
+            }
+        });
+
+        return result;
+    }, [designs, styleFilter, sortBy]);
 
     useEffect(() => {
         loadDesigns();
@@ -147,11 +187,40 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                 </div>
             ) : (
                 <>
-                    <div className="mb-4 text-sm text-slate-600 text-center">
-                        Showing {designs.length} design{designs.length !== 1 ? 's' : ''}
+                    {/* Filter Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-3">
+                            <Filter className="w-4 h-4 text-slate-400" />
+                            <select
+                                value={styleFilter}
+                                onChange={e => setStyleFilter(e.target.value)}
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                            >
+                                <option value="all">All Styles</option>
+                                {availableStyles.map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <ArrowUpDown className="w-4 h-4 text-slate-400" />
+                            <select
+                                value={sortBy}
+                                onChange={e => setSortBy(e.target.value as any)}
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                            >
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="cost-high">Cost: High → Low</option>
+                                <option value="cost-low">Cost: Low → High</option>
+                            </select>
+                        </div>
+                        <span className="text-sm text-slate-500">
+                            {filteredDesigns.length} design{filteredDesigns.length !== 1 ? 's' : ''}
+                        </span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {designs.map((design) => {
+                        {filteredDesigns.map((design) => {
                             // Skip designs without render images
                             if (!design.renderImages || design.renderImages.length === 0) {
                                 console.warn(`Skipping design ${design.id} - no render images`);
