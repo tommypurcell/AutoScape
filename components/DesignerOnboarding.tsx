@@ -41,6 +41,19 @@ const states = [
     'Massachusetts', 'Illinois', 'Pennsylvania', 'Ohio', 'Michigan', 'New Jersey'
 ];
 
+// Validation helpers
+const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+};
+
+const isValidPhone = (phone: string): boolean => {
+    // Allow empty (optional) or valid phone format
+    if (!phone) return true;
+    const phoneRegex = /^[\d\s\-\(\)\+]{10,}$/;
+    return phoneRegex.test(phone.replace(/\s/g, ''));
+};
+
 export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComplete }) => {
     const { user } = useAuth();
     const [step, setStep] = useState(1);
@@ -50,6 +63,7 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
         role: 'designer',
         agreedToTerms: false
     });
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
     // Auto-fill for logged in users
     useEffect(() => {
@@ -89,13 +103,50 @@ export const DesignerOnboarding: React.FC<DesignerOnboardingProps> = ({ onComple
         }
     };
 
+    const validateStep = (stepNum: number): boolean => {
+        const errors: Record<string, string> = {};
+
+        if (stepNum === 1) {
+            if (!formData.fullName?.trim()) {
+                errors.fullName = 'Full name is required';
+            }
+            if (!formData.email?.trim()) {
+                errors.email = 'Email is required';
+            } else if (!isValidEmail(formData.email)) {
+                errors.email = 'Please enter a valid email address';
+            }
+            if (!user && !formData.password) {
+                errors.password = 'Password is required';
+            } else if (!user && formData.password && formData.password.length < 6) {
+                errors.password = 'Password must be at least 6 characters';
+            }
+        }
+
+        if (stepNum === 2) {
+            if (!formData.businessName?.trim()) {
+                errors.businessName = 'Business name is required';
+            }
+            if (!formData.city?.trim()) {
+                errors.city = 'City is required';
+            }
+            if (!formData.state) {
+                errors.state = 'State is required';
+            }
+            if (formData.phone && !isValidPhone(formData.phone)) {
+                errors.phone = 'Please enter a valid phone number';
+            }
+        }
+
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const canProceed = () => {
         switch (step) {
             case 1:
-
-                return formData.fullName && formData.email && (user ? true : formData.password);
+                return formData.fullName && formData.email && isValidEmail(formData.email) && (user ? true : formData.password);
             case 2:
-                return formData.businessName && formData.city && formData.state;
+                return formData.businessName && formData.city && formData.state && (!formData.phone || isValidPhone(formData.phone));
             case 3:
                 return (formData.specialties?.length || 0) > 0 && formData.yearsExperience;
             case 4:

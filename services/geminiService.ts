@@ -41,6 +41,34 @@ const GEMINI_API_KEY =
   process.env.GEMINI_API_KEY ||
   process.env.API_KEY;
 
+// Timeout helper for long-running operations
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operationName: string = 'Operation'
+): Promise<T> => {
+  let timeoutId: NodeJS.Timeout;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${operationName} timed out after ${timeoutMs / 1000} seconds. Please try again.`));
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timeoutId!);
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId!);
+    throw error;
+  }
+};
+
+// Generation timeout configuration (2 minutes per phase, 5 minutes total)
+const PHASE_TIMEOUT_MS = 120000; // 2 minutes per phase
+const TOTAL_TIMEOUT_MS = 300000; // 5 minutes total
+
 // Retry helper for Gemini API calls (handles transient 500 errors)
 const retryOperation = async <T>(
   operation: () => Promise<T>,
@@ -143,10 +171,25 @@ If valid, message should be empty string. If invalid, message should politely ex
 
     // Default to valid if parsing fails
     return { isValid: true, message: "" };
-  } catch (error) {
-    console.warn("Image validation failed, allowing upload:", error);
-    // On error, allow the upload
-    return { isValid: true, message: "" };
+  } catch (error: any) {
+    console.error("Image validation failed:", error);
+    // Fail closed for security - reject on validation errors
+    // Network errors get a more helpful message
+    const isNetworkError = error?.message?.includes('network') ||
+                           error?.message?.includes('fetch') ||
+                           error?.message?.includes('CORS');
+
+    if (isNetworkError) {
+      return {
+        isValid: false,
+        message: "Unable to validate image due to network issues. Please check your connection and try again."
+      };
+    }
+
+    return {
+      isValid: false,
+      message: "Unable to validate image. Please try uploading a different image or try again later."
+    };
   }
 };
 
@@ -263,11 +306,15 @@ export const generateLandscapeDesign = async (
       Do NOT invent structures that aren't in the photo.
     `});
 
-    const sceneUnderstandingRes = await retryOperation(() =>
-      ai.models.generateContent({
-        model: MODEL_REASONING,
-        contents: { parts: analysisParts }
-      })
+    const sceneUnderstandingRes = await withTimeout(
+      retryOperation(() =>
+        ai.models.generateContent({
+          model: MODEL_REASONING,
+          contents: { parts: analysisParts }
+        })
+      ),
+      PHASE_TIMEOUT_MS,
+      'Scene understanding'
     );
 
     const sceneContext = sceneUnderstandingRes.text || "";
@@ -315,16 +362,20 @@ export const generateLandscapeDesign = async (
       Be specific and comprehensive - include EVERYTHING you added to transform the yard.
     `;
 
-    const renderRes = await retryOperation(() =>
-      ai.models.generateContent({
-        model: MODEL_GENERATION,
-        contents: {
-          parts: [
-            { inlineData: { mimeType: yardFile.type, data: yardBase64 } },
-            { text: renderPrompt }
-          ]
-        }
-      })
+    const renderRes = await withTimeout(
+      retryOperation(() =>
+        ai.models.generateContent({
+          model: MODEL_GENERATION,
+          contents: {
+            parts: [
+              { inlineData: { mimeType: yardFile.type, data: yardBase64 } },
+              { text: renderPrompt }
+            ]
+          }
+        })
+      ),
+      PHASE_TIMEOUT_MS,
+      'Render generation'
     );
 
     const renderImage = extractImage(renderRes);
@@ -519,8 +570,10 @@ export const generateLandscapeDesign = async (
     });
 
     // Wait for both Plan and Analysis (with retry for transient errors)
-    const [planRes, analysisRes] = await retryOperation(
-      () => Promise.all([planPromise, analysisPromise])
+    const [planRes, analysisRes] = await withTimeout(
+      retryOperation(() => Promise.all([planPromise, analysisPromise])),
+      PHASE_TIMEOUT_MS,
+      'Plan and analysis generation'
     );
 
     const planImage = extractImage(planRes);

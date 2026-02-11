@@ -1,12 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
     User,
-    signInWithRedirect,
+    signInWithPopup,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    getRedirectResult,
+    sendPasswordResetEmail,
+    sendEmailVerification,
+    getIdToken,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { syncUser } from '../services/firestoreService';
@@ -19,9 +21,13 @@ interface AuthContextType {
     credits: number;
     setCredits: React.Dispatch<React.SetStateAction<number>>;
     loading: boolean;
+    sessionError: string | null;
+    refreshSession: () => Promise<boolean>;
     signInWithGoogle: () => Promise<void>;
     signInWithEmail: (email: string, password: string) => Promise<void>;
     signUpWithEmail: (email: string, password: string) => Promise<void>;
+    resetPassword: (email: string) => Promise<void>;
+    sendVerificationEmail: () => Promise<void>;
     logout: () => Promise<void>;
 }
 
@@ -40,10 +46,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [userRole, setUserRole] = useState<'user' | 'admin' | 'pro' | null>(null);
     const [credits, setCredits] = useState<number>(0);
     const [loading, setLoading] = useState(true);
+    const [sessionError, setSessionError] = useState<string | null>(null);
+
+    // Refresh the session token - returns true if successful, false if user needs to re-login
+    const refreshSession = useCallback(async (): Promise<boolean> => {
+        if (!auth.currentUser) {
+            setSessionError('No active session');
+            return false;
+        }
+
+        try {
+            // Force refresh the token
+            await getIdToken(auth.currentUser, true);
+            setSessionError(null);
+            return true;
+        } catch (err: any) {
+            console.error('Session refresh failed:', err);
+
+            // Handle specific error cases
+            if (err.code === 'auth/user-token-expired' ||
+                err.code === 'auth/user-disabled' ||
+                err.code === 'auth/user-not-found') {
+                setSessionError('Your session has expired. Please sign in again.');
+                await signOut(auth);
+                return false;
+            }
+
+            // Network errors - don't sign out, let user retry
+            if (err.code === 'auth/network-request-failed') {
+                setSessionError('Network error. Please check your connection.');
+                return false;
+            }
+
+            setSessionError('Session error. Please try again.');
+            return false;
+        }
+    }, []);
+
+    // Periodically refresh token to prevent expiration (every 30 minutes)
+    useEffect(() => {
+        if (!user) return;
+
+        const refreshInterval = setInterval(async () => {
+            try {
+                await getIdToken(auth.currentUser!, true);
+            } catch (err) {
+                console.warn('Background token refresh failed:', err);
+            }
+        }, 30 * 60 * 1000); // 30 minutes
+
+        return () => clearInterval(refreshInterval);
+    }, [user]);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user);
+            setSessionError(null); // Clear any session errors on auth state change
             if (user) {
                 // Sync user data to Firestore
                 await syncUser(user).catch(err => console.error("Failed to sync user:", err));
@@ -73,20 +131,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return unsubscribe;
     }, []);
 
-    // Handle redirect result (Google sign-in)
-    useEffect(() => {
-        const handleRedirectResult = async () => {
-            try {
-                await getRedirectResult(auth);
-            } catch (err) {
-                console.error("Google redirect sign-in failed:", err);
-            }
-        };
-        handleRedirectResult();
-    }, []);
-
     const signInWithGoogle = async () => {
-        await signInWithRedirect(auth, googleProvider);
+        try {
+            await signInWithPopup(auth, googleProvider);
+        } catch (err: any) {
+            console.error("Google sign-in failed:", err);
+            throw err;
+        }
     };
 
     const signInWithEmail = async (email: string, password: string) => {
@@ -94,7 +145,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signUpWithEmail = async (email: string, password: string) => {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Send verification email after signup
+        if (userCredential.user) {
+            try {
+                await sendEmailVerification(userCredential.user);
+            } catch (err) {
+                console.warn('Could not send verification email:', err);
+            }
+        }
+    };
+
+    const resetPassword = async (email: string) => {
+        await sendPasswordResetEmail(auth, email);
+    };
+
+    const sendVerificationEmail = async () => {
+        if (auth.currentUser) {
+            await sendEmailVerification(auth.currentUser);
+        } else {
+            throw new Error('No user logged in');
+        }
     };
 
     const logout = async () => {
@@ -107,9 +178,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         credits,
         setCredits,
         loading,
+        sessionError,
+        refreshSession,
         signInWithGoogle,
         signInWithEmail,
         signUpWithEmail,
+        resetPassword,
+        sendVerificationEmail,
         logout,
     };
 

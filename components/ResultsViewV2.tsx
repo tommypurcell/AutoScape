@@ -1,23 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GeneratedDesign } from '../types';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { saveDesign, adjustUserCredits } from '../services/firestoreService';
+import { saveDesign, adjustUserCredits, updateDesignVideoUrl, updateDesign3DUrl } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useDesign } from '../contexts/DesignContext';
-import { getVideoEndpoint } from '../config/api';
-import { Loader } from 'lucide-react';
-import { generateLandscapeDesign } from '../services/geminiService';
+import { get3DEndpoint, getVideoEndpoint } from '../config/api';
+import { uploadVideo } from '../services/storageService';
+import { Loader, Facebook, Twitter, Mail, MessageCircle, Check, Copy, Download, Share2, Box } from 'lucide-react';
+import { generateLandscapeDesign, analyzeAndRegenerateDesign, Annotation } from '../services/geminiService';
 import { EditModeCanvas } from './EditModeCanvas';
+import { generateAffiliateLinks, VerifiedMaterialItem } from '../services/affiliateService';
 
-interface Annotation {
-    id: string;
-    type: string;
-    text: string;
-    x: number;
-    y: number;
-}
+// Lazy load 3D viewer to reduce initial bundle size
+const Scene3DViewer = lazy(() => import('./Scene3DViewer'));
 
 interface ResultsViewProps {
     result?: GeneratedDesign;
@@ -27,6 +24,7 @@ interface ResultsViewProps {
     designId?: string;
     designUserId?: string;
     existingVideoUrl?: string | null;
+    existing3DModelUrl?: string | null;
 }
 
 export const ResultsViewV2: React.FC<ResultsViewProps> = ({
@@ -35,10 +33,11 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     onReset: propOnReset,
     designShortId,
     designId: propDesignId,
-    existingVideoUrl
+    existingVideoUrl,
+    existing3DModelUrl
 }) => {
     const navigate = useNavigate();
-    const { user, credits, setCredits } = useAuth();
+    const { user, credits, setCredits, userRole } = useAuth();
     const { result: ctxResult, yardImagePreview, resetDesign, setResult: setCtxResult } = useDesign();
 
     const [localResult, setLocalResult] = useState<GeneratedDesign | null>(propResult || ctxResult);
@@ -60,6 +59,23 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const [isImageEditMode, setIsImageEditMode] = useState(false);
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const [isLoadingAffiliateLinks, setIsLoadingAffiliateLinks] = useState(false);
+    const [affiliateLinks, setAffiliateLinks] = useState<Map<string, VerifiedMaterialItem>>(new Map());
+    const [showAffiliateLinks, setShowAffiliateLinks] = useState(false);
+    const [generatingProvider, setGeneratingProvider] = useState<'gemini' | 'freepik' | null>(null);
+    const [videoError, setVideoError] = useState<string | null>(null);
+    const [freepikVideoUrl, setFreepikVideoUrl] = useState<string | null>(null);
+    const [geminiVideoUrl, setGeminiVideoUrl] = useState<string | null>(null);
+    const [isSavingVideo, setIsSavingVideo] = useState(false);
+
+    // 3D Scene state
+    const [modelUrl, setModelUrl] = useState<string | null>(existing3DModelUrl || null);
+    const [isGenerating3D, setIsGenerating3D] = useState(false);
+    const [scene3DError, setScene3DError] = useState<string | null>(null);
+    const [scene3DProgress, setScene3DProgress] = useState<number>(0);
+
+    // Use propDesignId for current design ID
+    const currentDesignId = propDesignId;
 
     // RAG budget data (from result if available)
     const ragBudget = (result as any)?.ragBudget || null;
@@ -125,7 +141,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             return;
         }
 
-        const shortId = await ensureDesignSaved();
+        const shortId = await ensureSaved();
         if (shortId) {
             setShareUrl(`${window.location.origin}/result/${shortId}`);
             setIsShareMenuOpen(true);
@@ -134,7 +150,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
     // Original handleShareLink modified to use new logic if separate button kept
     const handleShareLink = async () => {
-        const shortId = await ensureDesignSaved();
+        const shortId = await ensureSaved();
         if (shortId) {
             const url = `${window.location.origin}/result/${shortId}`;
             navigator.clipboard.writeText(url);
@@ -335,6 +351,134 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         }
     };
 
+    const CREDITS_FOR_3D = 3;
+    const isAdmin = userRole === 'admin';
+
+    const handleGenerate3D = async () => {
+        if (!result?.renderImages[currentRenderIndex]) return;
+        if (!user) {
+            setScene3DError('Please sign in to generate 3D scenes');
+            return;
+        }
+
+        // Check credits (admin exempt)
+        if (!isAdmin && credits < CREDITS_FOR_3D) {
+            setScene3DError(`Insufficient credits. 3D generation requires ${CREDITS_FOR_3D} credits.`);
+            return;
+        }
+
+        setIsGenerating3D(true);
+        setScene3DError(null);
+        setScene3DProgress(0);
+
+        let reservationId: string | null = null;
+
+        try {
+            // Reserve credits before generation (admin exempt)
+            if (!isAdmin && user) {
+                const { reserveCredits } = await import('../services/creditService');
+                reservationId = await reserveCredits(user.uid, CREDITS_FOR_3D);
+                window.dispatchEvent(new CustomEvent('creditsUpdated'));
+                console.log(`Reserved ${CREDITS_FOR_3D} credits for 3D generation`);
+            }
+
+            // Helper function to convert URL to base64
+            const getBase64 = async (url: string): Promise<string> => {
+                if (url.startsWith('data:')) return url.split(',')[1];
+
+                try {
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                        reader.onerror = () => reject(new Error('Failed to read image'));
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (fetchError) {
+                    console.warn('CORS issue, trying canvas approach...');
+                    return new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth;
+                            canvas.height = img.naturalHeight;
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) {
+                                reject(new Error('Failed to create canvas'));
+                                return;
+                            }
+                            ctx.drawImage(img, 0, 0);
+                            resolve(canvas.toDataURL('image/png').split(',')[1]);
+                        };
+                        img.onerror = () => reject(new Error('CORS policy issue'));
+                        img.src = url;
+                    });
+                }
+            };
+
+            console.log('Starting 3D scene generation...');
+            const imageBase64 = await getBase64(result.renderImages[currentRenderIndex]);
+
+            const scene3DApiUrl = get3DEndpoint();
+            const response = await fetch(scene3DApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: imageBase64,
+                    enable_pbr: true,
+                    surface_mode: 'hard',
+                    target_polycount: 30000
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.status === 'error') {
+                throw new Error(data.error || data.detail || 'Failed to generate 3D scene');
+            }
+
+            setModelUrl(data.model_url);
+
+            // Complete the credit reservation on success
+            if (reservationId) {
+                const { completeReservation } = await import('../services/creditService');
+                await completeReservation(reservationId, currentDesignId || undefined);
+                window.dispatchEvent(new CustomEvent('creditsUpdated'));
+                console.log('3D generation credits confirmed');
+            }
+
+            // Save 3D model URL to Firestore if we have a design ID
+            if (currentDesignId && data.model_url) {
+                try {
+                    await updateDesign3DUrl(currentDesignId, data.model_url);
+                    console.log('3D model URL saved to Firestore');
+                } catch (saveError) {
+                    console.error('Failed to save 3D URL to Firestore:', saveError);
+                }
+            }
+
+        } catch (err) {
+            console.error('3D generation error:', err);
+            setScene3DError(err instanceof Error ? err.message : 'An error occurred');
+
+            // Refund credits on failure
+            if (reservationId) {
+                try {
+                    const { refundReservation } = await import('../services/creditService');
+                    await refundReservation(reservationId, '3D generation failed');
+                    window.dispatchEvent(new CustomEvent('creditsUpdated'));
+                    console.log('3D generation credits refunded');
+                } catch (refundError) {
+                    console.error('Failed to refund credits:', refundError);
+                }
+            }
+        } finally {
+            setIsGenerating3D(false);
+        }
+    };
+
     const handleEditModeSave = async (annotatedImage: string, annotations: Annotation[]) => {
         if (!result || !result.renderImages[currentRenderIndex] || annotations.length === 0) {
             alert('Please add at least one annotation before applying changes.');
@@ -397,8 +541,8 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
             };
 
             setLocalResult(updatedResult);
-            if (contextResult && !propResult) {
-                setContextResult(updatedResult);
+            if (ctxResult && !propResult) {
+                setCtxResult(updatedResult);
             }
 
             // Deduct credit after successful regeneration
@@ -458,7 +602,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
     return (
         <div className="pb-12 animate-fade-in" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-            <div className="flex gap-6">
+            <div className="flex gap-6 max-w-[1000px] mx-auto">
                 {/* Left Column - Main Content */}
                 <div className="flex-1 space-y-6 min-w-0">
 
@@ -535,10 +679,10 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
                     {/* Visuals Section - Full Width */}
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
-                        {/* Tab Bar - Matches Wireframe */}
+                        {/* Tab Bar - Compare only (2D Plan and Video are shown below) */}
                         <div className="flex border-b border-slate-100">
                             {/* Compare Tab with sub-tabs */}
-                            <div className="flex-1 border-r border-slate-100">
+                            <div className="flex-1">
                                 <button
                                     onClick={() => setActiveTab('compare')}
                                     className={`w-full text-sm text-center py-1 border-b border-slate-100 font-medium transition-colors ${activeTab === 'compare' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 bg-slate-50 hover:text-slate-700 hover:bg-slate-100'}`}
@@ -547,7 +691,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                 </button>
                                 <div className="flex">
                                     <button onClick={() => setActiveTab('original')} className={`flex-1 py-3 text-sm font-medium transition-colors relative ${activeTab === 'original' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
-                                        original
+                                        Original
                                         {activeTab === 'original' && <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-500" />}
                                     </button>
                                     <button onClick={() => setActiveTab('render')} className={`flex-1 py-3 text-sm font-medium transition-colors relative border-l border-slate-100 ${activeTab === 'render' || activeTab === 'compare' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
@@ -556,14 +700,6 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                     </button>
                                 </div>
                             </div>
-                            <button onClick={() => setActiveTab('plan')} className={`flex-1 py-4 text-sm font-medium transition-colors relative border-r border-slate-100 ${activeTab === 'plan' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
-                                2D Plan
-                                {activeTab === 'plan' && <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-500" />}
-                            </button>
-                            <button onClick={() => setActiveTab('video')} className={`flex-1 py-4 text-sm font-medium transition-colors relative ${activeTab === 'video' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-600 hover:text-slate-700 hover:bg-slate-50'}`}>
-                                Video
-                                {activeTab === 'video' && <div className="absolute bottom-0 left-0 right-0 h-px bg-emerald-500" />}
-                            </button>
                         </div>
 
                         {/* Image Display Area */}
@@ -719,27 +855,78 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                 </div>
                             )}
 
-                            {/* 4) Video Generation */}
+                            {/* 4) 3D Scene Generation */}
                             <div className="bg-white rounded-2xl shadow border border-slate-200 p-4 space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-bold text-slate-800">Video Generation</h3>
-                                    <span className="text-sm text-slate-500">Credits: {user ? credits : 0}</span>
+                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                        <Box className="w-5 h-5 text-emerald-600" />
+                                        3D Scene
+                                    </h3>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        {isAdmin ? (
+                                            <span className="text-purple-600 font-medium">Admin (Free)</span>
+                                        ) : (
+                                            <span className="text-slate-500">
+                                                Requires {CREDITS_FOR_3D} credits | You have: {user ? credits : 0}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                {videoUrl ? (
-                                    <video src={videoUrl} controls autoPlay muted loop className="w-full rounded-xl border border-slate-100 bg-black" />
+                                {modelUrl ? (
+                                    <Suspense fallback={
+                                        <div className="w-full h-[400px] bg-slate-100 rounded-xl flex items-center justify-center">
+                                            <Loader className="w-8 h-8 animate-spin text-emerald-600" />
+                                        </div>
+                                    }>
+                                        <Scene3DViewer
+                                            modelUrl={modelUrl}
+                                            onError={(err) => setScene3DError(err)}
+                                        />
+                                    </Suspense>
                                 ) : (
-                                    <p className="text-sm text-slate-600">No video yet.</p>
+                                    <div className="w-full h-48 bg-gradient-to-b from-slate-100 to-slate-200 rounded-xl flex flex-col items-center justify-center gap-3">
+                                        <Box className="w-12 h-12 text-slate-400" />
+                                        <p className="text-sm text-slate-600">Generate a 3D scene from your design</p>
+                                        <p className="text-xs text-slate-500">Powered by Meshy.ai</p>
+                                    </div>
+                                )}
+                                {scene3DError && (
+                                    <p className="text-sm text-red-500">{scene3DError}</p>
+                                )}
+                                {isGenerating3D && (
+                                    <div className="flex items-center gap-2 text-sm text-emerald-600">
+                                        <Loader className="w-4 h-4 animate-spin" />
+                                        <span>Generating 3D scene... This may take a few minutes.</span>
+                                    </div>
                                 )}
                                 <button
-                                    onClick={handleGenerateVideo}
-                                    disabled={isGeneratingVideo || !user || credits <= 0}
+                                    onClick={handleGenerate3D}
+                                    disabled={isGenerating3D || !user || (!isAdmin && credits < CREDITS_FOR_3D) || !!modelUrl}
                                     className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center gap-2 w-fit"
                                 >
-                                    {isGeneratingVideo && <Loader className="w-4 h-4 animate-spin" />}
-                                    Generate with Credit
+                                    {isGenerating3D ? (
+                                        <>
+                                            <Loader className="w-4 h-4 animate-spin" />
+                                            Generating...
+                                        </>
+                                    ) : modelUrl ? (
+                                        <>
+                                            <Check className="w-4 h-4" />
+                                            3D Scene Ready
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Box className="w-4 h-4" />
+                                            Generate 3D Scene
+                                        </>
+                                    )}
                                 </button>
-                                {!user && <p className="text-sm text-slate-500">Sign in to use credits.</p>}
-                                {user && credits <= 0 && <p className="text-sm text-red-500">No credits remaining.</p>}
+                                {!user && <p className="text-sm text-slate-500">Sign in to generate 3D scenes.</p>}
+                                {user && !isAdmin && credits < CREDITS_FOR_3D && (
+                                    <p className="text-sm text-red-500">
+                                        Not enough credits. You need {CREDITS_FOR_3D} credits (have {credits}).
+                                    </p>
+                                )}
                             </div>
 
                             {/* Material list */}

@@ -6,11 +6,12 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
-    const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
-    const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+    const { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
+    const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleGoogleSignIn = async () => {
@@ -30,16 +31,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setSuccess('');
 
         try {
-            if (mode === 'signin') {
+            if (mode === 'reset') {
+                await resetPassword(email);
+                setSuccess('Password reset email sent! Check your inbox.');
+                return;
+            } else if (mode === 'signin') {
                 await signInWithEmail(email, password);
             } else {
                 await signUpWithEmail(email, password);
             }
             onClose?.();
         } catch (err: any) {
-            setError(err.message || `Failed to ${mode === 'signin' ? 'sign in' : 'sign up'}`);
+            // Map Firebase error codes to user-friendly messages
+            const errorCode = err.code || '';
+            if (errorCode === 'auth/user-not-found') {
+                setError('No account found with this email.');
+            } else if (errorCode === 'auth/wrong-password') {
+                setError('Incorrect password.');
+            } else if (errorCode === 'auth/email-already-in-use') {
+                setError('An account with this email already exists.');
+            } else if (errorCode === 'auth/weak-password') {
+                setError('Password should be at least 6 characters.');
+            } else if (errorCode === 'auth/invalid-email') {
+                setError('Please enter a valid email address.');
+            } else {
+                setError(err.message || `Failed to ${mode === 'signin' ? 'sign in' : mode === 'signup' ? 'sign up' : 'reset password'}`);
+            }
         } finally {
             setLoading(false);
         }
@@ -59,15 +79,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 </button>
 
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                    {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
+                    {mode === 'signin' ? 'Welcome Back' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
                 </h2>
                 <p className="text-gray-600 mb-6">
-                    {mode === 'signin' ? 'Sign in to save your designs' : 'Sign up to get started'}
+                    {mode === 'signin' ? 'Sign in to save your designs' : mode === 'signup' ? 'Sign up to get started' : 'Enter your email to reset your password'}
                 </p>
 
                 {error && (
                     <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
                         {error}
+                    </div>
+                )}
+
+                {success && (
+                    <div className="mb-4 p-3 bg-green-50 text-green-600 rounded-lg text-sm">
+                        {success}
                     </div>
                 )}
 
@@ -108,34 +134,56 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                             placeholder="you@example.com"
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            minLength={6}
-                            className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-green-600 focus:ring-2 focus:ring-green-200 transition-all"
-                            placeholder="••••••••"
-                        />
-                    </div>
+                    {mode !== 'reset' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                minLength={6}
+                                className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-green-600 focus:ring-2 focus:ring-green-200 transition-all"
+                                placeholder="••••••••"
+                            />
+                        </div>
+                    )}
+                    {mode === 'signin' && (
+                        <div className="text-right">
+                            <button
+                                type="button"
+                                onClick={() => { setMode('reset'); setError(''); setSuccess(''); }}
+                                className="text-sm text-green-600 hover:text-green-700 transition-colors"
+                            >
+                                Forgot password?
+                            </button>
+                        </div>
+                    )}
                     <button
                         type="submit"
                         disabled={loading}
                         className="w-full bg-green-700 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : 'Sign Up'}
+                        {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Sign Up' : 'Send Reset Email'}
                     </button>
                 </form>
 
-                <div className="mt-6 text-center">
-                    <button
-                        onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-                        className="text-sm text-gray-600 hover:text-green-700 transition-colors"
-                    >
-                        {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-                    </button>
+                <div className="mt-6 text-center space-y-2">
+                    {mode === 'reset' ? (
+                        <button
+                            onClick={() => { setMode('signin'); setError(''); setSuccess(''); }}
+                            className="text-sm text-gray-600 hover:text-green-700 transition-colors"
+                        >
+                            Back to Sign In
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setSuccess(''); }}
+                            className="text-sm text-gray-600 hover:text-green-700 transition-colors"
+                        >
+                            {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

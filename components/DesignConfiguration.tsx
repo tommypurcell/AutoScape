@@ -133,8 +133,8 @@ export const DesignConfiguration: React.FC = () => {
                 userPrompt,
                 finalStyle,
                 budget,
-                locationType,
-                spaceSize,
+                undefined, // locationType - not used in this component
+                undefined, // spaceSize - not used in this component
                 (partial) => {
                     // Create a safe result object with defaults for missing data
                     const safeResult: any = {

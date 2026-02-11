@@ -248,6 +248,25 @@ export const updateDesignVideoUrl = async (
     }
 };
 
+/**
+ * Update a design with the generated 3D model URL
+ */
+export const updateDesign3DUrl = async (
+    designId: string,
+    modelUrl: string
+): Promise<void> => {
+    try {
+        const docRef = doc(db, 'designs', designId);
+        await updateDoc(docRef, {
+            model3DUrl: modelUrl
+        });
+        console.log('✅ Design updated with 3D model URL');
+    } catch (error) {
+        console.error('Error updating design with 3D model URL:', error);
+        throw error;
+    }
+};
+
 export const getPublicDesigns = async (limitCount: number = 100): Promise<SavedDesign[]> => {
     try {
         console.log('Getting public designs...');
