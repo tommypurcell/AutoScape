@@ -1,5 +1,4 @@
 import React from 'react';
-import { Linkedin, Github, Mail } from 'lucide-react';
 import { styleReferences } from '../data/styleReferences';
 
 interface AboutPageProps {
@@ -7,22 +6,6 @@ interface AboutPageProps {
 }
 
 export const AboutPage: React.FC<AboutPageProps> = ({ onClose }) => {
-    const teamMembers = [
-        {
-            name: 'Rae Jin',
-            role: 'Co-Founder & Full-Stack Developer',
-            bio: 'Passionate about creating intuitive user experiences and robust web architectures.',
-            linkedin: 'https://www.linkedin.com/in/dalraejin1/',
-            image: '/rae_profile.png',
-        },
-        {
-            name: 'Tommy Purcell',
-            role: 'Co-Founder & Full-Stack Developer',
-            bio: 'Dedicated to pushing the boundaries of generative AI and backend engineering.',
-            linkedin: 'https://www.linkedin.com/in/tommypurcell/',
-            image: '/tommy_profile.png',
-        }
-    ];
 
     const techStack = [
         {
@@ -109,47 +92,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onClose }) => {
                         </div>
                     </div>
 
-                    {/* Team Section */}
-                    <div className="p-16 bg-slate-50">
-                        <p className="text-xs uppercase tracking-[0.3em] text-indigo-900 text-center mb-12 font-bold">The Team</p>
-                        <div className="grid md:grid-cols-2 gap-12 max-w-4xl mx-auto">
-                            {teamMembers.map((member, idx) => (
-                                <div
-                                    key={idx}
-                                    className="group bg-white p-8 hover:shadow-2xl transition-all duration-300 rounded-xl border border-slate-100 overflow-hidden relative"
-                                >
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
 
-                                    <div className="flex flex-col items-center text-center">
-                                        {/* Avatar */}
-                                        <div className="w-32 h-32 rounded-full overflow-hidden mb-6 border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300">
-                                            <img
-                                                src={member.image}
-                                                alt={member.name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-
-                                        {/* Info */}
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-1">{member.name}</h3>
-                                        <p className="text-sm uppercase tracking-widest text-indigo-600 mb-4 font-semibold">{member.role}</p>
-                                        <p className="text-gray-600 mb-6 font-light leading-relaxed">{member.bio}</p>
-
-                                        {/* Social Links */}
-                                        <a
-                                            href={member.linkedin}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white hover:bg-indigo-600 rounded-full text-sm uppercase tracking-widest font-medium transition-colors shadow-md"
-                                        >
-                                            <Linkedin className="w-4 h-4" />
-                                            LinkedIn
-                                        </a>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
 
                     {/* Tech Stack - Dark & Neon */}
                     <div className="p-16 bg-slate-900 text-white relative overflow-hidden">
