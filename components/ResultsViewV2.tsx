@@ -37,7 +37,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     existing3DModelUrl
 }) => {
     const navigate = useNavigate();
-    const { user, credits, setCredits } = useAuth();
+    const { user, credits, setCredits, userRole } = useAuth();
     const { result: ctxResult, yardImagePreview, resetDesign, setResult: setCtxResult } = useDesign();
 
     const [localResult, setLocalResult] = useState<GeneratedDesign | null>(propResult || ctxResult);
@@ -351,13 +351,37 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         }
     };
 
+    const CREDITS_FOR_3D = 3;
+    const isAdmin = userRole === 'admin';
+
     const handleGenerate3D = async () => {
         if (!result?.renderImages[currentRenderIndex]) return;
+        if (!user) {
+            setScene3DError('Please sign in to generate 3D scenes');
+            return;
+        }
+
+        // Check credits (admin exempt)
+        if (!isAdmin && credits < CREDITS_FOR_3D) {
+            setScene3DError(`Insufficient credits. 3D generation requires ${CREDITS_FOR_3D} credits.`);
+            return;
+        }
+
         setIsGenerating3D(true);
         setScene3DError(null);
         setScene3DProgress(0);
 
+        let reservationId: string | null = null;
+
         try {
+            // Reserve credits before generation (admin exempt)
+            if (!isAdmin && user) {
+                const { reserveCredits } = await import('../services/creditService');
+                reservationId = await reserveCredits(user.uid, CREDITS_FOR_3D);
+                window.dispatchEvent(new CustomEvent('creditsUpdated'));
+                console.log(`Reserved ${CREDITS_FOR_3D} credits for 3D generation`);
+            }
+
             // Helper function to convert URL to base64
             const getBase64 = async (url: string): Promise<string> => {
                 if (url.startsWith('data:')) return url.split(',')[1];
@@ -417,6 +441,14 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
             setModelUrl(data.model_url);
 
+            // Complete the credit reservation on success
+            if (reservationId) {
+                const { completeReservation } = await import('../services/creditService');
+                await completeReservation(reservationId, currentDesignId || undefined);
+                window.dispatchEvent(new CustomEvent('creditsUpdated'));
+                console.log('3D generation credits confirmed');
+            }
+
             // Save 3D model URL to Firestore if we have a design ID
             if (currentDesignId && data.model_url) {
                 try {
@@ -430,6 +462,18 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         } catch (err) {
             console.error('3D generation error:', err);
             setScene3DError(err instanceof Error ? err.message : 'An error occurred');
+
+            // Refund credits on failure
+            if (reservationId) {
+                try {
+                    const { refundReservation } = await import('../services/creditService');
+                    await refundReservation(reservationId, '3D generation failed');
+                    window.dispatchEvent(new CustomEvent('creditsUpdated'));
+                    console.log('3D generation credits refunded');
+                } catch (refundError) {
+                    console.error('Failed to refund credits:', refundError);
+                }
+            }
         } finally {
             setIsGenerating3D(false);
         }
@@ -818,7 +862,15 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                         <Box className="w-5 h-5 text-emerald-600" />
                                         3D Scene
                                     </h3>
-                                    <span className="text-sm text-slate-500">Credits: {user ? credits : 0}</span>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        {isAdmin ? (
+                                            <span className="text-purple-600 font-medium">Admin (Free)</span>
+                                        ) : (
+                                            <span className="text-slate-500">
+                                                Requires {CREDITS_FOR_3D} credits | You have: {user ? credits : 0}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 {modelUrl ? (
                                     <Suspense fallback={
@@ -849,7 +901,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                 )}
                                 <button
                                     onClick={handleGenerate3D}
-                                    disabled={isGenerating3D || !user || credits <= 0 || !!modelUrl}
+                                    disabled={isGenerating3D || !user || (!isAdmin && credits < CREDITS_FOR_3D) || !!modelUrl}
                                     className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center gap-2 w-fit"
                                 >
                                     {isGenerating3D ? (
@@ -869,8 +921,12 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                         </>
                                     )}
                                 </button>
-                                {!user && <p className="text-sm text-slate-500">Sign in to use credits.</p>}
-                                {user && credits <= 0 && <p className="text-sm text-red-500">No credits remaining.</p>}
+                                {!user && <p className="text-sm text-slate-500">Sign in to generate 3D scenes.</p>}
+                                {user && !isAdmin && credits < CREDITS_FOR_3D && (
+                                    <p className="text-sm text-red-500">
+                                        Not enough credits. You need {CREDITS_FOR_3D} credits (have {credits}).
+                                    </p>
+                                )}
                             </div>
 
                             {/* Material list */}

@@ -21,7 +21,7 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, List, Dict
 
 from google import genai
 import requests
@@ -39,7 +39,7 @@ class Product:
     product_id: str
     image_url: str  # Can be data URL or regular URL
     score: float
-    original_image_url: str | None = None  # Store original URL for Freepik reference
+    original_image_url: Optional[str] = None  # Store original URL for Freepik reference
 
 
 @dataclass
@@ -47,10 +47,10 @@ class GeneratedImage:
     """Represents a generated ad image."""
     task_id: str
     prompt: str
-    reference_image_url: str | None
+    reference_image_url: Optional[str]
     status: str
-    image_urls: list[str]
-    error: str | None = None
+    image_urls: List[str]
+    error: Optional[str] = None
 
 
 @dataclass
@@ -362,7 +362,7 @@ Make sure the search queries are:
     def generate_image_prompts(
         self,
         query: str,
-        products: list[Product],
+        products: List[Product],
         num_prompts: int = 2,
     ) -> list[dict[str, str]]:
         """
@@ -477,7 +477,7 @@ Example of bad composition: "Hiking boots floating in the air above a mountain t
     def generate_image_prompt_with_all_products(
         self,
         query: str,
-        products: list[Product],
+        products: List[Product],
         ad_copy: Any,
     ) -> dict[str, str]:
         """
@@ -570,9 +570,9 @@ Format: {{"prompt": "...", "description": "..."}}"""
     def generate_image_with_freepik(
         self,
         prompt: str,
-        reference_image_url: str | None = None,
-        additional_references: list[str] | None = None,
-    ) -> GeneratedImage | None:
+        reference_image_url: Optional[str] = None,
+        additional_references: Optional[List[str]] = None,
+    ) -> Optional[GeneratedImage]:
         """
         Generate an image using Freepik API with Nano Banana product image as reference.
         
@@ -827,7 +827,7 @@ Format: {{"prompt": "...", "description": "..."}}"""
             - verified: bool - Whether product is visible
             - confidence: float - Confidence score (0-1)
             - details: str - Description of what was found
-            - issues: list[str] - Any issues found
+            - issues: List[str] - Any issues found
         """
         print(f"\n🔍 Verifying generated image with Gemini vision...")
         print(f"   Expected product: {expected_product}")
@@ -931,7 +931,7 @@ Be specific about what products, objects, or text you can see in the image."""
                 "issues": [f"Verification failed: {str(e)}"]
             }
     
-    def _poll_task_status(self, task_id: str, max_wait: int = 30) -> dict[str, Any] | None:
+    def _poll_task_status(self, task_id: str, max_wait: int = 30) -> Optional[Dict[str, Any]]:
         """
         Poll Freepik task status until completion or timeout.
         
@@ -1154,8 +1154,8 @@ Be specific about what products, objects, or text you can see in the image."""
     def generate_ad_copy(
         self,
         query: str,
-        products: list[Product],
-        generated_images: list[GeneratedImage],
+        products: List[Product],
+        generated_images: List[GeneratedImage],
     ) -> AdCopy:
         """
         Generate compelling ad copy using Gemini.
@@ -1273,8 +1273,8 @@ Make it world-class, minimalistic, and clean."""
     def save_ad_output(
         self,
         query: str,
-        products: list[Product],
-        generated_images: list[GeneratedImage],
+        products: List[Product],
+        generated_images: List[GeneratedImage],
         ad_copy: AdCopy,
         output_dir: Path,
     ) -> None:
@@ -1371,8 +1371,8 @@ Make it world-class, minimalistic, and clean."""
         self,
         query: str,
         ad_copy: AdCopy,
-        products: list[Product],
-        generated_images: list[GeneratedImage],
+        products: List[Product],
+        generated_images: List[GeneratedImage],
         html_path: Path,
     ) -> None:
         """Create an HTML preview of the advertisement."""
