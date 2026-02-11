@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UploadArea } from './UploadArea';
 import { DesignStyle, LocationType, SpaceSize, DesignStyleGroups } from '../types';
 import { getStyleImage, styleDescriptions } from '../data/styleReferences';
@@ -32,7 +32,9 @@ interface DesignWizardProps {
     onBudgetChange: (budget: string) => void;
     onUseRagChange: (useRag: boolean) => void;
     onGenerate: () => void;
-    initialStep?: number;
+    // Controlled step state from parent
+    currentStep: number;
+    onStepChange: (step: number) => void;
 }
 
 export const DesignWizard: React.FC<DesignWizardProps> = ({
@@ -61,11 +63,23 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
     onBudgetChange,
     onUseRagChange,
     onGenerate,
-    initialStep = 1,
+    currentStep,
+    onStepChange,
 }) => {
-    const [currentStep, setCurrentStep] = useState(initialStep);
     const [infoModalOpen, setInfoModalOpen] = useState(false);
     const [selectedInfoStyle, setSelectedInfoStyle] = useState<string | null>(null);
+
+    // Helper to change step (uses parent's state)
+    const setCurrentStep = onStepChange;
+
+    // Auto-advance to step 2 when yard image is uploaded (better UX)
+    useEffect(() => {
+        if (yardImage && currentStep === 1) {
+            // Small delay for visual feedback before advancing
+            const timer = setTimeout(() => onStepChange(2), 300);
+            return () => clearTimeout(timer);
+        }
+    }, [yardImage, currentStep, onStepChange]);
 
     const steps = [
         { number: 1, title: 'Upload Photo', description: 'Add your yard image' },
@@ -348,6 +362,34 @@ export const DesignWizard: React.FC<DesignWizardProps> = ({
                                                 </div>
                                             </div>
                                         ))}
+
+                                        {/* None Option */}
+                                        <div className="space-y-4 pt-4 border-t border-gray-200">
+                                            <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wider pb-2">
+                                                Or Skip Style Selection
+                                            </h3>
+                                            <button
+                                                onClick={() => onStyleChange('None')}
+                                                className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-center gap-3 ${
+                                                    selectedStyle === 'None'
+                                                        ? 'border-green-600 bg-green-50 text-green-700'
+                                                        : 'border-gray-200 hover:border-gray-300 text-gray-600 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                </svg>
+                                                <span className="font-medium">None - Let AI decide based on my yard</span>
+                                                {selectedStyle === 'None' && (
+                                                    <div className="bg-green-600 text-white p-1 rounded-full">
+                                                        <Check className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                            </button>
+                                            <p className="text-sm text-gray-500 text-center">
+                                                The AI will analyze your yard and suggest the most suitable design
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             )}

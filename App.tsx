@@ -35,6 +35,7 @@ import PricingPage from './components/PricingPage';
 import { CreditDisplay } from './components/CreditDisplay';
 import { BlogPage } from './components/BlogPage';
 import { BlogArticle } from './components/BlogArticle';
+// TODO: Add ErrorBoundary once TypeScript class component issue is resolved
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -61,6 +62,9 @@ const AppContent: React.FC = () => {
 
   const [selectedGalleryStyleIds, setSelectedGalleryStyleIds] = useState<string[]>([]);
 
+  // Wizard step state - lifted from DesignWizard for persistence
+  const [wizardStep, setWizardStep] = useState(1);
+
   // UI State for Modals/Overlays
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -69,11 +73,26 @@ const AppContent: React.FC = () => {
   const handleYardSelect = (files: File[]) => {
     if (files.length > 0) {
       const file = files[0];
-      setState(prev => ({
-        ...prev,
-        yardImage: file,
-        yardImagePreview: URL.createObjectURL(file)
-      }));
+      // Convert to data URL (base64) for persistence - blob URLs can expire
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setState(prev => ({
+          ...prev,
+          yardImage: file,
+          yardImagePreview: dataUrl
+        }));
+      };
+      reader.onerror = () => {
+        console.error('Failed to read yard image');
+        // Fallback to blob URL if data URL fails
+        setState(prev => ({
+          ...prev,
+          yardImage: file,
+          yardImagePreview: URL.createObjectURL(file)
+        }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -85,14 +104,32 @@ const AppContent: React.FC = () => {
     }));
   };
 
+  const MAX_STYLE_IMAGES = 5;
+
   const handleStyleSelect = (files: File[]) => {
     if (files.length > 0) {
       const newFiles = Array.from(files);
-      const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+
+      // Check if adding these would exceed the limit
+      const currentCount = state.styleImages.length;
+      const availableSlots = MAX_STYLE_IMAGES - currentCount;
+
+      if (availableSlots <= 0) {
+        alert(`Maximum of ${MAX_STYLE_IMAGES} style images allowed. Please remove some images first.`);
+        return;
+      }
+
+      // Only take as many files as we have slots for
+      const filesToAdd = newFiles.slice(0, availableSlots);
+      const newPreviews = filesToAdd.map(file => URL.createObjectURL(file));
+
+      if (filesToAdd.length < newFiles.length) {
+        alert(`Only ${filesToAdd.length} image(s) added. Maximum of ${MAX_STYLE_IMAGES} style images allowed.`);
+      }
 
       setState(prev => ({
         ...prev,
-        styleImages: [...prev.styleImages, ...newFiles],
+        styleImages: [...prev.styleImages, ...filesToAdd],
         styleImagePreviews: [...prev.styleImagePreviews, ...newPreviews]
       }));
     }
@@ -145,9 +182,11 @@ const AppContent: React.FC = () => {
   };
 
   const resetToUploadState = () => {
-    // Clean up any object URLs before resetting
-    state.styleImagePreviews.forEach(url => URL.revokeObjectURL(url));
-    if (state.yardImagePreview) {
+    // Clean up any object URLs before resetting (only blob URLs need cleanup)
+    state.styleImagePreviews.forEach(url => {
+      if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+    });
+    if (state.yardImagePreview && state.yardImagePreview.startsWith('blob:')) {
       URL.revokeObjectURL(state.yardImagePreview);
     }
 
@@ -167,6 +206,7 @@ const AppContent: React.FC = () => {
       error: null,
     });
     setSelectedGalleryStyleIds([]);
+    setWizardStep(1); // Reset wizard to step 1
   };
 
   const handleNewDesign = () => {
@@ -241,17 +281,25 @@ const AppContent: React.FC = () => {
       return;
     }
 
-    // Check credits before generating
+    // Reserve credits BEFORE generation (deduct immediately, refund on failure)
+    let reservationId: string | null = null;
     try {
-      const { hasEnoughCredits } = await import('./services/creditService');
-      const hasCredits = await hasEnoughCredits(user.uid, 1);
-      if (!hasCredits) {
+      const { reserveCredits } = await import('./services/creditService');
+      reservationId = await reserveCredits(user.uid, 1);
+      // Dispatch event to update credit display immediately
+      window.dispatchEvent(new CustomEvent('creditsUpdated'));
+    } catch (error: any) {
+      console.error('Error reserving credits:', error);
+      if (error.message === 'Insufficient credits') {
         navigate('/pricing?message=insufficient_credits');
         return;
       }
-    } catch (error) {
-      console.error('Error checking credits:', error);
-      // Continue with generation if credit check fails (graceful degradation)
+      // If reservation fails for other reasons, don't proceed
+      setState(prev => ({
+        ...prev,
+        error: 'Unable to process credits. Please try again.'
+      }));
+      return;
     }
 
     setState(prev => ({ ...prev, step: 'processing', error: null }));
@@ -291,17 +339,6 @@ const AppContent: React.FC = () => {
       // Update context with the result
       setResult(result);
 
-      // Deduct credit after successful generation (user is guaranteed to exist due to auth check)
-      try {
-        const { useCredits } = await import('./services/creditService');
-        await useCredits(user!.uid, 1);
-        // Dispatch event to update credit display
-        window.dispatchEvent(new CustomEvent('creditsUpdated'));
-      } catch (creditError) {
-        console.error('Error deducting credits:', creditError);
-        // Don't block the user if credit deduction fails
-      }
-
       // Save to Firestore
       try {
         const yardImageUrl = state.yardImagePreview;
@@ -313,6 +350,16 @@ const AppContent: React.FC = () => {
         }, false); // Default to private, user can publish later
         console.log('Design saved successfully with shortId:', shortId);
 
+        // Complete the credit reservation (mark as used)
+        if (reservationId) {
+          try {
+            const { completeReservation } = await import('./services/creditService');
+            await completeReservation(reservationId, shortId);
+          } catch (err) {
+            console.warn('Could not complete reservation:', err);
+          }
+        }
+
         // Update context with yard image
         setYardImagePreview(yardImageUrl);
 
@@ -320,6 +367,15 @@ const AppContent: React.FC = () => {
         navigate(`/result/${shortId}`, { state: { result, yardImageUrl } });
       } catch (error) {
         console.error('Failed to save design:', error);
+        // Still complete reservation since generation succeeded
+        if (reservationId) {
+          try {
+            const { completeReservation } = await import('./services/creditService');
+            await completeReservation(reservationId);
+          } catch (err) {
+            console.warn('Could not complete reservation:', err);
+          }
+        }
         // Fallback: Navigate with state only if saving fails
         setYardImagePreview(state.yardImagePreview);
         navigate('/result/generated', { state: { result, yardImageUrl: state.yardImagePreview } });
@@ -327,11 +383,25 @@ const AppContent: React.FC = () => {
 
     } catch (err) {
       console.error(err);
+
+      // Refund credits since generation failed
+      if (reservationId) {
+        try {
+          const { refundReservation } = await import('./services/creditService');
+          await refundReservation(reservationId, 'Generation failed');
+          // Dispatch event to update credit display (credits restored)
+          window.dispatchEvent(new CustomEvent('creditsUpdated'));
+        } catch (refundError) {
+          console.error('Failed to refund credits:', refundError);
+        }
+      }
+
       setState(prev => ({
         ...prev,
         step: 'upload',
         error: "Something went wrong while generating your design. Please try again."
       }));
+      setWizardStep(3); // Go to step 3 so user can see details and retry
     }
   };
 
@@ -506,7 +576,8 @@ const AppContent: React.FC = () => {
                       onBudgetChange={(budget) => setState(s => ({ ...s, budget }))}
                       onUseRagChange={(useRag) => setState(s => ({ ...s, useRag }))}
                       onGenerate={handleGenerate}
-                      initialStep={state.error ? 3 : 1}
+                      currentStep={wizardStep}
+                      onStepChange={setWizardStep}
                     />
                   </>
                 )}

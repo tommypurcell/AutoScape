@@ -12,7 +12,14 @@ import {
     SavedDesign,
     DesignerProfile
 } from '../services/firestoreService';
-import { Loader, Users, Image, Briefcase, DollarSign, Shield, Check, X, Trash2, Video, TrendingUp, BarChart3 } from 'lucide-react';
+import {
+    getAllUserCredits,
+    adminGrantCredits,
+    getCreditHistory,
+    UserCredits,
+    CreditTransaction
+} from '../services/creditService';
+import { Loader, Users, Image, Briefcase, DollarSign, Shield, Check, X, Trash2, Video, TrendingUp, BarChart3, Coins, Plus, History } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid } from 'recharts';
 
 const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
@@ -39,12 +46,22 @@ export const AdminDashboard: React.FC = () => {
             </div>
         );
     }
-    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'gallery' | 'pros' | 'backlog'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'gallery' | 'pros' | 'credits' | 'backlog'>('overview');
     const [users, setUsers] = useState<UserData[]>([]);
     const [designs, setDesigns] = useState<SavedDesign[]>([]);
     const [designers, setDesigners] = useState<DesignerProfile[]>([]);
+    const [userCredits, setUserCredits] = useState<Record<string, UserCredits>>({});
+    const [creditHistory, setCreditHistory] = useState<CreditTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Grant credits modal state
+    const [grantModalOpen, setGrantModalOpen] = useState(false);
+    const [grantUserId, setGrantUserId] = useState<string | null>(null);
+    const [grantUserEmail, setGrantUserEmail] = useState<string>('');
+    const [grantAmount, setGrantAmount] = useState<number>(1);
+    const [grantReason, setGrantReason] = useState<string>('');
+    const [grantLoading, setGrantLoading] = useState(false);
 
     // Load all data on mount for overview stats
     useEffect(() => {
@@ -61,14 +78,16 @@ export const AdminDashboard: React.FC = () => {
     const loadAllData = async () => {
         setLoading(true);
         try {
-            const [usersData, designsData, designersData] = await Promise.all([
+            const [usersData, designsData, designersData, creditsData] = await Promise.all([
                 getAllUsers(),
                 getAllDesignsAdmin(),
-                getAllDesigners()
+                getAllDesigners(),
+                getAllUserCredits()
             ]);
             setUsers(usersData);
             setDesigns(designsData);
             setDesigners(designersData);
+            setUserCredits(creditsData);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -80,14 +99,25 @@ export const AdminDashboard: React.FC = () => {
         setLoading(true);
         try {
             if (activeTab === 'users') {
-                const data = await getAllUsers();
-                setUsers(data);
+                const [usersData, creditsData] = await Promise.all([
+                    getAllUsers(),
+                    getAllUserCredits()
+                ]);
+                setUsers(usersData);
+                setUserCredits(creditsData);
             } else if (activeTab === 'gallery') {
                 const data = await getAllDesignsAdmin();
                 setDesigns(data);
             } else if (activeTab === 'pros') {
                 const data = await getAllDesigners();
                 setDesigners(data);
+            } else if (activeTab === 'credits') {
+                const [creditsData, historyData] = await Promise.all([
+                    getAllUserCredits(),
+                    getCreditHistory()
+                ]);
+                setUserCredits(creditsData);
+                setCreditHistory(historyData);
             }
         } catch (err: any) {
             setError(err.message);
@@ -124,6 +154,33 @@ export const AdminDashboard: React.FC = () => {
         } catch (err) {
             console.error(err);
             alert('Failed to update verification');
+        }
+    };
+
+    const openGrantModal = (userId: string, userEmail: string) => {
+        setGrantUserId(userId);
+        setGrantUserEmail(userEmail);
+        setGrantAmount(1);
+        setGrantReason('');
+        setGrantModalOpen(true);
+    };
+
+    const handleGrantCredits = async () => {
+        if (!grantUserId || !user) return;
+        setGrantLoading(true);
+        try {
+            const updatedCredits = await adminGrantCredits(grantUserId, grantAmount, user.uid, grantReason);
+            setUserCredits(prev => ({
+                ...prev,
+                [grantUserId]: updatedCredits
+            }));
+            setGrantModalOpen(false);
+            alert(`Successfully granted ${grantAmount} credit(s) to ${grantUserEmail}`);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to grant credits');
+        } finally {
+            setGrantLoading(false);
         }
     };
 
@@ -228,6 +285,13 @@ export const AdminDashboard: React.FC = () => {
                             }`}
                     >
                         <Briefcase className="w-4 h-4" /> Professionals
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('credits')}
+                        className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${activeTab === 'credits' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                            }`}
+                    >
+                        <Coins className="w-4 h-4" /> Credits
                     </button>
                     <button
                         onClick={() => setActiveTab('backlog')}
@@ -380,6 +444,7 @@ export const AdminDashboard: React.FC = () => {
                                         <tr>
                                             <th className="px-6 py-4 font-semibold text-slate-700">User</th>
                                             <th className="px-6 py-4 font-semibold text-slate-700">Role</th>
+                                            <th className="px-6 py-4 font-semibold text-slate-700">Credits</th>
                                             <th className="px-6 py-4 font-semibold text-slate-700">Last Login</th>
                                             <th className="px-6 py-4 font-semibold text-slate-700 text-right">Actions</th>
                                         </tr>
@@ -410,6 +475,25 @@ export const AdminDashboard: React.FC = () => {
                                                         {u.role || 'user'}
                                                     </span>
                                                 </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono text-lg font-semibold text-emerald-600">
+                                                            {userCredits[u.uid]?.credits ?? 0}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => openGrantModal(u.uid, u.email)}
+                                                            className="p-1 rounded hover:bg-emerald-50 text-emerald-600"
+                                                            title="Grant credits"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                    {userCredits[u.uid]?.totalCreditsPurchased > 0 && (
+                                                        <div className="text-xs text-slate-400">
+                                                            {userCredits[u.uid].totalCreditsPurchased} purchased
+                                                        </div>
+                                                    )}
+                                                </td>
                                                 <td className="px-6 py-4 text-sm text-slate-500">
                                                     {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'N/A'}
                                                 </td>
@@ -433,7 +517,7 @@ export const AdminDashboard: React.FC = () => {
                                         ))}
                                         {users.length === 0 && (
                                             <tr>
-                                                <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                                                <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
                                                     No users found. Users will appear after they log in.
                                                 </td>
                                             </tr>
@@ -560,6 +644,127 @@ export const AdminDashboard: React.FC = () => {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                        )}
+
+                        {/* CREDITS TAB */}
+                        {activeTab === 'credits' && (
+                            <div className="space-y-6">
+                                {/* Credits Summary Cards */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                                <Coins className="w-5 h-5 text-emerald-600" />
+                                            </div>
+                                            <span className="text-slate-500 text-sm">Total Credits in System</span>
+                                        </div>
+                                        <div className="text-3xl font-bold text-slate-900">
+                                            {Object.values(userCredits).reduce((sum: number, uc: UserCredits) => sum + (uc?.credits || 0), 0)}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                                <DollarSign className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                            <span className="text-slate-500 text-sm">Total Purchased</span>
+                                        </div>
+                                        <div className="text-3xl font-bold text-slate-900">
+                                            {Object.values(userCredits).reduce((sum: number, uc: UserCredits) => sum + (uc?.totalCreditsPurchased || 0), 0)}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                                <Users className="w-5 h-5 text-purple-600" />
+                                            </div>
+                                            <span className="text-slate-500 text-sm">Users with Credits</span>
+                                        </div>
+                                        <div className="text-3xl font-bold text-slate-900">
+                                            {Object.keys(userCredits).length}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                                                <History className="w-5 h-5 text-amber-600" />
+                                            </div>
+                                            <span className="text-slate-500 text-sm">Total Transactions</span>
+                                        </div>
+                                        <div className="text-3xl font-bold text-slate-900">
+                                            {creditHistory.length}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Credit Transaction History */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                                        <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                                            <History className="w-5 h-5 text-slate-600" />
+                                            Credit Transaction History
+                                        </h3>
+                                    </div>
+                                    <table className="w-full text-left">
+                                        <thead className="bg-slate-50 border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Time</th>
+                                                <th className="px-6 py-3 font-semibold text-slate-700 text-sm">User ID</th>
+                                                <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Type</th>
+                                                <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Amount</th>
+                                                <th className="px-6 py-3 font-semibold text-slate-700 text-sm">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {creditHistory.map(tx => (
+                                                <tr key={tx.id} className="hover:bg-slate-50">
+                                                    <td className="px-6 py-3 text-sm text-slate-600">
+                                                        {tx.timestamp.toLocaleString()}
+                                                    </td>
+                                                    <td className="px-6 py-3 text-sm font-mono text-slate-600">
+                                                        {tx.userId.substring(0, 12)}...
+                                                    </td>
+                                                    <td className="px-6 py-3">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                            tx.type === 'purchase' ? 'bg-emerald-100 text-emerald-700' :
+                                                            tx.type === 'admin_grant' ? 'bg-purple-100 text-purple-700' :
+                                                            tx.type === 'reserve' ? 'bg-blue-100 text-blue-700' :
+                                                            tx.type === 'refund' ? 'bg-amber-100 text-amber-700' :
+                                                            'bg-slate-100 text-slate-600'
+                                                        }`}>
+                                                            {tx.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-3">
+                                                        <span className={`font-mono font-semibold ${
+                                                            tx.type === 'reserve' || tx.type === 'use' ? 'text-red-600' : 'text-emerald-600'
+                                                        }`}>
+                                                            {tx.type === 'reserve' || tx.type === 'use' ? '-' : '+'}{tx.amount}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-3">
+                                                        <span className={`px-2 py-1 rounded-full text-xs ${
+                                                            tx.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                            tx.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                            tx.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                                            'bg-slate-100 text-slate-600'
+                                                        }`}>
+                                                            {tx.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {creditHistory.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                                                        No credit transactions found.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
@@ -732,6 +937,71 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                         )}
                     </>
+                )}
+
+                {/* Grant Credits Modal */}
+                {grantModalOpen && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+                            <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <Coins className="w-6 h-6 text-emerald-600" />
+                                Grant Credits
+                            </h3>
+                            <p className="text-sm text-slate-600 mb-4">
+                                Granting credits to: <span className="font-medium text-slate-900">{grantUserEmail}</span>
+                            </p>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Number of Credits
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        value={grantAmount}
+                                        onChange={(e) => setGrantAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Reason (optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={grantReason}
+                                        onChange={(e) => setGrantReason(e.target.value)}
+                                        placeholder="e.g., Beta tester reward, Support compensation"
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setGrantModalOpen(false)}
+                                    className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                                    disabled={grantLoading}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleGrantCredits}
+                                    disabled={grantLoading}
+                                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {grantLoading ? (
+                                        <Loader className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4" />
+                                            Grant {grantAmount} Credit{grantAmount !== 1 ? 's' : ''}
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

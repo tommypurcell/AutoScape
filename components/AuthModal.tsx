@@ -134,34 +134,56 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                             placeholder="you@example.com"
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            minLength={6}
-                            className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-green-600 focus:ring-2 focus:ring-green-200 transition-all"
-                            placeholder="••••••••"
-                        />
-                    </div>
+                    {mode !== 'reset' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                minLength={6}
+                                className="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-green-600 focus:ring-2 focus:ring-green-200 transition-all"
+                                placeholder="••••••••"
+                            />
+                        </div>
+                    )}
+                    {mode === 'signin' && (
+                        <div className="text-right">
+                            <button
+                                type="button"
+                                onClick={() => { setMode('reset'); setError(''); setSuccess(''); }}
+                                className="text-sm text-green-600 hover:text-green-700 transition-colors"
+                            >
+                                Forgot password?
+                            </button>
+                        </div>
+                    )}
                     <button
                         type="submit"
                         disabled={loading}
                         className="w-full bg-green-700 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : 'Sign Up'}
+                        {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Sign Up' : 'Send Reset Email'}
                     </button>
                 </form>
 
-                <div className="mt-6 text-center">
-                    <button
-                        onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-                        className="text-sm text-gray-600 hover:text-green-700 transition-colors"
-                    >
-                        {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-                    </button>
+                <div className="mt-6 text-center space-y-2">
+                    {mode === 'reset' ? (
+                        <button
+                            onClick={() => { setMode('signin'); setError(''); setSuccess(''); }}
+                            className="text-sm text-gray-600 hover:text-green-700 transition-colors"
+                        >
+                            Back to Sign In
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setSuccess(''); }}
+                            className="text-sm text-gray-600 hover:text-green-700 transition-colors"
+                        >
+                            {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

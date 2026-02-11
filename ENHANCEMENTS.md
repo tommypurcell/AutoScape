@@ -7,19 +7,20 @@
 ## CRITICAL - Fix Before Any User Testing
 
 ### 1. Security Vulnerabilities
-| Issue | Location | Description | Fix |
-|-------|----------|-------------|-----|
-| Anonymous credit exploit | `App.tsx:250-256` | localStorage credits can be manipulated | Move to backend/require auth |
-| Hardcoded test email | `BusinessDashboard.tsx:49` | Test credential in production code | Remove before deploy |
-| CORS unrestricted | `stripe_checkout_api.py:46` | `allow_origins=["*"]` | Restrict to frontend domain |
-| Webhook not verified | `stripe_checkout_api.py:147` | Stripe signature optional | Require & verify signature |
+| Issue | Location | Description | Fix | Status |
+|-------|----------|-------------|-----|--------|
+| Anonymous credit exploit | `App.tsx:250-256` | localStorage credits can be manipulated | Move to backend/require auth | ✅ FIXED |
+| Hardcoded test email | `BusinessDashboard.tsx:49` | Test credential in production code | Remove before deploy | ✅ FIXED |
+| CORS unrestricted | `stripe_checkout_api.py:46` | `allow_origins=["*"]` | Restrict to frontend domain | ✅ FIXED |
+| Webhook not verified | `stripe_checkout_api.py:147` | Stripe signature optional | Require & verify signature | ✅ FIXED |
+| Image validation fails open | `geminiService.ts:149` | Validation errors allow upload | Fail closed instead | ✅ FIXED |
 
 ### 2. Authentication Gaps
-| Issue | Location | Description |
-|-------|----------|-------------|
-| No email verification | `AuthContext.tsx` | Users can register with invalid emails |
-| No password reset | `AuthModal.tsx` | Users locked out if password forgotten |
-| Session expiration not handled | `AuthContext.tsx:43-73` | Stale sessions cause silent failures |
+| Issue | Location | Description | Status |
+|-------|----------|-------------|--------|
+| No email verification | `AuthContext.tsx` | Users can register with invalid emails | ✅ FIXED |
+| No password reset | `AuthModal.tsx` | Users locked out if password forgotten | ✅ FIXED |
+| Session expiration not handled | `AuthContext.tsx:43-73` | Stale sessions cause silent failures | ✅ FIXED |
 
 ### 3. Error Handling
 | Issue | Location | Description |
@@ -34,14 +35,15 @@
 
 ### 4. Broken Features
 
-#### Video Generation (Non-Functional)
-- [ ] `ResultsViewV2.tsx` - Wire up `handleGenerateVideo()` button
-- [ ] `video_generator.py:38-68` - Implement real Freepik API (currently returns mock)
-- [ ] `video_generator.py:71-100` - Complete Gemini Veo 3.1 integration
-- [ ] Add async job queue for 5-9 minute processing
-- [ ] Implement video upload to Firebase Storage
-- [ ] Add progress tracking UI
-- [ ] Implement fallback chain: Gemini → Freepik → error message
+#### 3D Scene Generation (Replaces Video)
+- [x] `ResultsViewV2.tsx` - Replaced video with 3D scene generation UI
+- [x] `meshy_generator.py` - Implemented Meshy.ai Image-to-3D API integration
+- [x] `Scene3DViewer.tsx` - Created Three.js viewer component with orbit controls
+- [x] `api.py` - Added `/api/generate-3d` and `/api/3d-status/{task_id}` endpoints
+- [x] `firestoreService.ts` - Added `updateDesign3DUrl()` function
+- [ ] Add MESHY_API_KEY to environment variables
+- [ ] Deploy 3D endpoint to Cloud Functions for production
+- [ ] Add progress tracking during 3D generation
 
 #### RAG Enhancement (Missing P1 Feature)
 - [ ] Implement Qdrant vector database integration
@@ -94,13 +96,13 @@
 - [ ] Add user search/filter functionality
 
 ### 10. Design Wizard Enhancements
-| Issue | Location | Fix |
-|-------|----------|-----|
-| No file size validation | `UploadArea.tsx` | Add 10MB limit check |
-| No style image limit | `App.tsx:88-97` | Limit to 3-5 images |
-| Style images not validated | `geminiService.ts:203` | Add `validateImageContent()` |
-| No generation timeout | `geminiService.ts` | Add 30-second AbortController |
-| Image validation fails open | `geminiService.ts:149` | Fail closed instead |
+| Issue | Location | Fix | Status |
+|-------|----------|-----|--------|
+| No file size validation | `UploadArea.tsx` | Add 10MB limit check | ✅ FIXED |
+| No style image limit | `App.tsx:88-97` | Limit to 3-5 images | ✅ FIXED (5 max) |
+| Style images not validated | `geminiService.ts:203` | Add `validateImageContent()` | Existing |
+| No generation timeout | `geminiService.ts` | Add timeout handling | ✅ FIXED (2min/phase) |
+| Image validation fails open | `geminiService.ts:149` | Fail closed instead | ✅ FIXED |
 
 ### 11. Results Page Fixes
 - [ ] Separate Save (private) from Publish (share) actions
@@ -152,8 +154,8 @@
 
 | Feature | Status | Quality |
 |---------|--------|---------|
-| Auth (Email/Google) | ✅ Working | 7/10 |
-| Design Wizard | ✅ Working | 7/10 |
+| Auth (Email/Google) | ✅ Working | 9/10 |
+| Design Wizard | ✅ Working | 8/10 |
 | Image Generation | ✅ Working | 8/10 |
 | Cost Estimation | ⚠️ Partial | 5/10 |
 | Results Display | ✅ Working | 7/10 |
@@ -162,23 +164,23 @@
 | Community Gallery | ⚠️ Partial | 6/10 |
 | Designer Profiles | ⚠️ Partial | 4/10 |
 | Business Dashboard | ⚠️ Mock Only | 4/10 |
-| Admin Dashboard | ⚠️ Basic | 5/10 |
-| Credits System | ⚠️ Insecure | 6/10 |
-| Stripe Integration | ⚠️ Incomplete | 5/10 |
+| Admin Dashboard | ✅ Working | 6/10 |
+| Credits System | ✅ Secure | 8/10 |
+| Stripe Integration | ⚠️ Incomplete | 6/10 |
 | Mobile UI | ❌ Not Ready | 3/10 |
-| Error Handling | ❌ Minimal | 3/10 |
-| Security | ❌ Vulnerable | 4/10 |
+| Error Handling | ⚠️ Partial | 5/10 |
+| Security | ✅ Improved | 7/10 |
 
 ---
 
 ## Quick Wins (< 1 hour each)
 
-1. Remove hardcoded test email from `BusinessDashboard.tsx:49`
-2. Add file size validation to `UploadArea.tsx`
-3. Fix CORS in `stripe_checkout_api.py` (change `*` to specific domain)
-4. Add explicit admin check in `App.tsx` before admin route
-5. Add email format validation to designer forms
-6. Add loading states for all async buttons
+1. ✅ Remove hardcoded test email from `BusinessDashboard.tsx:49`
+2. ✅ Add file size validation to `UploadArea.tsx`
+3. ✅ Fix CORS in `stripe_checkout_api.py` (change `*` to specific domain)
+4. ✅ Add explicit admin check in `App.tsx` before admin route
+5. ✅ Add email format validation to designer forms
+6. ✅ Add loading states for all async buttons (PricingPage, AuthModal, AccountSettings)
 
 ---
 

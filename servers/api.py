@@ -398,18 +398,18 @@ async def generate_video(request: VideoRequest):
     try:
         logger.info(f"📥 Received video request - original: {len(request.original_image)} chars, redesign: {len(request.redesign_image)} chars")
         from video_generator import generate_transformation_video
-        
+
         result = generate_transformation_video(
             request.original_image,
             request.redesign_image,
             request.duration
         )
-        
+
         if result.get("status") == "completed":
             return {"success": True, "video_url": result["video_url"]}
         else:
             raise HTTPException(
-                status_code=500, 
+                status_code=500,
                 detail=result.get("error", "Video generation failed")
             )
     except ValidationError as e:
@@ -417,6 +417,62 @@ async def generate_video(request: VideoRequest):
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"❌ Video generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class Scene3DRequest(BaseModel):
+    image: str  # Base64 encoded rendered landscape image
+    enable_pbr: bool = True
+    surface_mode: str = "hard"  # 'hard' for outdoor, 'organic' for plants
+    target_polycount: int = 30000
+
+@app.post("/api/generate-3d")
+async def generate_3d_scene(request: Scene3DRequest):
+    """Generate a 3D scene from a landscape render using Meshy.ai"""
+    try:
+        logger.info(f"📥 Received 3D generation request - image: {len(request.image)} chars")
+        from meshy_generator import generate_3d_scene as meshy_generate
+
+        result = meshy_generate(
+            request.image,
+            enable_pbr=request.enable_pbr,
+            surface_mode=request.surface_mode,
+            target_polycount=request.target_polycount
+        )
+
+        if result.get("status") == "completed":
+            return {
+                "success": True,
+                "model_url": result["model_url"],
+                "glb_url": result.get("glb_url"),
+                "thumbnail_url": result.get("thumbnail_url"),
+                "task_id": result.get("task_id")
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "3D generation failed")
+            )
+    except ValidationError as e:
+        logger.error(f"❌ Validation error: {e}")
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"❌ 3D generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class Scene3DStatusRequest(BaseModel):
+    task_id: str
+
+@app.get("/api/3d-status/{task_id}")
+async def get_3d_status(task_id: str):
+    """Get the status of a 3D generation task"""
+    try:
+        from meshy_generator import get_task_status
+        result = get_task_status(task_id)
+        return result
+    except Exception as e:
+        logger.error(f"❌ 3D status error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/history")

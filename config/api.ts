@@ -23,6 +23,8 @@ export const API_ENDPOINTS = {
     // RAG Enhancement API
     enhanceWithRag: `${RAG_API_BASE}/api/enhance-with-rag`,
     generateVideoLocal: `${RAG_API_BASE}/api/generate-video`,
+    generate3DLocal: `${RAG_API_BASE}/api/generate-3d`,
+    get3DStatus: `${RAG_API_BASE}/api/3d-status`,
     freepikSearch: `${RAG_API_BASE}/api/freepik/search`,
     health: `${RAG_API_BASE}/health`,
 
@@ -32,6 +34,7 @@ export const API_ENDPOINTS = {
 
     // Cloud Functions (for production)
     generateVideoCloud: `${CLOUD_FUNCTIONS_BASE}/generate_video`,
+    generate3DCloud: `${CLOUD_FUNCTIONS_BASE}/generate_3d`,
 };
 
 // Use Cloud Functions for video in production, local API for development
@@ -42,4 +45,17 @@ export const getVideoEndpoint = () => {
         return API_ENDPOINTS.generateVideoLocal;
     }
     return API_ENDPOINTS.generateVideoCloud;
+};
+
+// Get 3D generation endpoint
+export const get3DEndpoint = () => {
+    if (import.meta.env.DEV) {
+        return API_ENDPOINTS.generate3DLocal;
+    }
+    return API_ENDPOINTS.generate3DCloud;
+};
+
+// Get 3D status endpoint
+export const get3DStatusEndpoint = (taskId: string) => {
+    return `${RAG_API_BASE}/api/3d-status/${taskId}`;
 };
