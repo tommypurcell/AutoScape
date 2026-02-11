@@ -43,37 +43,7 @@ export const BusinessDashboard: React.FC = () => {
 
             // Fetch Messages if on leads tab
             if (activeTab === 'leads') {
-                let msgs = await getMessagesForDesigner(user.uid);
-
-                // MOCK LEADS FOR DEMO (Specific User)
-                if (user.email === 'tommypurcelljr@gmail.com' && msgs.length === 0) {
-                    // Try to get a real design for the mock message so the link works
-                    const publicDesigns = await getPublicDesigns(1);
-                    const mockDesign = publicDesigns.length > 0 ? publicDesigns[0] : null;
-
-                    msgs = [
-                        {
-                            id: 'mock-1',
-                            senderName: 'Alice Freeman',
-                            senderEmail: 'alice.freeman@example.com',
-                            recipientUserId: user.uid,
-                            content: "Hi, I love your portfolio! I have a 500 sq ft backyard in Santa Monica that needs a complete redesign. Are you available for a consultation next week?",
-                            createdAt: new Date(Date.now() - 86400000 * 2), // 2 days ago
-                            read: false,
-                            designImageUrl: mockDesign?.renderImages?.[0] || "https://images.unsplash.com/photo-1598902168898-9a792f212807?auto=format&fit=crop&q=80&w=800",
-                            designId: mockDesign?.id // If null, the button won't render or will be broken? The component checks msg.designId
-                        },
-                        {
-                            id: 'mock-2',
-                            senderName: 'David Chen',
-                            senderEmail: 'david.chen@example.com',
-                            recipientUserId: user.uid,
-                            content: "Hello, I'm looking for a drought-tolerant garden design. I noticed you specialize in native plants. What are your typical rates for a small front yard project?",
-                            createdAt: new Date(Date.now() - 86400000 * 5), // 5 days ago
-                            read: true
-                        }
-                    ];
-                }
+                const msgs = await getMessagesForDesigner(user.uid);
                 setMessages(msgs);
             }
 

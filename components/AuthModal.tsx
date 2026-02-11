@@ -6,11 +6,12 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
-    const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
-    const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+    const { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
+    const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleGoogleSignIn = async () => {
@@ -30,16 +31,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setSuccess('');
 
         try {
-            if (mode === 'signin') {
+            if (mode === 'reset') {
+                await resetPassword(email);
+                setSuccess('Password reset email sent! Check your inbox.');
+                return;
+            } else if (mode === 'signin') {
                 await signInWithEmail(email, password);
             } else {
                 await signUpWithEmail(email, password);
             }
             onClose?.();
         } catch (err: any) {
-            setError(err.message || `Failed to ${mode === 'signin' ? 'sign in' : 'sign up'}`);
+            // Map Firebase error codes to user-friendly messages
+            const errorCode = err.code || '';
+            if (errorCode === 'auth/user-not-found') {
+                setError('No account found with this email.');
+            } else if (errorCode === 'auth/wrong-password') {
+                setError('Incorrect password.');
+            } else if (errorCode === 'auth/email-already-in-use') {
+                setError('An account with this email already exists.');
+            } else if (errorCode === 'auth/weak-password') {
+                setError('Password should be at least 6 characters.');
+            } else if (errorCode === 'auth/invalid-email') {
+                setError('Please enter a valid email address.');
+            } else {
+                setError(err.message || `Failed to ${mode === 'signin' ? 'sign in' : mode === 'signup' ? 'sign up' : 'reset password'}`);
+            }
         } finally {
             setLoading(false);
         }
@@ -59,15 +79,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 </button>
 
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                    {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
+                    {mode === 'signin' ? 'Welcome Back' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
                 </h2>
                 <p className="text-gray-600 mb-6">
-                    {mode === 'signin' ? 'Sign in to save your designs' : 'Sign up to get started'}
+                    {mode === 'signin' ? 'Sign in to save your designs' : mode === 'signup' ? 'Sign up to get started' : 'Enter your email to reset your password'}
                 </p>
 
                 {error && (
                     <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
                         {error}
+                    </div>
+                )}
+
+                {success && (
+                    <div className="mb-4 p-3 bg-green-50 text-green-600 rounded-lg text-sm">
+                        {success}
                     </div>
                 )}
 

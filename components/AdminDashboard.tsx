@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
     getAllUsers,
@@ -17,7 +18,27 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
 
 export const AdminDashboard: React.FC = () => {
-    const { user } = useAuth();
+    const navigate = useNavigate();
+    const { user, userRole, loading: authLoading } = useAuth();
+
+    // Redirect non-admins
+    useEffect(() => {
+        if (!authLoading && (!user || userRole !== 'admin')) {
+            navigate('/');
+        }
+    }, [user, userRole, authLoading, navigate]);
+
+    // Show nothing while checking auth
+    if (authLoading || !user || userRole !== 'admin') {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <Loader className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-4" />
+                    <p className="text-gray-600">Checking permissions...</p>
+                </div>
+            </div>
+        );
+    }
     const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'gallery' | 'pros' | 'backlog'>('overview');
     const [users, setUsers] = useState<UserData[]>([]);
     const [designs, setDesigns] = useState<SavedDesign[]>([]);

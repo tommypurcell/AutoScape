@@ -30,11 +30,22 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
     fileInputRef.current?.click();
   };
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
   const validateAndProcessFiles = async (files: File[]) => {
     setValidationError(null);
     setIsValidating(true);
 
     try {
+      // Check file size for all files
+      for (const file of files) {
+        if (file.size > MAX_FILE_SIZE) {
+          setValidationError(`File "${file.name}" is too large. Maximum size is 10MB.`);
+          setIsValidating(false);
+          return;
+        }
+      }
+
       // Validate the first/main image (for yard photos)
       const mainFile = files[0];
       if (mainFile && label.toLowerCase().includes('yard')) {

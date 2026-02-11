@@ -6,6 +6,8 @@ import {
     createUserWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
+    sendPasswordResetEmail,
+    sendEmailVerification,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { syncUser } from '../services/firestoreService';
@@ -21,6 +23,8 @@ interface AuthContextType {
     signInWithGoogle: () => Promise<void>;
     signInWithEmail: (email: string, password: string) => Promise<void>;
     signUpWithEmail: (email: string, password: string) => Promise<void>;
+    resetPassword: (email: string) => Promise<void>;
+    sendVerificationEmail: () => Promise<void>;
     logout: () => Promise<void>;
 }
 
@@ -86,7 +90,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signUpWithEmail = async (email: string, password: string) => {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Send verification email after signup
+        if (userCredential.user) {
+            try {
+                await sendEmailVerification(userCredential.user);
+            } catch (err) {
+                console.warn('Could not send verification email:', err);
+            }
+        }
+    };
+
+    const resetPassword = async (email: string) => {
+        await sendPasswordResetEmail(auth, email);
+    };
+
+    const sendVerificationEmail = async () => {
+        if (auth.currentUser) {
+            await sendEmailVerification(auth.currentUser);
+        } else {
+            throw new Error('No user logged in');
+        }
     };
 
     const logout = async () => {
@@ -102,6 +126,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signInWithGoogle,
         signInWithEmail,
         signUpWithEmail,
+        resetPassword,
+        sendVerificationEmail,
         logout,
     };
 

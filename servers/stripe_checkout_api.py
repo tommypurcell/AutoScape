@@ -40,13 +40,25 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Allowed origins for CORS
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:3003",
+    "http://localhost:5173",
+    "https://autoscape2-9f048.web.app",
+    "https://autoscape2-9f048.firebaseapp.com",
+    # Add your production domain here
+]
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust for production - use specific origins
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Stripe-Signature"],
 )
 
 # Initialize Stripe

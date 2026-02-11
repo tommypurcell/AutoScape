@@ -235,25 +235,19 @@ const AppContent: React.FC = () => {
   const handleGenerate = async () => {
     if (!state.yardImage) return;
 
+    // Require authentication for design generation
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     // Check credits before generating
     try {
-      const { getUserCredits, hasEnoughCredits } = await import('./services/creditService');
-      
-      if (user) {
-        const hasCredits = await hasEnoughCredits(user.uid, 1);
-        if (!hasCredits) {
-          // Redirect to pricing page with message
-          navigate('/pricing?message=insufficient_credits');
-          return;
-        }
-      } else {
-        // For anonymous users, check if they've used their free credits
-        // Store in localStorage for anonymous users
-        const anonymousCreditsUsed = parseInt(localStorage.getItem('anonymousCreditsUsed') || '0');
-        if (anonymousCreditsUsed >= 2) {
-          navigate('/pricing?message=insufficient_credits');
-          return;
-        }
+      const { hasEnoughCredits } = await import('./services/creditService');
+      const hasCredits = await hasEnoughCredits(user.uid, 1);
+      if (!hasCredits) {
+        navigate('/pricing?message=insufficient_credits');
+        return;
       }
     } catch (error) {
       console.error('Error checking credits:', error);
@@ -297,16 +291,10 @@ const AppContent: React.FC = () => {
       // Update context with the result
       setResult(result);
 
-      // Deduct credit after successful generation
+      // Deduct credit after successful generation (user is guaranteed to exist due to auth check)
       try {
         const { useCredits } = await import('./services/creditService');
-        if (user) {
-          await useCredits(user.uid, 1);
-        } else {
-          // For anonymous users, track in localStorage
-          const anonymousCreditsUsed = parseInt(localStorage.getItem('anonymousCreditsUsed') || '0');
-          localStorage.setItem('anonymousCreditsUsed', (anonymousCreditsUsed + 1).toString());
-        }
+        await useCredits(user!.uid, 1);
         // Dispatch event to update credit display
         window.dispatchEvent(new CustomEvent('creditsUpdated'));
       } catch (creditError) {
@@ -314,14 +302,10 @@ const AppContent: React.FC = () => {
         // Don't block the user if credit deduction fails
       }
 
-      // Save to Firestore for ALL users (authenticated or anonymous) to generate a unique URL
+      // Save to Firestore
       try {
-        // Use the local yard image preview URL (skip Firebase Storage upload to avoid CORS issues in development)
-        // TODO: For production, enable Firebase Storage upload after configuring CORS on the storage bucket
         const yardImageUrl = state.yardImagePreview;
-
-        // Use user ID or 'anonymous' for Firestore document
-        const ownerId = user ? user.uid : 'anonymous';
+        const ownerId = user!.uid;
 
         const { id, shortId } = await saveDesign(ownerId, {
           ...result,
