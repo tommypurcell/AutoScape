@@ -95,18 +95,31 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
     };
 
+    const safeEstimates = result.estimates || { totalCost: 0, breakdown: [], plantPalette: [] };
+    const safeBreakdown = safeEstimates.breakdown || [];
+
+    // Sanity-check total cost: cap within $500 - $500,000 range
+    const sanitizedTotalCost = (() => {
+        const raw = safeEstimates.totalCost || 0;
+        if (raw <= 0) return 0;
+        if (raw < 500) return 500;       // Floor: minimum reasonable landscaping cost
+        if (raw > 500000) return 500000; // Ceiling: cap unreasonably high estimates
+        return raw;
+    })();
+
     const chartData = useMemo(() => {
+        if (!safeBreakdown.length) return [];
         const categories: Record<string, number> = { Hardscape: 0, Plants: 0, Labor: 0, Other: 0 };
-        result.estimates.breakdown.forEach(item => {
-            const name = item.name.toLowerCase();
-            const cost = parseFloat(item.totalCost.replace(/[^0-9.]/g, '')) || 0;
+        safeBreakdown.forEach(item => {
+            const name = (item.name || '').toLowerCase();
+            const cost = parseFloat((item.totalCost || '0').replace(/[^0-9.]/g, '')) || 0;
             if (name.includes('labor') || name.includes('install')) categories.Labor += cost;
             else if (name.includes('paver') || name.includes('stone') || name.includes('concrete') || name.includes('gravel') || name.includes('deck') || name.includes('patio') || name.includes('fence') || name.includes('wall')) categories.Hardscape += cost;
             else if (name.includes('plant') || name.includes('tree') || name.includes('shrub') || name.includes('flower') || name.includes('sod')) categories.Plants += cost;
             else categories.Other += cost;
         });
         return Object.entries(categories).filter(([, v]) => v > 0).map(([name, cost]) => ({ name, cost }));
-    }, [result.estimates.breakdown]);
+    }, [safeBreakdown]);
 
     const ensureSaved = async (): Promise<string | null> => {
         if (currentShortId) return currentShortId;
@@ -930,15 +943,15 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                             </div>
 
                             {/* Material list */}
-                            {result.estimates.totalCost > 0 && (
+                            {sanitizedTotalCost > 0 && safeBreakdown.length > 0 ? (
                                 <div className="bg-white rounded-2xl shadow border border-slate-200 p-4 space-y-4">
                                     <h3 className="text-lg font-bold text-slate-800">Material List & Estimates</h3>
                                     <div className="grid md:grid-cols-2 gap-3">
-                                        {result.estimates.breakdown.slice(0, 10).map((item, idx) => {
+                                        {safeBreakdown.slice(0, 10).map((item, idx) => {
                                             const ragThumb = ragBudget?.line_items?.find(
                                                 (li) => li.item === item.name || li.match === item.name
                                             )?.image_url;
-                                            const plantThumb = result.estimates.plantPalette?.find((p: any) => p.common_name === item.name)?.image_url;
+                                            const plantThumb = safeEstimates.plantPalette?.find((p: any) => p.common_name === item.name)?.image_url;
                                             const thumb = ragThumb || plantThumb || null;
                                             return (
                                                 <div key={idx} className="flex items-center gap-3 border border-slate-100 rounded-lg p-3">
@@ -946,20 +959,25 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
                                                         {thumb ? <img src={thumb} className="w-full h-full object-cover" /> : <span className="text-xs text-slate-400">No image</span>}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <div className="text-sm font-semibold text-slate-800">{item.name}</div>
-                                                        <div className="text-xs text-slate-600">Qty: {item.quantity}</div>
+                                                        <div className="text-sm font-semibold text-slate-800">{item.name || 'Unknown item'}</div>
+                                                        <div className="text-xs text-slate-600">Qty: {item.quantity || '—'}</div>
                                                     </div>
-                                                    <div className="text-sm font-semibold text-slate-800">{item.totalCost}</div>
+                                                    <div className="text-sm font-semibold text-slate-800">{item.totalCost || '—'}</div>
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                    <div className="text-right text-sm font-semibold text-emerald-700">Total: {formatCurrency(result.estimates.totalCost)}</div>
+                                    <div className="text-right text-sm font-semibold text-emerald-700">Total: {formatCurrency(sanitizedTotalCost)}</div>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-2xl shadow border border-slate-200 p-4">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-2">Cost Estimate</h3>
+                                    <p className="text-sm text-slate-500">Estimate unavailable for this design. Cost estimates depend on materials, area size, and regional pricing.</p>
                                 </div>
                             )}
 
                             {/* Cost distribution */}
-                            {result.estimates.totalCost > 0 && chartData.length > 0 && (
+                            {sanitizedTotalCost > 0 && chartData.length > 0 && (
                                 <div className="bg-white rounded-2xl shadow border border-slate-200 p-4">
                                     <h3 className="text-lg font-bold text-slate-800 mb-3">Cost Distribution</h3>
                                     <div className="h-[280px]">
