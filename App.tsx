@@ -255,9 +255,9 @@ const AppContent: React.FC = () => {
         }, isPublic);
 
         if (isPublic) {
-          alert(`✅ Design saved and published to Community Gallery!\n\n🔗 Share link: ${window.location.origin}/result/${shortId}`);
+          alert(`✅ Design saved and published to Community Gallery!\n\n🔗 Share link: https://autoscape.online/result/${shortId}`);
         } else {
-          alert(`✅ Design saved privately!\n\n🔗 Your link: ${window.location.origin}/result/${shortId}`);
+          alert(`✅ Design saved privately!\n\n🔗 Your link: https://autoscape.online/result/${shortId}`);
         }
 
         // Reload gallery if on gallery page

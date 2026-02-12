@@ -267,7 +267,16 @@ export const BlogArticle: React.FC = () => {
       updateMetaTag('og:title', article.title);
       updateMetaTag('og:description', article.description);
       updateMetaTag('og:type', 'article');
-      updateMetaTag('og:url', `${window.location.origin}/blog/${article.slug}`);
+      updateMetaTag('og:url', `https://autoscape.online/blog/${article.slug}`);
+      
+      // Add canonical URL
+      let canonicalLink = document.querySelector('link[rel="canonical"]');
+      if (!canonicalLink) {
+        canonicalLink = document.createElement('link');
+        canonicalLink.setAttribute('rel', 'canonical');
+        document.head.appendChild(canonicalLink);
+      }
+      canonicalLink.setAttribute('href', `https://autoscape.online/blog/${article.slug}`);
       if (article.image) {
         updateMetaTag('og:image', article.image);
       }
@@ -308,7 +317,7 @@ export const BlogArticle: React.FC = () => {
         dateModified: article.date,
         mainEntityOfPage: {
           '@type': 'WebPage',
-          '@id': `${window.location.origin}/blog/${article.slug}`,
+          '@id': `https://autoscape.online/blog/${article.slug}`,
         },
       };
       

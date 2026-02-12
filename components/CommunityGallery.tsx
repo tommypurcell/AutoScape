@@ -368,13 +368,13 @@ const CommunityGallery: React.FC<CommunityGalleryProps> = ({ onLoadDesign }) => 
                                             <div className="flex items-center gap-2">
                                                 <input
                                                     type="text"
-                                                    value={`${window.location.origin}/result/${selectedDesign.shortId}`}
+                                                    value={`https://autoscape.online/result/${selectedDesign.shortId}`}
                                                     readOnly
                                                     className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-600"
                                                 />
                                                 <button
                                                     onClick={() => {
-                                                        navigator.clipboard.writeText(`${window.location.origin}/result/${selectedDesign.shortId}`);
+                                                        navigator.clipboard.writeText(`https://autoscape.online/result/${selectedDesign.shortId}`);
                                                         // Brief visual feedback
                                                         const btn = document.getElementById('copy-link-btn');
                                                         if (btn) {

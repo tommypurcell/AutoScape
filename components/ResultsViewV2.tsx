@@ -142,7 +142,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const handleCopyLink = async () => {
         const id = await ensureSaved();
         if (!id) return;
-        const url = `${window.location.origin}/result/${id}`;
+        const url = `https://autoscape.online/result/${id}`;
         await navigator.clipboard.writeText(url);
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
@@ -156,7 +156,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
 
         const shortId = await ensureSaved();
         if (shortId) {
-            setShareUrl(`${window.location.origin}/result/${shortId}`);
+            setShareUrl(`https://autoscape.online/result/${shortId}`);
             setIsShareMenuOpen(true);
         }
     };
@@ -165,7 +165,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
     const handleShareLink = async () => {
         const shortId = await ensureSaved();
         if (shortId) {
-            const url = `${window.location.origin}/result/${shortId}`;
+            const url = `https://autoscape.online/result/${shortId}`;
             navigator.clipboard.writeText(url);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
@@ -176,7 +176,7 @@ export const ResultsViewV2: React.FC<ResultsViewProps> = ({
         if (!shareUrl && platform !== 'download') return;
 
         const text = `Just redesigned my yard with AutoScape! Check it out:`;
-        const url = shareUrl || window.location.href;
+        const url = shareUrl || `https://autoscape.online${window.location.pathname}`;
 
         switch (platform) {
             case 'facebook':

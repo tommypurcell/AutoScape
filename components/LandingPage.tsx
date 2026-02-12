@@ -200,8 +200,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onAbout,
                     </h1>
 
                     <p className="text-white/90 text-lg md:text-xl font-light tracking-wide max-w-2xl leading-relaxed drop-shadow-md mb-12">
-                        Upload a photo and watch as advanced AI transforms your yard into a sustainable,
-                        breathtaking landscape in seconds.
+                        Transform your yard with AI-powered landscape design. Upload a photo and watch as advanced AI creates a sustainable, breathtaking landscape in seconds. Get photorealistic renders, detailed plans, material lists, and accurate cost estimates for your dream outdoor space.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-5">

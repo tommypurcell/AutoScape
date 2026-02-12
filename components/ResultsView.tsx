@@ -390,7 +390,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
     setCurrentRenderIndex((prev) => (prev - 1 + result.renderImages.length) % result.renderImages.length);
   };
 
-  const shareableUrl = designShortId ? `${window.location.origin}/result/${designShortId}` : null;
+  const shareableUrl = designShortId ? `https://autoscape.online/result/${designShortId}` : null;
 
   const copyShareLink = () => {
     if (shareableUrl) {
