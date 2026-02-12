@@ -4,26 +4,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AutoScape - AI Landscape Design</title>
-  <meta name="description" content="Transform your yard with AI-powered landscape design." />
-  <link rel="canonical" href="https://autoscape.online" />
-  
-  <!-- Open Graph / Facebook -->
+
+  <!-- Base title/description — overridden per-page by useSEO -->
+  <title>AutoScape — AI Landscape Design for Your Yard</title>
+  <meta name="description" content="Upload a photo of your yard and get a photorealistic AI landscape design in seconds. Free to try. No designer needed." />
+
+  <!-- Canonical for homepage — useSEO overwrites this on every other route -->
+  <link rel="canonical" href="https://autoscape.online/" />
+
+  <!-- Open Graph base — overridden per-page by useSEO -->
+  <meta property="og:site_name" content="AutoScape" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="AutoScape - AI Landscape Design" />
-  <meta property="og:description" content="Transform your yard with AI-powered landscape design." />
-  <meta property="og:url" content="https://autoscape.online" />
-  <meta property="og:image" content="https://images.unsplash.com/photo-1558904541-01470460287c?q=80&w=2000&auto=format" />
+  <meta property="og:title" content="AutoScape — AI Landscape Design for Your Yard" />
+  <meta property="og:description" content="Upload a photo of your yard and get a photorealistic AI landscape design in seconds. Free to try. No designer needed." />
+  <meta property="og:url" content="https://autoscape.online/" />
+  <meta property="og:image" content="https://autoscape.online/images/og-default.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
 
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:title" content="AutoScape - AI Landscape Design" />
-  <meta property="twitter:description" content="Transform your yard with AI-powered landscape design." />
-  <meta property="twitter:image" content="https://images.unsplash.com/photo-1558904541-01470460287c?q=80&w=2000&auto=format" />
+  <!-- Twitter Card base — overridden per-page by useSEO -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AutoScape — AI Landscape Design for Your Yard" />
+  <meta name="twitter:description" content="Upload a photo of your yard and get a photorealistic AI landscape design in seconds. Free to try. No designer needed." />
+  <meta name="twitter:image" content="https://autoscape.online/images/og-default.png" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Text:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- SoftwareApplication schema (site-wide) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "AutoScape",
+    "url": "https://autoscape.online",
+    "applicationCategory": "DesignApplication",
+    "operatingSystem": "Web",
+    "description": "AI-powered landscape design tool. Upload a yard photo and receive photorealistic redesigns with cost estimates.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+      "description": "Free to try — 2 free designs"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "AutoScape",
+      "url": "https://autoscape.online"
+    }
+  }
+  </script>
+
+  <!-- Google Fonts — preconnect before stylesheet to avoid render-blocking -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Text:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
   <script type="importmap">
 {
   "imports": {

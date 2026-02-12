@@ -8,71 +8,99 @@ interface SEOConfig {
   ogImage?: string;
   ogType?: 'website' | 'article';
   noindex?: boolean;
+  jsonLd?: object | object[];
 }
 
 const SITE_URL = 'https://autoscape.online';
+const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-default.png`;
+
+const setMetaName = (name: string, content: string) => {
+  let el = document.querySelector(`meta[name="${name}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute('name', name);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+};
+
+const setMetaProperty = (property: string, content: string) => {
+  let el = document.querySelector(`meta[property="${property}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute('property', property);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+};
+
+const setCanonical = (href: string) => {
+  let el = document.querySelector('link[rel="canonical"]');
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', 'canonical');
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', href);
+};
+
+const setJsonLd = (data: object | object[]) => {
+  // Remove any existing injected JSON-LD blocks
+  document.querySelectorAll('script[data-seo="true"]').forEach(el => el.remove());
+
+  const schemas = Array.isArray(data) ? data : [data];
+  schemas.forEach(schema => {
+    const script = document.createElement('script');
+    script.setAttribute('type', 'application/ld+json');
+    script.setAttribute('data-seo', 'true');
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+  });
+};
 
 /**
- * Hook to manage SEO meta tags for each page
- * Ensures all pages have proper canonical URLs and meta tags
+ * Manages all SEO head tags for a given page.
+ * Sets title, description, canonical, Open Graph, Twitter Card, robots, and JSON-LD.
  */
 export const useSEO = (config: SEOConfig) => {
   const location = useLocation();
 
   useEffect(() => {
-    // Set title
+    const canonicalUrl = config.canonical || `${SITE_URL}${location.pathname}`;
+    const ogImage = config.ogImage || DEFAULT_OG_IMAGE;
+
     document.title = config.title;
 
-    // Update or create meta description
-    let metaDescription = document.querySelector('meta[name="description"]');
-    if (!metaDescription) {
-      metaDescription = document.createElement('meta');
-      metaDescription.setAttribute('name', 'description');
-      document.head.appendChild(metaDescription);
-    }
-    metaDescription.setAttribute('content', config.description);
+    setMetaName('description', config.description);
+    setCanonical(canonicalUrl);
 
-    // Set canonical URL
-    const canonicalUrl = config.canonical || `${SITE_URL}${location.pathname}`;
-    let canonicalLink = document.querySelector('link[rel="canonical"]');
-    if (!canonicalLink) {
-      canonicalLink = document.createElement('link');
-      canonicalLink.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonicalLink);
-    }
-    canonicalLink.setAttribute('href', canonicalUrl);
-
-    // Update Open Graph tags
-    const updateMetaTag = (property: string, content: string) => {
-      let meta = document.querySelector(`meta[property="${property}"]`);
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.setAttribute('property', property);
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute('content', content);
-    };
-
-    updateMetaTag('og:title', config.title);
-    updateMetaTag('og:description', config.description);
-    updateMetaTag('og:type', config.ogType || 'website');
-    updateMetaTag('og:url', canonicalUrl);
-    
-    if (config.ogImage) {
-      updateMetaTag('og:image', config.ogImage);
-    }
-
-    // Handle noindex
-    let robotsMeta = document.querySelector('meta[name="robots"]');
+    // Robots
     if (config.noindex) {
-      if (!robotsMeta) {
-        robotsMeta = document.createElement('meta');
-        robotsMeta.setAttribute('name', 'robots');
-        document.head.appendChild(robotsMeta);
-      }
-      robotsMeta.setAttribute('content', 'noindex, nofollow');
-    } else if (robotsMeta) {
-      robotsMeta.remove();
+      setMetaName('robots', 'noindex, nofollow');
+    } else {
+      const existing = document.querySelector('meta[name="robots"]');
+      if (existing) existing.remove();
     }
-  }, [config, location.pathname]);
+
+    // Open Graph
+    setMetaProperty('og:site_name', 'AutoScape');
+    setMetaProperty('og:title', config.title);
+    setMetaProperty('og:description', config.description);
+    setMetaProperty('og:type', config.ogType || 'website');
+    setMetaProperty('og:url', canonicalUrl);
+    setMetaProperty('og:image', ogImage);
+    setMetaProperty('og:image:width', '1200');
+    setMetaProperty('og:image:height', '630');
+
+    // Twitter Card
+    setMetaName('twitter:card', 'summary_large_image');
+    setMetaName('twitter:title', config.title);
+    setMetaName('twitter:description', config.description);
+    setMetaName('twitter:image', ogImage);
+
+    // JSON-LD structured data
+    if (config.jsonLd) {
+      setJsonLd(config.jsonLd);
+    }
+  }, [config.title, config.description, config.canonical, config.noindex, config.ogImage, config.ogType, location.pathname]);
 };

@@ -5,6 +5,7 @@ import { DesignStyle } from '../types';
 import { ChevronDown, ArrowRight, Sun, Droplets, Wind } from 'lucide-react';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { getDesignById, SavedDesign } from '../services/firestoreService';
+import { useSEO } from '../hooks/useSEO';
 
 interface LandingPageProps {
     onGetStarted: () => void;

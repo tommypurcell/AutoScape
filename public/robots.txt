@@ -1,5 +1,26 @@
 User-agent: *
-Allow: /
 
-# Sitemap
+# Public pages — crawl freely
+Allow: /$
+Allow: /blog$
+Allow: /blog/
+Allow: /gallery$
+Allow: /pricing$
+Allow: /about$
+Allow: /business$
+Allow: /terms$
+Allow: /privacy$
+
+# App-only pages — no crawl value
+Disallow: /create
+Disallow: /result/
+Disallow: /admin
+Disallow: /business/dashboard
+Disallow: /designer-signup
+Disallow: /designer/
+
+# Block tracking/noise query params
+Disallow: /*?utm_*
+Disallow: /*?ref=*
+
 Sitemap: https://autoscape.online/sitemap.xml
